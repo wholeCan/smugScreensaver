@@ -1,0 +1,50 @@
+﻿<Window x:Class="andyScreenSaver.SettingsWindow"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:c="clr-namespace:andyScreenSaver"
+    Title="SmugAndy Screensaver Settings" Height="577" Width="511">
+    <Window.Resources>
+        <c:RoundingConverter x:Key="RoundingConverter"/>
+    </Window.Resources>
+    <Grid Height="531" Width="458">
+        <Button Height="23" Margin="0,0,31,0" Name="btnClose" VerticalAlignment="Bottom" Click="btnClose_Click" HorizontalAlignment="Right" Width="76">OK</Button>
+        <Button Height="23" HorizontalAlignment="Left" Margin="19,0,0,0" Name="btnDefaults" VerticalAlignment="Bottom" Width="76" Click="btnDefaults_Click">Defaults</Button>
+        <Button Content="Connect" Height="28" HorizontalAlignment="Left" Margin="164,82,0,0" Name="button1" VerticalAlignment="Top" Width="66" Click="button1_Click" />
+        <ComboBox Height="23" HorizontalAlignment="Left" Margin="12,174,0,0" Name="comboBox3" VerticalAlignment="Top" Width="120" />
+        <Slider Height="21" HorizontalAlignment="Left" Margin="12,228,0,0" Name="slider1" VerticalAlignment="Top" Width="137" DataContext="{Binding}" Minimum="1" Maximum="60" Interval="1" />
+        <TextBox Height="22" HorizontalAlignment="Left" Margin="103,246,0,0" Name="textBox1" VerticalAlignment="Top" Width="46" IsReadOnly="True" Text="{Binding ElementName=slider1, Path=Value, Converter={StaticResource  RoundingConverter}}"/>
+        <CheckBox Content="Always Load All galleries" Height="16" HorizontalAlignment="Left" Margin="12,122,0,0" Name="cbAlwaysLoadAllGalleries" VerticalAlignment="Top" Checked="checkBox1_Checked" Unchecked="checkBox1_Unchecked" />
+        <GroupBox Header="Display Albums" IsEnabled="True" Height="360"   HorizontalAlignment="Left" Margin="184,123,0,0" Name="groupBox1" VerticalAlignment="Top" Width="262">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="24*" />
+                    <ColumnDefinition Width="12*" />
+                    <ColumnDefinition Width="214*" />
+                </Grid.ColumnDefinitions>
+                <DataGrid AutoGenerateColumns="True" Height="205" HorizontalAlignment="Left" Margin="8,91,0,0" Name="dataGrid1" VerticalAlignment="Top" Width="212" IsReadOnly="False" Grid.Column="1" Grid.ColumnSpan="2" />
+                <ComboBox Height="22" HorizontalAlignment="Left" Margin="44,6,0,0" Name="comboBox1" VerticalAlignment="Top" Width="164" SelectionChanged="comboBox1_SelectionChanged" Grid.Column="2" />
+                <ComboBox Height="23" HorizontalAlignment="Left" Margin="46,34,0,0" Name="comboBox2" VerticalAlignment="Top" Width="162" Grid.Column="2" IsEnabled="False" />
+                <Label Content="Categories
+               " Height="28" HorizontalAlignment="Left" Margin="8,6,0,0" Name="label3" VerticalAlignment="Top" Grid.ColumnSpan="3" />
+                <Label Content="Albums" Height="29" HorizontalAlignment="Left" Margin="8,34,0,0" Name="label4" VerticalAlignment="Top" Width="76" Grid.ColumnSpan="3" />
+                <Button Content="Add album" Height="23" HorizontalAlignment="Left" Margin="122,63,0,0" Name="button2" VerticalAlignment="Top" Width="75" Click="button2_Click" Grid.Column="2" IsEnabled="False" />
+                <Button Content="Add All albums" Height="23" HorizontalAlignment="Left" Margin="0,302,0,0" Name="button3" VerticalAlignment="Top" Width="88" Click="button3_Click" Grid.Column="2" IsEnabled="False" />
+                <Button Content="Clear" Height="22" HorizontalAlignment="Left" Margin="155,303,0,0" Name="button4" VerticalAlignment="Top" Width="53" Click="button4_Click" Grid.Column="2" />
+                <Button Content="add Albums" Grid.Column="2" HorizontalAlignment="Left" Margin="29,65,0,0" VerticalAlignment="Top" Width="75" Click="Button_Click"/>
+            </Grid>
+        </GroupBox>
+        <CheckBox Content="Show Info" Height="16" HorizontalAlignment="Left" Margin="19,292,0,0" Name="cbShowInfo" VerticalAlignment="Top" />
+        <Button Content="Contribute" Height="23" HorizontalAlignment="Left" Margin="19,423,0,0" Name="button5" VerticalAlignment="Top" Width="75" Click="button5_Click" />
+        <Button Content="Contact" Height="23" HorizontalAlignment="Left" Margin="19,452,0,0" Name="button6" VerticalAlignment="Top" Width="75" Click="button6_Click" />
+        <Label Content="Grid dimensions:" HorizontalAlignment="Left" Margin="19,344,0,0" VerticalAlignment="Top"/>
+        <TextBox HorizontalAlignment="Left" Height="23" Margin="58,375,0,0" TextWrapping="Wrap" Text="2" VerticalAlignment="Top" Width="23" Name="gridWidth"/>
+        <Label Content="x" HorizontalAlignment="Left" Margin="85,374,0,0" VerticalAlignment="Top"/>
+        <TextBox HorizontalAlignment="Left" Height="23" Margin="99,375,0,0" TextWrapping="Wrap" Text="3" VerticalAlignment="Top" Width="25" Name="gridHeight"/>
+        <Label Content="width" HorizontalAlignment="Left" Margin="12,374,0,0" VerticalAlignment="Top"/>
+        <Label Content="H" HorizontalAlignment="Left" Margin="124,375,0,0" VerticalAlignment="Top"/>
+        <Button Content="Start show" HorizontalAlignment="Left" Margin="265,508,0,0" Width="75" Click="Button_Click_1" Height="23" VerticalAlignment="Top"/>
+        <TextBox HorizontalAlignment="Left" Name="BorderThickness" Height="23" Margin="215,505,0,0" TextWrapping="Wrap" Text="0" VerticalAlignment="Top" Width="47"/>
+        <Label Content="border thickness" HorizontalAlignment="Left" Margin="112,505,0,0" VerticalAlignment="Top"/>
+        <Button Content="Apply" HorizontalAlignment="Left" Margin="352,483,0,0" VerticalAlignment="Top" Width="75" Click="Button_Click_2"/>
+    </Grid>
+</Window>

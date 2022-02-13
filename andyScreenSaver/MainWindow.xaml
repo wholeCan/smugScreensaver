@@ -1,0 +1,65 @@
+﻿<Window x:Class="andyScreenSaver.Window1"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    Title="SmugAndy"
+     MouseWheel="Window_MouseWheel" ShowInTaskbar="False" ResizeMode="NoResize" WindowStyle="None"
+        MouseDown="Window_MouseDown" KeyDown="Window_KeyDown" Background="Black" Height="333" MouseMove="Window_MouseMove" Closed="Window_Closed" SizeChanged="Window_SizeChanged_1" Width="486" MouseRightButtonUp="Window_MouseRightButtonUp">
+    
+    <Grid Name="grid1" MouseUp="image1_MouseUp">
+        <Viewport3D Name="viewport3D1" HorizontalAlignment="Right" Width="296" Height="298" VerticalAlignment="Top" Margin="0,0,302,0">
+            <Viewport3D.Camera>
+                <PerspectiveCamera x:Name="camMain" Position="255 38.5 255" LookDirection="-130 -40 -130" FarPlaneDistance="450" UpDirection="0,1,0" NearPlaneDistance="1" FieldOfView="70">
+
+                </PerspectiveCamera>
+            </Viewport3D.Camera>
+            <ModelVisual3D x:Name="vis3DLighting">
+                <ModelVisual3D.Content>
+                    <DirectionalLight x:Name="dirLightMain" Direction="2, -2, 0"/>
+                </ModelVisual3D.Content>
+            </ModelVisual3D>
+            <ModelVisual3D>
+                <ModelVisual3D.Content>
+                    <DirectionalLight Direction="0, -2, 2"/>
+                </ModelVisual3D.Content>
+            </ModelVisual3D>
+            <ModelVisual3D>
+                <ModelVisual3D.Content>
+                    <GeometryModel3D x:Name="gmodMain">
+                        <GeometryModel3D.Geometry>
+                            <MeshGeometry3D x:Name="meshMain" >
+                            </MeshGeometry3D>
+                        </GeometryModel3D.Geometry>
+                        <GeometryModel3D.Material>
+                            <MaterialGroup>
+                                <DiffuseMaterial x:Name="matDiffuseMain">
+                                    <DiffuseMaterial.Brush>
+                                        <SolidColorBrush Color="DarkBlue"/>
+                                    </DiffuseMaterial.Brush>
+                                </DiffuseMaterial>
+                                <SpecularMaterial SpecularPower="24">
+                                    <SpecularMaterial.Brush>
+                                        <SolidColorBrush Color="LightBlue"/>
+                                    </SpecularMaterial.Brush>
+                                </SpecularMaterial>
+                            </MaterialGroup>
+                        </GeometryModel3D.Material>
+                    </GeometryModel3D>
+                </ModelVisual3D.Content>
+            </ModelVisual3D>
+        </Viewport3D>
+        <Border BorderThickness="5" BorderBrush="Black">
+            <StackPanel Name="hStack1" Orientation="Horizontal" Margin="0,0"  >
+                <!--<StackPanel Name="vstackPanel1" Orientation="Vertical">
+                <Image Name="image1"   Source="/andyScrSaver;component/2011072016-03-00IMG7066-L.jpg" Height="161" Width="263"  />
+                <Image x:Name="image2"  Source="/andyScrSaver;component/2011072016-03-00IMG7066-L.jpg" Height="174" Width="302" />
+            </StackPanel>-->
+
+                <!--<StackPanel Name="vstackPanel2" Orientation="Vertical" Margin="0,0">
+                <Image Name="image3"   Source="/andyScrSaver;component/2011072016-03-00IMG7066-L.jpg" Height="167" Width="302" />
+                <Image x:Name="image4"  Source="/andyScrSaver;component/2011072016-03-00IMG7066-L.jpg" Height="166" Width="239"  />
+            </StackPanel>-->
+            </StackPanel>
+        </Border>
+        <Label Name="SetupRequired" Foreground="Red">Loading first image...</Label>
+    </Grid>
+</Window>
