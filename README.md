@@ -9,6 +9,6 @@ Started in 2014, this code base is a hobby to build a screensaver based on a smu
 ### requirements:
 - I wanted 0 hard disk usage, or at least as little as possible.  the photo URLs are loaded into memory at startup, and there is an engine that maintains about 10 images in memory at any given time.
 - 3 threads:
-  1 image link collection
-  2 photo collection
-  3 UI thread, building out the screensaver
+  1. image link collection
+  2. photo collection
+  3. UI thread, building out the screensaver
