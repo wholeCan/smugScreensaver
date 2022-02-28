@@ -721,9 +721,16 @@ namespace SMEngine
                 _user = await api.GetAuthenticatedUser();
             }
             _allAlbums = new List<Album>();
-            var albums = await api.GetAlbums(_user, debug_limit); // todo: do we care about the limit?
-            System.Diagnostics.Debug.WriteLine("returned albums: " + albums.Count());
-            _allAlbums = albums;
+            try
+            {
+                var albums = await api.GetAlbums(_user, debug_limit); // todo: do we care about the limit?
+                System.Diagnostics.Debug.WriteLine("returned albums: " + albums.Count());
+                _allAlbums = albums;
+            }
+            catch (Exception ex)
+            {
+                doException(ex.Message);
+            }
         }
 
 
