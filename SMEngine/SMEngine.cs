@@ -51,18 +51,21 @@ namespace SMEngine
         string name;
     }
 
+    
     public class CSMEngine
     {
         private static DateTime timeStarted = DateTime.Now;
+        private static DateTime timeBooted = DateTime.Now;
 
         Dictionary<String, ImageSet> _imageDictionary;
-        
+        private static Int64 imageCounter = 0;
 
         private SmugMugAPI api = null;
         private User _user = null;
         public System.Data.DataTable _galleryTable;
         private static List<Album> _allAlbums;
         Queue<ImageSet> _imageQueue;
+
 
 
         private const int maximumQ = 10;   //window, only download if q is less than max and greater than min.
@@ -82,6 +85,25 @@ namespace SMEngine
         const string CONSUMERSECRET = "SmugMugOAuthConsumerSecret";
         const string ACCESSTOKEN = "SmugmugOauthAccessToken";
         const string ACCESSTOKENSECRET = "SmugmugOauthAccessTokenSecret";
+
+
+        public string getRuntimeStatsInfo()
+        {
+            //todo: set this to return "" if tired of showing stats!
+
+            var msg = timeBooted.ToShortDateString() 
+                + " : " 
+                + timeBooted.ToShortTimeString() 
+                + " : (" 
+                + DateTime.Now.Subtract(timeBooted).TotalMinutes.ToString("0.00") 
+                + " minutes)";
+            msg += "\n images: " + _imageDictionary.Count();
+            msg += "\n albums: " + _allAlbums.Count();
+            msg += "\n images shown: " + imageCounter;
+            msg += "\n queue depth: " + _imageQueue.Count();
+            return msg;
+
+        }
 
         public authEnvelope getCode()
         {
@@ -896,6 +918,7 @@ namespace SMEngine
                 {
                     b = _imageQueue.Dequeue();
                     System.Diagnostics.Debug.WriteLine($"Deque, Image queue depth: { qSize}");
+                    imageCounter++;
                 }
                 else
                 {
@@ -1343,6 +1366,7 @@ namespace SMEngine
         private ImageSet getRandomImage()
         {
 
+       
             checkLogin(_envelope);
             {
                 //assume configuration is loaded.
@@ -1377,8 +1401,10 @@ namespace SMEngine
                             imageSet.albumTitle = element.albumTitle; //element.Album.Title;
                             imageSet.caption = element.caption;
                             imageSet.exif = element.exif;
-                                                                 //imageSet.exif = element.GetEXIF().ToString();
-                           // imageSet = element;
+
+                            
+                            //imageSet.exif = element.GetEXIF().ToString();
+                            // imageSet = element;
                         }
                         catch (Exception ex)
                         {

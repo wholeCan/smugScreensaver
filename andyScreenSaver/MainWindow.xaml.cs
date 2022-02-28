@@ -193,6 +193,8 @@ namespace andyScreenSaver
             hStack1.Children.Add(tmp1);
         }
 
+        bool statsEnabled = false;
+
         private void LogError(String msg)
         {
             // Console.WriteLine(msg);
@@ -277,8 +279,12 @@ namespace andyScreenSaver
                 else
                 {//putting this in the else, because the blackImagePlaced is set in another thread and creates a race condition.
                     //  the red text disappears after resetting network connection, when really i want it to show up.
-                    if (!blackImagePlaced && ! _engine.isExpired() )
-                        showMsg("");
+                    if (!blackImagePlaced && !_engine.isExpired())
+                        //todo: add switch here controlled by hotkey
+                        if (statsEnabled)
+                        { showMsg("running since: " + _engine.getRuntimeStatsInfo()); }
+                        else
+                        { showMsg(""); }
                 }
                 hStack1.Dispatcher.Invoke(System.Windows.Threading.DispatcherPriority.Normal, new Action(delegate ()
                 {
@@ -430,7 +436,7 @@ namespace andyScreenSaver
         public Window1()
         {
             InitializeComponent();
-            int borderWidth = 1;
+            int borderWidth = 0;
             int.TryParse(ConfigurationSettings.AppSettings["BorderWidth"], out borderWidth);
         }
         int[] imageCounterArray;
@@ -575,6 +581,14 @@ namespace andyScreenSaver
                 //todo: What happens when service is stopped, can I safely resrtart?     
                 _engine.resetExpiredImageCollection();
                 updateImage();
+            }
+            else if (e.Key == Key.S)
+            {
+                statsEnabled = !statsEnabled;
+            }
+            else if (e.Key == Key.Escape)
+            {
+                Close();
             }
             else
             {
