@@ -407,12 +407,12 @@ namespace andyScreenSaver
             t.Start();
 
         }
-        private void initEngine()
+        private void initEngine(bool? forceStart = false)
         {
             //get dimensions
             var w = System.Windows.SystemParameters.WorkArea.Width;
             var h = System.Windows.SystemParameters.WorkArea.Height;
-            if (_engine == null)
+            if (_engine == null || forceStart == true)
             {
                 _engine = new SMEngine.CSMEngine();
                 _engine.setScreenDimensions(w, h);
@@ -589,6 +589,10 @@ namespace andyScreenSaver
             else if (e.Key == Key.Escape)
             {
                 Close();
+            }
+            else if (e.Key == Key.R)
+            {
+                initEngine(true);
             }
             else
             {
