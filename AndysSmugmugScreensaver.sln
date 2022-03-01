@@ -9,9 +9,14 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "testHarness", "testHarness\
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SMEngine", "SMEngine\SMEngine.csproj", "{B49C12F4-EF80-4A4C-AB31-50CE91D6C645}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "smEngineTestHarness", "smEngineTestHarness\smEngineTestHarness.csproj", "{965816D2-774E-4C4A-BF6F-4C07E4E46173}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "smEngineTestHarness", "smEngineTestHarness\smEngineTestHarness.csproj", "{965816D2-774E-4C4A-BF6F-4C07E4E46173}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "andyScreenSaver", "andyScreenSaver\andyScreenSaver.csproj", "{0565CF15-0A5F-4E5F-BE7C-854B6F77F14A}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution Items", "{176FF6AA-2FE0-4EAE-B0C6-2D8884232CCD}"
+	ProjectSection(SolutionItems) = preProject
+		README.md = README.md
+	EndProjectSection
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
