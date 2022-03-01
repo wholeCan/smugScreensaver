@@ -56,8 +56,6 @@ namespace SmugMugTest
         {
             //Access OAuth keys from App.config
             string consumerKey = fetchKey(CONSUMERTOKEN);
-            
-
             string consumerSecret = fetchKey(CONSUMERSECRET);
 
             //todo: these should be stored/fetched from registry.
@@ -71,6 +69,7 @@ namespace SmugMugTest
             }
             else
             {
+                //allow app to generate
                 oAuthCredentials = GenerateOAuthAccessToken(consumerKey, consumerSecret); 
             }
 
@@ -167,6 +166,11 @@ namespace SmugMugTest
             response.Close();
             #endregion
 
+            Console.WriteLine("your credentials are as follows: ");
+            Console.WriteLine("consumerKey {0}", consumerKey);
+            Console.WriteLine("secret {0}", secret);
+            Console.WriteLine("accesstoken {0}", accesstoken);
+            Console.WriteLine("accessTokenSecret {0}", accessTokenSecret);
             return new OAuthCredentials(consumerKey, secret, accesstoken, accessTokenSecret);
         }
 
@@ -187,20 +191,13 @@ namespace SmugMugTest
                 
 
                 var user = await api.GetUser("andyholkan");
+
+                /*
                 Console.WriteLine("Authenticated user {0}, downloading albums", user.Name);
                 var albums = await api.GetAlbums(user, 100);
-
+                
                 var folder = albums.First().Uris.Folder;
-                /*foreach (var album in albums.GetRange(0,10))
-                {
-                    Console.WriteLine(album.Name);
-                }*/
-
-                //var rootNode = await api.GetRootNode(user);
-
-                var album1 = albums.First(
-                    //x => x.Name.Contains("Canyon")
-                    );
+                var album1 = albums.First();
                 Console.WriteLine("Album '{0}' has {1} images: gallery {2}", album1.Name, album1.ImageCount, album1.Comments);
                 var albumImagesWithSizes = await api.GetAlbumImagesWithSizes(album1, 100);
                 
@@ -218,6 +215,7 @@ namespace SmugMugTest
                     //var albumImage = await api.GetAlbumImage(album1, image.ImageKey);
                     //Console.WriteLine("'{0}' ({1}) with keywords \"{2}\" {3}", image.Title, image.FileName, image.Keywords, image.Uri);
                 }
+                */
             }
             catch (Exception e)
             {

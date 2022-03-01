@@ -94,8 +94,8 @@ namespace andyScreenSaver
                             if (doWriteLogs)
                             {
 
-                                var env = Environment.GetEnvironmentVariable("TEMP");
-                                sw1 = new StreamWriter(env+@"\andy.log");
+                                var env = Environment.SpecialFolder.LocalApplicationData;
+                                sw1 = new StreamWriter(env+@"\smugmug.startup.log");
                             }
                             var wins = new List<Window1>();
                             var iter = 0;
@@ -103,6 +103,7 @@ namespace andyScreenSaver
                             {
                                 var win1 = new Window1();
                                 var workingArea = s.Bounds;
+                                win1.WindowStyle = WindowStyle.None;
                                 win1.setDimensions(workingArea.Height, workingArea.Width); //don't account for border height.
                                 win1.init();
                                 wins.Add(win1);
@@ -163,7 +164,7 @@ namespace andyScreenSaver
                                 win.Width = myWidth;
                             }
                         }
-                    if (maxAtSTartup)
+                    if (maxAtSTartup || true)
                     {
                         win.WindowState = WindowState.Maximized;
                     }
@@ -172,8 +173,8 @@ namespace andyScreenSaver
                         win.WindowState = WindowState.Normal;
                     }
 
-                    win.WindowStyle = WindowStyle.SingleBorderWindow;
-                    win.ResizeMode = ResizeMode.CanResizeWithGrip;
+                    //win.WindowStyle = WindowStyle.SingleBorderWindow;
+                    //win.ResizeMode = ResizeMode.CanResizeWithGrip;
                     win.Show();
                 }
             }
