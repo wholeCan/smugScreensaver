@@ -206,8 +206,11 @@ namespace andyScreenSaver
                 sw.Close();
             }
         }
+
+      
         private void updateImage()
         {
+            
             hStack1.Dispatcher.BeginInvoke(new Action(delegate ()
                 {
                     //resuze each of the images to fit screen.
@@ -219,7 +222,7 @@ namespace andyScreenSaver
                             image.Height = myHeight / gridHeight - (100 / Math.Pow(2, gridHeight)); //161; 
                         }
                     }
-                    if (_engine.isExpired())
+                    if (_engine.screensaverExpired())
                     {
                         showMsg("service is shut down - press left or right arrow to wake up.");
                     }
@@ -243,7 +246,7 @@ namespace andyScreenSaver
                 }
                 else {
                     
-                    Thread.Sleep(100);
+                    //Thread.Sleep(100);
                 }
             }
             if (_engine.getLogin().login == "")
@@ -279,10 +282,10 @@ namespace andyScreenSaver
                 else
                 {//putting this in the else, because the blackImagePlaced is set in another thread and creates a race condition.
                     //  the red text disappears after resetting network connection, when really i want it to show up.
-                    if (!blackImagePlaced && !_engine.isExpired())
+                    if (!blackImagePlaced && !_engine.screensaverExpired())
                         //todo: add switch here controlled by hotkey
                         if (statsEnabled)
-                        { showMsg("running since: " + _engine.getRuntimeStatsInfo()); }
+                        { showMsg(_engine.getRuntimeStatsInfo()); }
                         else
                         { showMsg(""); }
                 }
@@ -388,11 +391,21 @@ namespace andyScreenSaver
             while (running)
             {
                 var runDelta = DateTime.Now - lastUpdate;
-                if (Convert.ToInt32(runDelta.TotalSeconds) >= _engine.settings.speed_s)
+//                if (Convert.ToInt32(runDelta.TotalSeconds) >= _engine.settings.speed_s)
                 {
                     updateImage();
+                    
+
                 }
-                Thread.Sleep(_engine.settings.speed_s * 500);
+                var millisecondsSinceLastRun = DateTime.Now.Subtract(lastUpdate).TotalMilliseconds;
+                var timeToSleep = _engine.settings.speed_s * 1000 - millisecondsSinceLastRun;
+                if (timeToSleep > 0)
+                {
+                    System.Diagnostics.Debug.WriteLine("sleeping for " + timeToSleep + " milliseconds");
+                    Thread.Sleep((Int32)timeToSleep);
+                }
+                lastUpdate = DateTime.Now;
+
             }
         }
 

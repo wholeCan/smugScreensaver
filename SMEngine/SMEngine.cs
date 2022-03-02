@@ -69,7 +69,7 @@ namespace SMEngine
 
 
         private const int maximumQ = 10;   //window, only download if q is less than max and greater than min.
-        private const int minQ = 5;
+        private const int minQ = 2;
         private volatile bool running = false;
         private int debug_limit = 1000;
         private authEnvelope _envelope;
@@ -86,21 +86,33 @@ namespace SMEngine
         const string ACCESSTOKEN = "SmugmugOauthAccessToken";
         const string ACCESSTOKENSECRET = "SmugmugOauthAccessTokenSecret";
 
+        private DateTime lastImageRequested = DateTime.Now;
+
+        public string getTimeSinceLast()
+        {
+            var timeSince = DateTime.Now.Subtract(lastImageRequested);
+            return timeSince.TotalSeconds.ToString("0.00");
+        }
 
         public string getRuntimeStatsInfo()
         {
             //todo: set this to return "" if tired of showing stats!
-
-            var msg = timeBooted.ToShortDateString() 
+            
+            var msg = "running since " + timeBooted.ToShortDateString() 
                 + " : " 
                 + timeBooted.ToShortTimeString() 
                 + " : (" 
                 + DateTime.Now.Subtract(timeBooted).TotalMinutes.ToString("0.00") 
                 + " minutes)";
-            msg += "\n images: " + _imageDictionary.Count();
+            lock (_imageDictionary)
+            {
+                msg += "\n images: " + _imageDictionary.Count();
+            }
             msg += "\n albums: " + _allAlbums.Count();
             msg += "\n images shown: " + imageCounter;
             msg += "\n queue depth: " + _imageQueue.Count();
+            msg += "\n time between images: " + getTimeSinceLast();
+            lastImageRequested = DateTime.Now;
             return msg;
 
         }
@@ -766,33 +778,41 @@ namespace SMEngine
 
         private void runImageCollection()
         {
-            System.Threading.Thread.Sleep(50);//experimental.
-            if (running == false)
+           // System.Threading.Thread.Sleep(50);//experimental.
+            if (running == false )
             {
-                while (gettingCategories)
-                    System.Threading.Thread.Sleep(50);//experimental.
+             //   while (gettingCategories)
+             //       System.Threading.Thread.Sleep(50);//experimental.
                 running = true;
                 bool startIt = true;
                 while (running)
                 {
                     if (_imageQueue.Count < minQ)
                         startIt = true;
-                    if (_imageQueue.Count <= maximumQ && startIt)
+                    if (_imageQueue.Count < maximumQ && startIt)
                     {
                         try
                         {
-                            var imageSet = getRandomImage();
-                            if (imageSet != null)
+                            if (!screensaverExpired())  //new test, ensuring not pulling image while asleep
                             {
-                                lock (_imageQueue)
+                                var imageSet = getRandomImage();
+                                if (imageSet != null)
                                 {
-                                    _imageQueue.Enqueue(imageSet);
-                                    System.Diagnostics.Debug.WriteLine($"Image queue depth: {qSize}");
+                                    lock (_imageQueue)
+                                    {
+                                        _imageQueue.Enqueue(imageSet);
+                                        System.Diagnostics.Debug.WriteLine($"Image queue depth: {qSize}");
+                                    }
+                                }
+                                else
+                                {
+                                    //   System.Threading.Thread.Sleep(5);
                                 }
                             }
                             else
-                            {
-                                System.Threading.Thread.Sleep(5);
+                            {//wait for thread to wake up!
+                                Debug.WriteLine("Sleeping while waiting to wake up");
+                                Thread.Sleep(1000);
                             }
                         }
                         catch (Exception ex)
@@ -808,7 +828,7 @@ namespace SMEngine
                         startIt = false;
                     }
 
-                    System.Threading.Thread.Sleep(1);//don't overrun processor.
+                    System.Threading.Thread.Sleep(0);//don't overrun processor.
                 }
                 running = false;//reset if stopped for any reason.
             }
@@ -841,7 +861,7 @@ namespace SMEngine
                 tAlbumLoad.IsBackground = true;
                 tAlbumLoad.Start();
             }
-            System.Threading.Thread.Sleep(50);//experimental.
+            //System.Threading.Thread.Sleep(50);//experimental.
             if (t == null)
             {
                 ts = new ThreadStart(runImageCollection);
@@ -887,29 +907,45 @@ namespace SMEngine
             const int warmupTime = 60; //seconds, don't black out images until alive for a minute.
             return DateTime.Now.Subtract(timeStarted).TotalSeconds > warmupTime;
         }
+        
+        //how is this used vs isExpired?
         public bool screensaverExpired()
         {
-            const int hoursToRun = 2;
-            const int maxRuntimeMinutes = hoursToRun*60*60;  //only run for an hour to conserve smugmugs api.
+
+            const int hoursToRun = 1;
+            const int minutesToRun = 1;
+            const int maxRuntimeSeconds = hoursToRun*60*60;  //only run for an hour to conserve smugmugs api.
+            var minuteOfHour = DateTime.Now.Minute;
+            var hourOfDay = DateTime.Now.Hour;
             var totalRuntimeSeconds = DateTime.Now.Subtract(timeStarted).TotalSeconds;
-            return totalRuntimeSeconds > maxRuntimeMinutes;
+            //we want to allow to run for a couple hours if manually woken up.
+            expired = (totalRuntimeSeconds > maxRuntimeSeconds) &&
+                !(hourOfDay >= 9 && hourOfDay < 20);  //for testing, let it run a couple hours. then see if it wakes back up at 2p.
+
+            return expired;
         }
-        public bool isExpired()
+
+        //todo: delete this
+        private bool isExpired()
         { return expired; }
         public void resetExpiredImageCollection()
         {
-            timeStarted = DateTime.Now;
-            timeWentBlack = null;
-            expired = false;
+            if (expired)
+            {// we only want to set this if expired, to avoid always resetting the time set.
+                timeStarted = DateTime.Now;
+                timeWentBlack = null;
+                expired = false;
+            }
             //start();
         }
-        bool expired = false;
-        void checkResetExpiration()
-        {
+        private bool expired = false;
+        private void setScreensaverToExpired()
+        { //todo: delete this
             expired = true;
         }
         public ImageSet getImage()
         {
+          //  lastImageRequested = DateTime.Now;
             ImageSet b = new ImageSet();
             Debug.WriteLine("fetching image...");
             lock (_imageQueue)
@@ -932,7 +968,7 @@ namespace SMEngine
             else
             {
                 b.b = getBlackImagePixel();
-                checkResetExpiration();
+               // setScreensaverToExpired();
             }
             return b;
         }
@@ -1057,7 +1093,7 @@ namespace SMEngine
             {//no connection, wait longer.
                 doException(ex.Message);
                 System.Diagnostics.Debug.WriteLine(ex.Message);
-                System.Threading.Thread.Sleep(1000);
+               // System.Threading.Thread.Sleep(1000);
             }
             catch (Exception ex)
             {
@@ -1065,7 +1101,7 @@ namespace SMEngine
                 //doException("showImage: " + ex.Message);
                 System.Diagnostics.Debug.WriteLine(ex.Message);
                 System.Diagnostics.Debug.WriteLine(ex.StackTrace);
-                System.Threading.Thread.Sleep(50);
+               // System.Threading.Thread.Sleep(50);
             }
             return image;
 
@@ -1116,7 +1152,7 @@ namespace SMEngine
             {//no connection, wait longer.
                 doException(ex.Message);
                 System.Diagnostics.Debug.WriteLine(ex.Message);
-                System.Threading.Thread.Sleep(1000);
+           //     System.Threading.Thread.Sleep(1000);
                 return null;
             }
             catch (Exception ex)
@@ -1125,7 +1161,7 @@ namespace SMEngine
                 //doException("showImage: " + ex.Message);
                 System.Diagnostics.Debug.WriteLine(ex.Message);
                 System.Diagnostics.Debug.WriteLine(ex.StackTrace);
-                System.Threading.Thread.Sleep(50);
+               // System.Threading.Thread.Sleep(50);
                 return null;
             }
             return image;
@@ -1171,8 +1207,11 @@ namespace SMEngine
                     System.Diagnostics.Debug.WriteLine("loaded {0} images from album {1}", images.AlbumImages.Count(), a.Name);
                    // lock (_imageDictionary)
                     {
-                    foreach (var i in images.AlbumImages)
-                    {
+                    Parallel.ForEach(images.AlbumImages,
+                           new ParallelOptions { MaxDegreeOfParallelism = 4 },
+                           i =>
+                           //(var i in images.AlbumImages)
+                           {
                         var imageSizes = images.ImageSizes.Where(x => x.Key.Contains(i.ImageKey));
                         var imageSize = imageSizes.First().Value.ImageSizes;
                         if (imageSize == null || i == null)
@@ -1191,17 +1230,28 @@ namespace SMEngine
                         {
                             lock (_imageDictionary)
                             {
-                                _imageDictionary.Add(
-                                        i.ImageKey,
-                                        new ImageSet(
-                                            imageUrl,
-                                            i.Caption == null ? "" : i.Caption,
-                                            i.FileName == null ? "" : i.FileName,
-                                            i.Date == null ? DateTime.Now : i.Date,
-                                            getFolder(a) == null ? "" : getFolder(a),
-                                            a.Name == null ? "" : a.Name
-                                            )
-                                        );
+                                       try
+                                       {
+                                           _imageDictionary.Add(
+                                                   i.ImageKey,
+                                                   new ImageSet(
+                                                       imageUrl,
+                                                       i.Caption == null ? "" : i.Caption,
+                                                       i.FileName == null ? "" : i.FileName,
+                                                       i.Date == null ? DateTime.Now : i.Date,
+                                                       getFolder(a) == null ? "" : getFolder(a),
+                                                       a.Name == null ? "" : a.Name
+                                                       )
+                                                   );
+                                       }
+                                       catch (ArgumentException ex)
+                                       {
+                                           doException("duplicate image: " + i.FileName + " : " + ex.Message);
+                                       }
+                                       catch (Exception ex)
+                                       {
+                                           doException(ex.Message);
+                                       }
                             }
                         }
                         else
@@ -1209,7 +1259,7 @@ namespace SMEngine
                             Console.WriteLine("andy");
                         }
 
-                        }
+                    });
                     }
                 }
                 catch (Exception ex)
@@ -1295,38 +1345,42 @@ namespace SMEngine
 
                         System.Diagnostics.Stopwatch sw = new System.Diagnostics.Stopwatch();
                         sw.Start();
-                        foreach (var a in shuffledAlbums)
-                        {
-                            if (a == null)
-                            {
-                                continue;
-                            }
-                            while (gettingCategories)
-                                System.Threading.Thread.Sleep(50);
-                            if (getFolder(a).Contains("Surveilance"))
-                            {
-                                System.Diagnostics.Debug.WriteLine("Throwing out surveilance");
-                            }
-                            else
-                            {
-                                if (!screensaverExpired())
-                                {
-                                 //   System.Diagnostics.Debug.WriteLine($"Loading {getFolder(a)}:{a.Name}");
-                                    try
-                                    {
-                                        loadImages(a, false);
-                                    }catch (Exception ex)
-                                    {
-                                        doException(ex.Message);
-                                    }
-                                }
-                                else
-                                {
-                                    System.Diagnostics.Debug.WriteLine("Skipping loadImages - expired");
-                                }
-                            }
-                            System.Threading.Thread.Sleep(1);
-                        }
+                        Parallel.ForEach(
+                            shuffledAlbums,
+                               new ParallelOptions { MaxDegreeOfParallelism = 4 },
+                            a =>
+                      {
+                          if (a == null)
+                          {
+                              //do nothing.continue;
+                          }
+                          //while (gettingCategories)
+                          //   System.Threading.Thread.Sleep(50);
+                          if (getFolder(a).Contains("Surveilance"))
+                          {
+                              System.Diagnostics.Debug.WriteLine("Throwing out surveilance");
+                          }
+                          else
+                          {
+                              if (!screensaverExpired())
+                              {
+                                  //   System.Diagnostics.Debug.WriteLine($"Loading {getFolder(a)}:{a.Name}");
+                                  try
+                                  {
+                                      loadImages(a, false);
+                                  }
+                                  catch (Exception ex)
+                                  {
+                                      doException(ex.Message);
+                                  }
+                              }
+                              else
+                              {
+                                  System.Diagnostics.Debug.WriteLine("Skipping loadImages - expired");
+                              }
+                          }
+                          //  System.Threading.Thread.Sleep(1);
+                      });
 
                         System.Diagnostics.Debug.WriteLine($"Time to load all albums: {sw.ElapsedMilliseconds} milliseconds");
                     }
