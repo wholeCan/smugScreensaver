@@ -57,29 +57,23 @@ namespace SMEngine
         private static DateTime timeStarted = DateTime.Now;
         private static DateTime timeBooted = DateTime.Now;
 
-        Dictionary<String, ImageSet> _imageDictionary;
+        private Dictionary<String, ImageSet> _imageDictionary;
         private static Int64 imageCounter = 0;
 
         private SmugMugAPI api = null;
         private User _user = null;
         public System.Data.DataTable _galleryTable;
         private static List<Album> _allAlbums;
-        Queue<ImageSet> _imageQueue;
-
-
+        private Queue<ImageSet> _imageQueue;
 
         private const int maximumQ = 10;   //window, only download if q is less than max and greater than min.
         private const int minQ = 2;
         private volatile bool running = false;
         private int debug_limit = 1000;
         private authEnvelope _envelope;
-
-
-        private const String apiKey = "a";  //from website
-        private const String apiSecret = "b"; //from website
+        private int exceptionsRaised = 0;
 
         #region NEW AUTH STUFF 2022
-
 
         const string CONSUMERTOKEN = "SmugMugOAuthConsumerToken";
         const string CONSUMERSECRET = "SmugMugOAuthConsumerSecret";
@@ -96,14 +90,10 @@ namespace SMEngine
 
         public string getRuntimeStatsInfo()
         {
-            //todo: set this to return "" if tired of showing stats!
-            
-            var msg = "running since " + timeBooted.ToShortDateString() 
-                + " : " 
-                + timeBooted.ToShortTimeString() 
-                + " : (" 
-                + DateTime.Now.Subtract(timeBooted).TotalMinutes.ToString("0.00") 
-                + " minutes)";
+            var msg = "running since " + timeBooted.ToShortDateString()
+                + " : "
+                + timeBooted.ToShortTimeString();
+            msg += "\n Uptime: " + DateTime.Now.Subtract(timeBooted).ToString();
             lock (_imageDictionary)
             {
                 msg += "\n images: " + _imageDictionary.Count();
@@ -112,9 +102,16 @@ namespace SMEngine
             msg += "\n images shown: " + imageCounter;
             msg += "\n queue depth: " + _imageQueue.Count();
             msg += "\n time between images: " + getTimeSinceLast();
+            msg += "\n exceptions raised: " + exceptionsRaised;
+            msg += "\n Menu:";
+            msg += "\n\t ESC: exit program";
+            msg += "\n\t s: show or hide stats";
+            msg += "\n\t w: show window controls";
+            msg += "\n\t b: go back to borderless mode";
+            msg += "\n\t r: reload library";
+            msg += "\n\t <- or ->: show next photo";
             lastImageRequested = DateTime.Now;
             return msg;
-
         }
 
         public authEnvelope getCode()
@@ -150,6 +147,7 @@ namespace SMEngine
         }
         private static string fetchKey(string key)
         {
+            //todo: would be better if could fetch from registry
             string consumerSecret = null;
             Configuration config = ConfigurationManager.OpenExeConfiguration(ConfigurationUserLevel.None);
             var keySetting = config.AppSettings.Settings[key];
@@ -175,15 +173,6 @@ namespace SMEngine
                 envelope.tokenSecret = fetchKey(ACCESSTOKENSECRET);
 
             }
-            //Access OAuth keys from App.config
-            //    string consumerKey = fetchKey(CONSUMERTOKEN);
-
-
-            //  string consumerSecret = fetchKey(CONSUMERSECRET);
-
-            //todo: these should be stored/fetched from registry.
-            //  var accessToken = fetchKey(ACCESSTOKEN);
-            //  var accessTokenSecret = fetchKey(ACCESSTOKENSECRET);
 
             OAuthCredentials oAuthCredentials = null;
             if (envelope.token!= null)
@@ -301,9 +290,6 @@ namespace SMEngine
         static Random r = new Random();
         public CSMEngine(bool doStart)
         {
-            //if (r==null)
-            //r = new Random();
-
             salt = 0xbad7eed;
             _settings = new CSettings();
             _imageQueue = new Queue<ImageSet>();
@@ -311,14 +297,13 @@ namespace SMEngine
             _imageDictionary = new Dictionary<string, ImageSet>();  //image id, and url
             _galleryTable.Columns.Add(new System.Data.DataColumn("Category", typeof(String)));
             _galleryTable.Columns.Add(new System.Data.DataColumn("Album", typeof(String)));
-            //  lock (_allAlbums)
-            //{
             _allAlbums = new List<Album>();
-            //}
             _login = new loginInfo();
             loadConfiguration();
             if (doStart)
+            {
                 start();
+            }
         }
         public CSMEngine() : this(true)
         {
@@ -387,8 +372,6 @@ namespace SMEngine
             {
                 logMsg(e.Message);
                 doException(e.Message);
-                // AAAAAAAAAAARGH, an error!
-                // ShowErrorMessage(e, "Writing registry " + KeyName.ToUpper());
                 return false;
             }
         }
@@ -611,7 +594,7 @@ namespace SMEngine
             var catAlbums = new List<String>();
             foreach (Album album in _allAlbums)
             {
-                if (getFolder(album).Equals(category)  /*&& (bool)a..Public == true*/)
+                if (getFolder(album).Equals(category))
                 {
                     catAlbums.Add(album.Name);
                 }
@@ -721,8 +704,7 @@ namespace SMEngine
         {
             running = false;
         }
-
-
+        
         public bool login(authEnvelope envelope)
         {
             _envelope = envelope;
@@ -811,13 +793,14 @@ namespace SMEngine
                                 }
                                 else
                                 {
+                                    //logMsg("waiting - used to sleep.");
                                     //   System.Threading.Thread.Sleep(5);
                                 }
                             }
                             else
                             {//wait for thread to wake up!
                                 logMsg("Sleeping while waiting to wake up");
-                                Thread.Sleep(1000);
+                                Thread.Sleep(5000);
                             }
                         }
                         catch (Exception ex)
@@ -833,7 +816,8 @@ namespace SMEngine
                         startIt = false;
                     }
 
-                    System.Threading.Thread.Sleep(0);//don't overrun processor.
+                    //logMsg("Sleeping longer");
+                    System.Threading.Thread.Sleep(10);//don't overrun processor.
                 }
                 running = false;//reset if stopped for any reason.
             }
@@ -909,7 +893,7 @@ namespace SMEngine
 
         public bool warm()
         {
-            const int warmupTime = 60; //seconds, don't black out images until alive for a minute.
+            var warmupTime = 60; //seconds, don't black out images until alive for a minute.
             return DateTime.Now.Subtract(timeStarted).TotalSeconds > warmupTime;
         }
         
@@ -917,16 +901,16 @@ namespace SMEngine
         public bool screensaverExpired()
         {
 
-            const int hoursToRun = 1;
-            const int minutesToRun = 30;
-            const int maxRuntimeSeconds = minutesToRun*60;  //only run for an hour to conserve smugmugs api.
+            var hoursToRun = 1;
+            var minutesToRun = 30;
+            var maxRuntimeSeconds = minutesToRun*60;  //only run for an hour to conserve smugmugs api.
             var minuteOfHour = DateTime.Now.Minute;
             var hourOfDay = DateTime.Now.Hour;
             var totalRuntimeSeconds = DateTime.Now.Subtract(timeStarted).TotalSeconds;
             logMsg("runtime is:" + totalRuntimeSeconds.ToString("0.00"));
             //we want to allow to run for a couple hours if manually woken up.
             expired = (totalRuntimeSeconds > maxRuntimeSeconds) &&
-                !(hourOfDay >= 9 && hourOfDay < 20);  //for testing, let it run a couple hours. then see if it wakes back up at 2p.
+                !(hourOfDay >= 8 && hourOfDay < 20);  //for testing, let it run a couple hours. then see if it wakes back up at 2p.
 
             return expired;
         }
@@ -964,7 +948,7 @@ namespace SMEngine
                 }
                 else
                 {
-                    return null;
+                  //  return null;
                 }
             }
             if (!screensaverExpired())
@@ -1210,7 +1194,7 @@ namespace SMEngine
                     {
                         doException("images is null!");
                     }
-                    logMsg("loaded "+ images.AlbumImages.Count() + "images from album " +  a.Name);
+                    logMsg("loaded "+ images.AlbumImages.Count() + " images from album " +  a.Name);
                    // lock (_imageDictionary)
                     {
                     Parallel.ForEach(images.AlbumImages,
@@ -1485,6 +1469,7 @@ namespace SMEngine
         }
         public void doException(String msg)
         {
+            exceptionsRaised++;
             if (fireException != null)
                 fireException(msg);
         }

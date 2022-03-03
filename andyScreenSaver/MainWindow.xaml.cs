@@ -12,7 +12,10 @@
  *  2/26/2022: major refactor of smEngine and everything else to upgrade to smugmug 2.0 api
  * **/
 
+//using Quartz;
+//using Quartz.Impl;
 using System;
+using System.Collections.Generic;
 using System.Configuration;
 using System.Diagnostics;
 using System.Drawing;
@@ -32,6 +35,39 @@ namespace andyScreenSaver
     /// <summary>
     /// Interaction logic for Window1.xaml
     /// </summary>
+    /// 
+    public class TaskScheduler
+    {
+        private static TaskScheduler _instance;
+        private List<Timer> timers = new List<Timer>();
+
+        private TaskScheduler() { }
+
+        public static TaskScheduler Instance => _instance ?? (_instance = new TaskScheduler());
+
+        public void ScheduleTask(int hour, int min, double intervalInHour, Action task)
+        {
+            DateTime now = DateTime.Now;
+            DateTime firstRun = new DateTime(now.Year, now.Month, now.Day, hour, min, 0, 0);
+            if (now > firstRun)
+            {
+                firstRun = firstRun.AddDays(1);
+            }
+
+            TimeSpan timeToGo = firstRun - now;
+            if (timeToGo <= TimeSpan.Zero)
+            {
+                timeToGo = TimeSpan.Zero;
+            }
+
+            var timer = new Timer(x =>
+            {
+                task.Invoke();
+            }, null, timeToGo, TimeSpan.FromHours(intervalInHour));
+
+            timers.Add(timer);
+        }
+    }
     public partial class Window1 : Window
     {
         private Vector3D zoomDelta;
@@ -199,15 +235,22 @@ namespace andyScreenSaver
         {
             Debug.WriteLine("Window: " + DateTime.Now.ToLongTimeString() + ": " + msg);
         }
+
         private void LogError(String msg)
         {
             // Console.WriteLine(msg);
             logMsg($"{DateTime.Now}: {msg}");
-            var dir = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
-            using (var sw = new StreamWriter($"{dir}\\errlog.smug."+DateTime.Now.ToShortDateString().Replace('/','-')+".txt", true))
+            lock (this)
             {
-                sw.WriteLine($"{DateTime.Now}: {msg}");
-                sw.Close();
+                var dir = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
+                using (var sw = new StreamWriter(
+                    $"{dir}\\errlog.smug." + DateTime.Now.ToShortDateString().Replace('/', '-') + ".txt",
+                    true)
+                    )
+                {
+                    sw.WriteLine($"{DateTime.Now}: exception: {msg}");
+                    sw.Close();
+                }
             }
         }
 
@@ -287,11 +330,13 @@ namespace andyScreenSaver
                 {//putting this in the else, because the blackImagePlaced is set in another thread and creates a race condition.
                     //  the red text disappears after resetting network connection, when really i want it to show up.
                     if (!blackImagePlaced && !_engine.screensaverExpired())
+                    {
                         //todo: add switch here controlled by hotkey
                         if (statsEnabled)
                         { showMsg(_engine.getRuntimeStatsInfo()); }
                         else
                         { showMsg(""); }
+                    }
                 }
                 hStack1.Dispatcher.Invoke(System.Windows.Threading.DispatcherPriority.Normal, new Action(delegate ()
                 {
@@ -462,12 +507,27 @@ namespace andyScreenSaver
             var storageDirectory = Environment.GetFolderPath(Environment.SpecialFolder.CommonPictures) + @"\SmugAndy\";
             return storageDirectory;
         }
+
+
+
+        private async void setupJob()
+        {
+            //todo: question, does this run daily or just once???
+            //idea is to start some sort of quartz job, using example code.
+            TaskScheduler.Instance.ScheduleTask(11, 15, 1,
+               () =>
+               {
+                   //restart the engine to pull in fresh albums daily at 7:15a.
+                   logMsg("reloading library: " + DateTime.Now);
+                   initEngine(true);
+                });
+        }
         public void init()
 
         {
-
-         //   LogError($"Starting up: {DateTime.Now}");
-            var tmp = Environment.GetEnvironmentVariable("TEMP");
+            setupJob();
+            //   LogError($"Starting up: {DateTime.Now}");
+            var tmp = Environment.SpecialFolder.LocalApplicationData;
             var file = tmp + @"\andyScr.trace.log";
 
             initEngine();
@@ -602,10 +662,26 @@ namespace andyScreenSaver
             else if (e.Key == Key.S)
             {
                 statsEnabled = !statsEnabled;
+                if (statsEnabled)
+                {
+                    showMsg(_engine.getRuntimeStatsInfo());
+                }
+                else showMsg("");
             }
             else if (e.Key == Key.Escape)
             {
                 Close();
+            }
+            else if (e.Key == Key.W)
+            {
+                 WindowStyle = WindowStyle.SingleBorderWindow;
+                 ResizeMode = ResizeMode.CanResizeWithGrip;
+            }
+            else if (e.Key == Key.B)
+            {
+                WindowStyle = WindowStyle.None;
+                ResizeMode = ResizeMode.NoResize;
+                WindowState = WindowState.Maximized;
             }
             else if (e.Key == Key.R)
             {
