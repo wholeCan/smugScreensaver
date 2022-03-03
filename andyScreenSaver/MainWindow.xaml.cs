@@ -195,10 +195,14 @@ namespace andyScreenSaver
 
         bool statsEnabled = false;
 
+        private void logMsg(string msg)
+        {
+            Debug.WriteLine("Window: " + DateTime.Now.ToLongTimeString() + ": " + msg);
+        }
         private void LogError(String msg)
         {
             // Console.WriteLine(msg);
-            System.Diagnostics.Debug.WriteLine($"{DateTime.Now}: {msg}");
+            logMsg($"{DateTime.Now}: {msg}");
             var dir = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
             using (var sw = new StreamWriter($"{dir}\\errlog.smug."+DateTime.Now.ToShortDateString().Replace('/','-')+".txt", true))
             {
@@ -401,7 +405,7 @@ namespace andyScreenSaver
                 var timeToSleep = _engine.settings.speed_s * 1000 - millisecondsSinceLastRun;
                 if (timeToSleep > 0)
                 {
-                    System.Diagnostics.Debug.WriteLine("sleeping for " + timeToSleep + " milliseconds");
+                    logMsg("sleeping for " + timeToSleep + " milliseconds");
                     Thread.Sleep((Int32)timeToSleep);
                 }
                 lastUpdate = DateTime.Now;
@@ -668,7 +672,7 @@ namespace andyScreenSaver
 
         private void Window_Closed(object sender, EventArgs e)
         {
-            System.Diagnostics.Debug.WriteLine("Closing");
+            logMsg("Closing");
         }
 
         private void image1_MouseUp(object sender, MouseButtonEventArgs e)

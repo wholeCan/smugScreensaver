@@ -385,7 +385,7 @@ namespace SMEngine
             }
             catch (Exception e)
             {
-                System.Diagnostics.Debug.WriteLine(e.Message);
+                logMsg(e.Message);
                 doException(e.Message);
                 // AAAAAAAAAAARGH, an error!
                 // ShowErrorMessage(e, "Writing registry " + KeyName.ToUpper());
@@ -417,7 +417,7 @@ namespace SMEngine
                 catch (Exception e)
                 {
                     doException(e.Message);
-                    System.Diagnostics.Debug.WriteLine(e.Message);
+                    logMsg(e.Message);
                     // AAAAAAAAAAARGH, an error!
                     //ShowErrorMessage(e, "Reading registry " + KeyName.ToUpper());
                     return null;
@@ -473,7 +473,7 @@ namespace SMEngine
             catch (Exception ex)
             {
                 doException(ex.Message);
-                System.Diagnostics.Debug.WriteLine(ex.Message);
+                logMsg(ex.Message);
                 _settings = new CSettings();
             }
         }
@@ -497,7 +497,7 @@ namespace SMEngine
             }
             catch (Exception ex)
             {
-                System.Diagnostics.Debug.WriteLine(ex.Message);
+                logMsg(ex.Message);
                 doException(ex.Message);
                 galleries_present = 0;
 
@@ -651,7 +651,7 @@ namespace SMEngine
                 catch (Exception ex)
                 {
                     doException(ex.Message);
-                    System.Diagnostics.Debug.WriteLine(ex.Message);
+                    logMsg(ex.Message);
                 }
             }
             else
@@ -711,7 +711,7 @@ namespace SMEngine
             }
             catch (Exception ex)
             {
-                System.Diagnostics.Debug.WriteLine(ex.Message);
+                logMsg(ex.Message);
             }
             return v;
             */
@@ -758,7 +758,7 @@ namespace SMEngine
             try
             {
                 var albums = await api.GetAlbums(_user, debug_limit); // todo: do we care about the limit?
-                System.Diagnostics.Debug.WriteLine("returned albums: " + albums.Count());
+                logMsg("returned albums: " + albums.Count());
                 _allAlbums = albums;
             }
             catch (Exception ex)
@@ -774,6 +774,11 @@ namespace SMEngine
             {
                 return _imageQueue.Count;
             }
+        }
+
+        private void logMsg(string msg)
+        {
+            Debug.WriteLine(DateTime.Now.ToLongTimeString() + ": " + msg);
         }
 
         private void runImageCollection()
@@ -801,7 +806,7 @@ namespace SMEngine
                                     lock (_imageQueue)
                                     {
                                         _imageQueue.Enqueue(imageSet);
-                                        System.Diagnostics.Debug.WriteLine($"Image queue depth: {qSize}");
+                                        logMsg($"Image queue depth: {qSize}");
                                     }
                                 }
                                 else
@@ -811,16 +816,16 @@ namespace SMEngine
                             }
                             else
                             {//wait for thread to wake up!
-                                Debug.WriteLine("Sleeping while waiting to wake up");
+                                logMsg("Sleeping while waiting to wake up");
                                 Thread.Sleep(1000);
                             }
                         }
                         catch (Exception ex)
                         {
                             doException(ex.Message);
-                            System.Diagnostics.Debug.WriteLine(ex.Message);
+                            logMsg(ex.Message);
                             running = false;
-                            System.Diagnostics.Debug.WriteLine("Invalid login");
+                            logMsg("Invalid login");
                         }
                     }
                     else
@@ -892,7 +897,7 @@ namespace SMEngine
                 catch (Exception ex)
                 {
                     doException("bm2m: " + ex.Message);
-                    System.Diagnostics.Debug.WriteLine(ex.Message);
+                    logMsg(ex.Message);
                 }
             }
             return bitmap;
@@ -913,11 +918,12 @@ namespace SMEngine
         {
 
             const int hoursToRun = 1;
-            const int minutesToRun = 1;
-            const int maxRuntimeSeconds = hoursToRun*60*60;  //only run for an hour to conserve smugmugs api.
+            const int minutesToRun = 30;
+            const int maxRuntimeSeconds = minutesToRun*60;  //only run for an hour to conserve smugmugs api.
             var minuteOfHour = DateTime.Now.Minute;
             var hourOfDay = DateTime.Now.Hour;
             var totalRuntimeSeconds = DateTime.Now.Subtract(timeStarted).TotalSeconds;
+            logMsg("runtime is:" + totalRuntimeSeconds.ToString("0.00"));
             //we want to allow to run for a couple hours if manually woken up.
             expired = (totalRuntimeSeconds > maxRuntimeSeconds) &&
                 !(hourOfDay >= 9 && hourOfDay < 20);  //for testing, let it run a couple hours. then see if it wakes back up at 2p.
@@ -947,13 +953,13 @@ namespace SMEngine
         {
           //  lastImageRequested = DateTime.Now;
             ImageSet b = new ImageSet();
-            Debug.WriteLine("fetching image...");
+            logMsg("fetching image...");
             lock (_imageQueue)
             {
                 if (qSize > 0)
                 {
                     b = _imageQueue.Dequeue();
-                    System.Diagnostics.Debug.WriteLine($"Deque, Image queue depth: { qSize}");
+                    logMsg($"Deque, Image queue depth: { qSize}");
                     imageCounter++;
                 }
                 else
@@ -983,7 +989,7 @@ namespace SMEngine
             }
             var bb = new System.Drawing.Bitmap(1, 1);
             bb.SetPixel(0, 0, System.Drawing.Color.Black);
-            System.Diagnostics.Debug.WriteLine("Setting a black pixel!");
+            logMsg("Setting a black pixel!");
 
             return bb;
         }
@@ -1029,7 +1035,7 @@ namespace SMEngine
                     img = cropAtRect(img, CropArea);
                     var targetHeight = 300;//todo; calculate this.
 
-                    System.Diagnostics.Debug.WriteLine("#################### CROPPING IMAGE: w " + oldWidth + " to " + newWidth);
+                    logMsg("#################### CROPPING IMAGE: w " + oldWidth + " to " + newWidth);
                     img = scaleImage(img, targetHeight);
                 }
 
@@ -1044,7 +1050,7 @@ namespace SMEngine
             var scale = (double)curHeight / (double)targetHeight;
 
             var resized = new System.Drawing.Bitmap(img, new System.Drawing.Size(Convert.ToInt32((double)original.Width / scale), Convert.ToInt32((double)original.Height / scale)));
-            System.Diagnostics.Debug.WriteLine("Scaling by " + scale.ToString());
+            logMsg("Scaling by " + scale.ToString());
             return resized;
         }
 
@@ -1092,15 +1098,15 @@ namespace SMEngine
             catch (System.Net.WebException ex)
             {//no connection, wait longer.
                 doException(ex.Message);
-                System.Diagnostics.Debug.WriteLine(ex.Message);
+                logMsg(ex.Message);
                // System.Threading.Thread.Sleep(1000);
             }
             catch (Exception ex)
             {
                 doException(ex.Message);
                 //doException("showImage: " + ex.Message);
-                System.Diagnostics.Debug.WriteLine(ex.Message);
-                System.Diagnostics.Debug.WriteLine(ex.StackTrace);
+                logMsg(ex.Message);
+                logMsg(ex.StackTrace);
                // System.Threading.Thread.Sleep(50);
             }
             return image;
@@ -1138,7 +1144,7 @@ namespace SMEngine
                     }
 
                     sw.Stop();
-                    System.Diagnostics.Debug.WriteLine($"Get Image { URL} took: {sw.ElapsedMilliseconds}ms.");
+                    logMsg($"Get Image { URL} took: {sw.ElapsedMilliseconds}ms.");
                     image.BeginInit();
                     memoryStream.Seek(0, SeekOrigin.Begin);
 
@@ -1151,7 +1157,7 @@ namespace SMEngine
            catch (System.Net.WebException ex)
             {//no connection, wait longer.
                 doException(ex.Message);
-                System.Diagnostics.Debug.WriteLine(ex.Message);
+                logMsg(ex.Message);
            //     System.Threading.Thread.Sleep(1000);
                 return null;
             }
@@ -1159,8 +1165,8 @@ namespace SMEngine
             {
                 doException(ex.Message);
                 //doException("showImage: " + ex.Message);
-                System.Diagnostics.Debug.WriteLine(ex.Message);
-                System.Diagnostics.Debug.WriteLine(ex.StackTrace);
+                logMsg(ex.Message);
+                logMsg(ex.StackTrace);
                // System.Threading.Thread.Sleep(50);
                 return null;
             }
@@ -1190,7 +1196,7 @@ namespace SMEngine
             
                 try
                 {
-                System.Diagnostics.Debug.WriteLine("loading album:" + a.Name);
+                logMsg("loading album:" + a.Name);
                     if (singleAlbumMode)
                     {
                         lock (_imageDictionary)
@@ -1204,7 +1210,7 @@ namespace SMEngine
                     {
                         doException("images is null!");
                     }
-                    System.Diagnostics.Debug.WriteLine("loaded {0} images from album {1}", images.AlbumImages.Count(), a.Name);
+                    logMsg("loaded "+ images.AlbumImages.Count() + "images from album " +  a.Name);
                    // lock (_imageDictionary)
                     {
                     Parallel.ForEach(images.AlbumImages,
@@ -1223,7 +1229,7 @@ namespace SMEngine
                         {
 
                             imageUrl = imageSize.TinyImageUrl;
-                            System.Diagnostics.Debug.WriteLine("dummy code - using small size");
+                            logMsg("dummy code - using small size");
                         } //test code
 
                         if (imageSizes != null && i.ImageKey != null)
@@ -1265,7 +1271,7 @@ namespace SMEngine
                 catch (Exception ex)
                 {
                     doException("loadImages: " + ex.Message);
-                    System.Diagnostics.Debug.WriteLine(ex.Message);
+                    logMsg(ex.Message);
                 }
         }
 
@@ -1358,13 +1364,13 @@ namespace SMEngine
                           //   System.Threading.Thread.Sleep(50);
                           if (getFolder(a).Contains("Surveilance"))
                           {
-                              System.Diagnostics.Debug.WriteLine("Throwing out surveilance");
+                              logMsg("Throwing out surveilance");
                           }
                           else
                           {
                               if (!screensaverExpired())
                               {
-                                  //   System.Diagnostics.Debug.WriteLine($"Loading {getFolder(a)}:{a.Name}");
+                                  //   logMsg($"Loading {getFolder(a)}:{a.Name}");
                                   try
                                   {
                                       loadImages(a, false);
@@ -1376,13 +1382,13 @@ namespace SMEngine
                               }
                               else
                               {
-                                  System.Diagnostics.Debug.WriteLine("Skipping loadImages - expired");
+                                  logMsg("Skipping loadImages - expired");
                               }
                           }
                           //  System.Threading.Thread.Sleep(1);
                       });
 
-                        System.Diagnostics.Debug.WriteLine($"Time to load all albums: {sw.ElapsedMilliseconds} milliseconds");
+                        logMsg($"Time to load all albums: {sw.ElapsedMilliseconds} milliseconds");
                     }
                     else
                     {
@@ -1408,9 +1414,9 @@ namespace SMEngine
             catch (Exception ex)
             {
                 doException(ex.Message);
-                System.Diagnostics.Debug.WriteLine(ex.Message);
+                logMsg(ex.Message);
                 //invalid login.  Stopping.
-                System.Diagnostics.Debug.WriteLine("invalid login.  Stopping.");
+                logMsg("invalid login.  Stopping.");
             }
 
         }
@@ -1463,7 +1469,7 @@ namespace SMEngine
                         catch (Exception ex)
                         {
                             doException("random: " + ex.Message);
-                            System.Diagnostics.Debug.WriteLine(ex.Message + "\r\n" + ex.StackTrace);
+                            logMsg(ex.Message + "\r\n" + ex.StackTrace);
                         }
 
                     }
