@@ -512,12 +512,10 @@ namespace andyScreenSaver
 
         private async void setupJob()
         {
-            //todo: question, does this run daily or just once???
-            //idea is to start some sort of quartz job, using example code.
-            TaskScheduler.Instance.ScheduleTask(11, 15, 1,
+            var frequencyHours = 24;
+            TaskScheduler.Instance.ScheduleTask(11, 15, frequencyHours,  //run at 11:15a daily
                () =>
                {
-                   //restart the engine to pull in fresh albums daily at 7:15a.
                    logMsg("reloading library: " + DateTime.Now);
                    initEngine(true);
                 });
