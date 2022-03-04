@@ -69,7 +69,14 @@ namespace SMEngine
         private const int maximumQ = 10;   //window, only download if q is less than max and greater than min.
         private const int minQ = 2;
         private volatile bool running = false;
+#if (DEBUG)
+        private int debug_limit = 10;
+#else
         private int debug_limit = 1000;
+#endif
+
+
+
         private authEnvelope _envelope;
         private int exceptionsRaised = 0;
 
@@ -909,8 +916,10 @@ namespace SMEngine
             var totalRuntimeSeconds = DateTime.Now.Subtract(timeStarted).TotalSeconds;
             logMsg("runtime is:" + totalRuntimeSeconds.ToString("0.00"));
             //we want to allow to run for a couple hours if manually woken up.
+            var wakeupTime = 8;
+            var goToBedTime = 12 + 9;  //9PM  
             expired = (totalRuntimeSeconds > maxRuntimeSeconds) &&
-                !(hourOfDay >= 8 && hourOfDay < 20);  //for testing, let it run a couple hours. then see if it wakes back up at 2p.
+                !(hourOfDay >= wakeupTime && hourOfDay < goToBedTime);  //for testing, let it run a couple hours. then see if it wakes back up at 2p.
 
             return expired;
         }
