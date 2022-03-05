@@ -469,13 +469,16 @@ namespace andyScreenSaver
             t.Start();
 
         }
+        Task task = null;
         private void initEngine(bool? forceStart = false)
         {
             //get dimensions
             var w = System.Windows.SystemParameters.WorkArea.Width;
             var h = System.Windows.SystemParameters.WorkArea.Height;
+            
             if (_engine == null || forceStart == true)
             {
+                
                 _engine = new SMEngine.CSMEngine();
                 _engine.setScreenDimensions(w, h);
                 {
@@ -485,7 +488,7 @@ namespace andyScreenSaver
                     _engine.fireException += showException;
                     try
                     {
-                        Task task = new Task(() => { loginSmugmug(); });
+                        task = new Task(() => { loginSmugmug(); });
                         task.Start();
                     }
                     catch (Exception ex)
@@ -512,18 +515,28 @@ namespace andyScreenSaver
 
         private async void setupJob()
         {
-            var frequencyHours = 24;
-            TaskScheduler.Instance.ScheduleTask(11, 15, frequencyHours,  //run at 11:15a daily
+# if(DEBUG)
+            var frequencyHours = 24; //24 = 1 per day.  
+            var startHour = DateTime.Now.Hour;
+            var startMinute = DateTime.Now.Minute + 1;
+#else
+            var frequencyHours = 24;// run once per day
+            var startHour = 11;
+            var startMinute = 15;
+#endif
+
+            TaskScheduler.Instance.ScheduleTask(startHour, startMinute, frequencyHours,  //run at 11:15a daily
                () =>
                {
-                   logMsg("reloading library: " + DateTime.Now);
+                   logMsg("reloading library!!!");
                    initEngine(true);
                 });
         }
         public void init()
 
         {
-            setupJob();
+           // setupJob(); //todo: this is broken, reloading causes multiple images to show.
+
             //   LogError($"Starting up: {DateTime.Now}");
             var tmp = Environment.SpecialFolder.LocalApplicationData;
             var file = tmp + @"\andyScr.trace.log";
@@ -616,7 +629,7 @@ namespace andyScreenSaver
             actionsDisabled = false;
             myCursor = Cursor;
 
-            initEngine();
+            //initEngine();
 
             lastMouseMove = DateTime.Now;
             totalMouseMoves = 0;
@@ -666,7 +679,7 @@ namespace andyScreenSaver
                 }
                 else showMsg("");
             }
-            else if (e.Key == Key.Escape)
+            else if (e.Key == Key.Escape || e.Key== Key.Q)
             {
                 Close();
             }

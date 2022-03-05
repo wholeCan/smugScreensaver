@@ -110,8 +110,12 @@ namespace SMEngine
             msg += "\n queue depth: " + _imageQueue.Count();
             msg += "\n time between images: " + getTimeSinceLast();
             msg += "\n exceptions raised: " + exceptionsRaised;
+            msg += "\n memory: " + Process.GetCurrentProcess().WorkingSet64 / (1024*1024);
+            msg += "\n Peak memory: " + Process.GetCurrentProcess().PeakPagedMemorySize64 / (1024 * 1024);
+            msg += "\n Peak virtual memory: " + Process.GetCurrentProcess().PeakVirtualMemorySize64 / (1024 * 1024);
+
             msg += "\n Menu:";
-            msg += "\n\t ESC: exit program";
+            msg += "\n\t ESC or Q: exit program";
             msg += "\n\t s: show or hide stats";
             msg += "\n\t w: show window controls";
             msg += "\n\t b: go back to borderless mode";
@@ -735,6 +739,7 @@ namespace SMEngine
 
         private async void loadAlbums(string userNickName = null) //do we want to take in a list of accounts, or just the primary?  we can do both.
         {
+            try { 
             if (userNickName != null)
             {
                 _user = await api.GetUser(userNickName);
@@ -744,8 +749,7 @@ namespace SMEngine
                 _user = await api.GetAuthenticatedUser();
             }
             _allAlbums = new List<Album>();
-            try
-            {
+       
                 var albums = await api.GetAlbums(_user, debug_limit); // todo: do we care about the limit?
                 logMsg("returned albums: " + albums.Count());
                 _allAlbums = albums;
@@ -909,15 +913,18 @@ namespace SMEngine
         {
 
             var hoursToRun = 1;
+#if (DEBUG)
+            var minutesToRun = 15;//put back to 30
+#else
             var minutesToRun = 30;
+#endif
             var maxRuntimeSeconds = minutesToRun*60;  //only run for an hour to conserve smugmugs api.
-            var minuteOfHour = DateTime.Now.Minute;
             var hourOfDay = DateTime.Now.Hour;
             var totalRuntimeSeconds = DateTime.Now.Subtract(timeStarted).TotalSeconds;
             logMsg("runtime is:" + totalRuntimeSeconds.ToString("0.00"));
             //we want to allow to run for a couple hours if manually woken up.
             var wakeupTime = 8;
-            var goToBedTime = 12 + 9;  //9PM  
+            var goToBedTime = 12 + 10;  //9PM  
             expired = (totalRuntimeSeconds > maxRuntimeSeconds) &&
                 !(hourOfDay >= wakeupTime && hourOfDay < goToBedTime);  //for testing, let it run a couple hours. then see if it wakes back up at 2p.
 
@@ -952,7 +959,7 @@ namespace SMEngine
                 if (qSize > 0)
                 {
                     b = _imageQueue.Dequeue();
-                    logMsg($"Deque, Image queue depth: { qSize}");
+                    logMsg($"Dequeue, Image queue depth: { qSize}");
                     imageCounter++;
                 }
                 else
