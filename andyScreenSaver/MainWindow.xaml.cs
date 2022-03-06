@@ -158,6 +158,9 @@ namespace andyScreenSaver
                 {
                     byte* p = (byte*)(void*)Scan0;
 
+                    //this logic is probably not really relevant since  I switchted to cropping the image.  leaving it in because it works ok.
+
+
                     for (int y = 0; y < height / 3; y++)  //note, dividing by two, because i want the top left region.
                     {
                         for (int x = 0; x < width / 2; x++)  //note, dividing by two, because i want the top left region.
@@ -172,13 +175,14 @@ namespace andyScreenSaver
                     }
                 }
 
+
                 var avgB = (int)totals[0] / (width * height);
                 var avgG = (int)totals[1] / (width * height);
                 var avgR = (int)totals[2] / (width * height);
 
                 var myColor = Color.FromArgb(avgR, avgB, avgG);
                 var measuredColor = ((float)avgR * 0.299 + (float)avgG * 0.587 + (float)avgB * 0.114);
-                if (measuredColor > 35.0)
+                if (measuredColor > 35.0)  //35 works pretty ok.
                     return Color.Black;
                 else
                     return Color.White;
@@ -188,6 +192,15 @@ namespace andyScreenSaver
                 LogError(ex.Message);
                 return Color.Black;
             }
+        }
+
+        private Bitmap getupperLeftCornerImage(Bitmap original)
+        {
+            Bitmap bmpImage = new Bitmap(original);
+            var cropArea = new Rectangle(0, 0, (int)original.Height / 3, (int)original.Width / 3);
+            return bmpImage.Clone(cropArea, bmpImage.PixelFormat);
+            //tmp = croppedImage;//remove this!
+
         }
         private void imageAddCaption(string text, ref Bitmap tmp)
         {
@@ -201,7 +214,10 @@ namespace andyScreenSaver
                     int.TryParse(ConfigurationSettings.AppSettings["captionPenSize"], out configPenSize);
 
                     var fontSize = configPenSize;
-                    var penColor = new SolidBrush(getAverageColor(tmp));// System.Drawing.Brushes.White;
+                    var croppedImage = getupperLeftCornerImage(tmp);
+
+
+                    var penColor = new SolidBrush(getAverageColor(croppedImage));// System.Drawing.Brushes.White;
                     if (tmp.HorizontalResolution < 150)
                     {
                         fontSize = fontSize + 7;

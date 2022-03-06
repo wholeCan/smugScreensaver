@@ -70,7 +70,7 @@ namespace SMEngine
         private const int minQ = 2;
         private volatile bool running = false;
 #if (DEBUG)
-        private int debug_limit = 100;
+        private int debug_limit = 50;
 #else
         private int debug_limit = 1000;
 #endif
