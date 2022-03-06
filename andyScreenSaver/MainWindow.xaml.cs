@@ -242,14 +242,21 @@ namespace andyScreenSaver
             logMsg($"{DateTime.Now}: {msg}");
             lock (this)
             {
-                var dir = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
-                using (var sw = new StreamWriter(
-                    $"{dir}\\errlog.smug." + DateTime.Now.ToShortDateString().Replace('/', '-') + ".txt",
-                    true)
-                    )
+                try
                 {
-                    sw.WriteLine($"{DateTime.Now}: exception: {msg}");
-                    sw.Close();
+                    var dir = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
+                    using (var sw = new StreamWriter(
+                        $"{dir}\\errlog.smug." + DateTime.Now.ToShortDateString().Replace('/', '-') + ".txt",
+                        true)
+                        )
+                    {
+                        sw.WriteLine($"{DateTime.Now}: exception: {msg}");
+                        sw.Close();
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Debug.WriteLine("Uh Oh! Error writing error file!");
                 }
             }
         }
@@ -498,8 +505,10 @@ namespace andyScreenSaver
                 }
             }
         }
+        //Application myParent;
         public Window1()
         {
+           // myParent = parent;
             InitializeComponent();
             int borderWidth = 0;
             int.TryParse(ConfigurationSettings.AppSettings["BorderWidth"], out borderWidth);
@@ -681,7 +690,8 @@ namespace andyScreenSaver
             }
             else if (e.Key == Key.Escape || e.Key== Key.Q)
             {
-                Close();
+                Application.Current.Shutdown();
+              //  Close();
             }
             else if (e.Key == Key.W)
             {

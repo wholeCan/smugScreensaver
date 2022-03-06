@@ -70,7 +70,7 @@ namespace SMEngine
         private const int minQ = 2;
         private volatile bool running = false;
 #if (DEBUG)
-        private int debug_limit = 10;
+        private int debug_limit = 100;
 #else
         private int debug_limit = 1000;
 #endif
@@ -105,7 +105,10 @@ namespace SMEngine
             {
                 msg += "\n images: " + _imageDictionary.Count();
             }
-            msg += "\n albums: " + _allAlbums.Count();
+            lock (_allAlbums)
+            {
+                msg += "\n albums: " + _allAlbums.Count();
+            }
             msg += "\n images shown: " + imageCounter;
             msg += "\n queue depth: " + _imageQueue.Count();
             msg += "\n time between images: " + getTimeSinceLast();
@@ -593,8 +596,12 @@ namespace SMEngine
         }
         
 
-        public string getFolder(Album album)
-        {
+        public string getFolder(Album album) { 
+        
+            if (album.Uris == null || album.Uris.Folder == null){
+                logMsg("album is null!");
+                return "";
+            }
             var fullPath= album.Uris.Folder.Uri.ToString();
             var category = fullPath.Substring(fullPath.LastIndexOf('/') + 1);
             return category;
@@ -739,20 +746,26 @@ namespace SMEngine
 
         private async void loadAlbums(string userNickName = null) //do we want to take in a list of accounts, or just the primary?  we can do both.
         {
-            try { 
-            if (userNickName != null)
+            try
             {
-                _user = await api.GetUser(userNickName);
-            }
-            else
-            {
-                _user = await api.GetAuthenticatedUser();
-            }
-            _allAlbums = new List<Album>();
-       
+                if (userNickName != null)
+                {
+                    _user = await api.GetUser(userNickName);
+                }
+                else
+                {
+                    _user = await api.GetAuthenticatedUser();
+                }
+
+                
                 var albums = await api.GetAlbums(_user, debug_limit); // todo: do we care about the limit?
                 logMsg("returned albums: " + albums.Count());
-                _allAlbums = albums;
+                lock (_allAlbums)
+                {
+                    _allAlbums.AddRange(albums);
+                }
+            
+            
             }
             catch (Exception ex)
             {
@@ -1324,6 +1337,7 @@ namespace SMEngine
         }
         private void loadAllImages()
         {
+            _allAlbums = new List<Album>();
             try
             {
                 if (checkLogin(_envelope))
