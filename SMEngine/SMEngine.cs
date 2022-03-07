@@ -70,7 +70,7 @@ namespace SMEngine
         private const int minQ = 2;
         private volatile bool running = false;
 #if (DEBUG)
-        private int debug_limit = 50;
+        private int debug_limit = 5000;
 #else
         private int debug_limit = 1000;
 #endif
@@ -389,43 +389,47 @@ namespace SMEngine
                 return false;
             }
         }
-        private string Read(string KeyName)
+        private string Read(string KeyName, string defValue)
         {
             // Opening the registry key
-            var rk = RegistryKey.OpenBaseKey(RegistryHive.CurrentUser, RegistryView.Default);
-            // Open a subKey as read-only
             var subKey = "SOFTWARE\\andysScreensaver\\login";
-            var sk1 = rk.OpenSubKey(subKey);
-            // If the RegistrySubKey doesn't exist -> (null)
-            if (sk1 == null)
+            using (var rk = RegistryKey.OpenBaseKey(RegistryHive.CurrentUser, RegistryView.Default))
             {
-                sk1.Close();
-                rk.Close();
-                return null;
-            }
-            else
-            {
-                try
-                {
-                    // If the RegistryKey exists I get its value
-                    // or null is returned.
-                    return (string)sk1.GetValue(KeyName.ToUpper());
-                }
-                catch (Exception e)
-                {
-                    doException(e.Message);
-                    logMsg(e.Message);
-                    // AAAAAAAAAAARGH, an error!
-                    //ShowErrorMessage(e, "Reading registry " + KeyName.ToUpper());
-                    return null;
-                }
-                finally
-                {
-                    sk1.Close();
-                    rk.Close();
-                }
-            }
+                // Open a subKey as read-only
 
+                using (var sk1 = rk.OpenSubKey(subKey))
+                {
+                    // If the RegistrySubKey doesn't exist -> (null)
+                    if (sk1 == null)
+                    {
+                        // sk1.Close();
+                        //rk.Close();
+                        return defValue;
+                    }
+                    else
+                    {
+                        try
+                        {
+                            // If the RegistryKey exists I get its value
+                            // or null is returned.
+                            return (string)sk1.GetValue(KeyName.ToUpper());
+                        }
+                        catch (Exception e)
+                        {
+                            doException(e.Message);
+                            logMsg(e.Message);
+                            // AAAAAAAAAAARGH, an error!
+                            //ShowErrorMessage(e, "Reading registry " + KeyName.ToUpper());
+                            return null;
+                        }
+                        finally
+                        {
+                            sk1.Close();
+                            rk.Close();
+                        }
+                    }
+                }
+            }
         }
 
         private int salt;
@@ -433,11 +437,11 @@ namespace SMEngine
 
         private void loadPassword()
         {//load from registry.
-            String tmp = Read("Password");
+          /*  String tmp = Read("Password","1");
             if (tmp != null)
                 _login.password = Authenticator.Decrypt(tmp, salt.ToString());
-            _login.login = Read("Login");
-
+            _login.login = Read("Login","1");
+          */
         }
 
         public void saveSettings()
@@ -456,16 +460,16 @@ namespace SMEngine
         {
             try
             {
-                _settings.quality = Int32.Parse(Read("quality"));
-                _settings.speed_s = Int32.Parse(Read("Speed_S"));
-                var loadAll = Int32.Parse(Read("LoadAll"));
-                var showInfo = Int32.Parse(Read("ShowInfo"));
+                _settings.quality = Int32.Parse(Read("quality","2"));
+                _settings.speed_s = Int32.Parse(Read("Speed_S","5"));
+                var loadAll = Int32.Parse(Read("LoadAll","1"));
+                var showInfo = Int32.Parse(Read("ShowInfo","1" ));
                 _settings.load_all = loadAll == 1 ? true : false;
                 _settings.showInfo = showInfo == 1 ? true : false;
 
-                _settings.gridHeight = Int32.Parse(Read("gridH"));
-                _settings.gridWidth = Int32.Parse(Read("gridW"));
-                _settings.borderThickness = Int32.Parse(Read("borderT"));
+                _settings.gridHeight = Int32.Parse(Read("gridH","3"));
+                _settings.gridWidth = Int32.Parse(Read("gridW","4"));
+                _settings.borderThickness = Int32.Parse(Read("borderT","1"));
             }
             catch (Exception ex)
             {
@@ -490,7 +494,7 @@ namespace SMEngine
             int galleries_present = 0;
             try
             {
-                galleries_present = Int32.Parse(Read("GalleryCount"));
+                galleries_present = Int32.Parse(Read("GalleryCount","12"));
             }
             catch (Exception ex)
             {
@@ -502,8 +506,8 @@ namespace SMEngine
             for (int i = 0; i < galleries_present; i++)
             {
                 GalleryEntry g = new GalleryEntry();
-                g.category = Read("Cat_" + i.ToString());
-                g.gallery = Read("Gal_" + i.ToString());
+                g.category = Read("Cat_" + i.ToString(), "def");
+                g.gallery = Read("Gal_" + i.ToString(), "def");
 
                 addGallery(g.category, g.gallery);
             }

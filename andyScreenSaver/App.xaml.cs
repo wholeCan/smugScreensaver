@@ -203,7 +203,7 @@ namespace andyScreenSaver
             catch (Exception ex)
             {
                 //var ln=ex.StackTrace.GetFrame(0).GetFileLineNumber();
-                var loc = Environment.SpecialFolder.LocalApplicationData; //.GetEnvironmentVariable("TEMP");
+                var loc = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData); //.GetEnvironmentVariable("TEMP");
                 var exceptionLog = loc + @"\errlog.startup.smug."+ DateTime.Now.ToShortDateString().Replace('/', '-') + ".txt";
                 if (File.Exists(exceptionLog))
                     File.Delete(exceptionLog);

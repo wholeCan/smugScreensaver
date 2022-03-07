@@ -563,7 +563,7 @@ namespace andyScreenSaver
            // setupJob(); //todo: this is broken, reloading causes multiple images to show.
 
             //   LogError($"Starting up: {DateTime.Now}");
-            var tmp = Environment.SpecialFolder.LocalApplicationData;
+            var tmp = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
             var file = tmp + @"\andyScr.trace.log";
 
             initEngine();
