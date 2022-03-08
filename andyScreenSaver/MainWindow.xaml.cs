@@ -15,7 +15,6 @@
 //using Quartz;
 //using Quartz.Impl;
 using System;
-using System.Collections.Generic;
 using System.Configuration;
 using System.Diagnostics;
 using System.Drawing;
@@ -32,42 +31,7 @@ using static SMEngine.CSMEngine;
 
 namespace andyScreenSaver
 {
-    /// <summary>
-    /// Interaction logic for Window1.xaml
-    /// </summary>
-    /// 
-    public class TaskScheduler
-    {
-        private static TaskScheduler _instance;
-        private List<Timer> timers = new List<Timer>();
-
-        private TaskScheduler() { }
-
-        public static TaskScheduler Instance => _instance ?? (_instance = new TaskScheduler());
-
-        public void ScheduleTask(int hour, int min, double intervalInHour, Action task)
-        {
-            DateTime now = DateTime.Now;
-            DateTime firstRun = new DateTime(now.Year, now.Month, now.Day, hour, min, 0, 0);
-            if (now > firstRun)
-            {
-                firstRun = firstRun.AddDays(1);
-            }
-
-            TimeSpan timeToGo = firstRun - now;
-            if (timeToGo <= TimeSpan.Zero)
-            {
-                timeToGo = TimeSpan.Zero;
-            }
-
-            var timer = new Timer(x =>
-            {
-                task.Invoke();
-            }, null, timeToGo, TimeSpan.FromHours(intervalInHour));
-
-            timers.Add(timer);
-        }
-    }
+    
     public partial class Window1 : Window
     {
         private Vector3D zoomDelta;
@@ -538,25 +502,7 @@ namespace andyScreenSaver
 
 
 
-        private async void setupJob()
-        {
-# if(DEBUG)
-            var frequencyHours = 24; //24 = 1 per day.  
-            var startHour = DateTime.Now.Hour;
-            var startMinute = DateTime.Now.Minute + 1;
-#else
-            var frequencyHours = 24;// run once per day
-            var startHour = 11;
-            var startMinute = 15;
-#endif
-
-            TaskScheduler.Instance.ScheduleTask(startHour, startMinute, frequencyHours,  //run at 11:15a daily
-               () =>
-               {
-                   logMsg("reloading library!!!");
-                   initEngine(true);
-                });
-        }
+        
         public void init()
 
         {

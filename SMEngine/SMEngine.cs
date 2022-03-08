@@ -51,7 +51,44 @@ namespace SMEngine
         string name;
     }
 
-    
+    /// <summary>
+    /// Interaction logic for Window1.xaml
+    /// </summary>
+    /// 
+    public class TaskScheduler
+    {
+
+        private List<Timer> timers = new List<Timer>();
+        public TaskScheduler() { }
+        private static TaskScheduler _instance;
+        public static TaskScheduler Instance => _instance ?? (_instance = new TaskScheduler());
+
+
+
+        public void ScheduleTask(int hour, int min, double intervalInHour, Action task)
+        {
+            DateTime now = DateTime.Now;
+            DateTime firstRun = new DateTime(now.Year, now.Month, now.Day, hour, min, 0, 0);
+            if (now > firstRun)
+            {
+                firstRun = firstRun.AddDays(1);
+            }
+
+            TimeSpan timeToGo = firstRun - now;
+            if (timeToGo <= TimeSpan.Zero)
+            {
+                timeToGo = TimeSpan.Zero;
+            }
+
+            var timer = new Timer(x =>
+            {
+                task.Invoke();
+            }, null, timeToGo, TimeSpan.FromHours(intervalInHour));
+
+            timers.Add(timer);
+        }
+    }
+
     public class CSMEngine
     {
         private static DateTime timeStarted = DateTime.Now;
@@ -69,8 +106,10 @@ namespace SMEngine
         private const int maximumQ = 10;   //window, only download if q is less than max and greater than min.
         private const int minQ = 2;
         private volatile bool running = false;
+       
+
 #if (DEBUG)
-        private int debug_limit = 5000;
+        private int debug_limit = 50;
 #else
         private int debug_limit = 1000;
 #endif
@@ -88,6 +127,35 @@ namespace SMEngine
         const string ACCESSTOKENSECRET = "SmugmugOauthAccessTokenSecret";
 
         private DateTime lastImageRequested = DateTime.Now;
+
+        private int restartCounter = 0;
+        private void rePullAlbums()
+        {
+            restartCounter++;
+            loadAllImages();
+        }
+
+        private async void setupJob()
+        {
+# if(DEBUG)
+            var frequencyHours = 24;/// 24; //24 = 1 per day.  1 = 1 per hour
+            var startHour = DateTime.Now.Hour;
+            var startMinute = DateTime.Now.Minute + 1;
+#else
+            var frequencyHours = 24;// run once per day
+            var startHour = 2;
+            var startMinute = 15;
+#endif
+
+            TaskScheduler.Instance.ScheduleTask(startHour, startMinute, frequencyHours,  //run at 11:15a daily
+               () =>
+               {
+                   logMsg("reloading library!!!");
+                   rePullAlbums();
+                   //do the thing!
+               });
+            
+        }
 
         public string getTimeSinceLast()
         {
@@ -111,8 +179,10 @@ namespace SMEngine
             }
             msg += "\n images shown: " + imageCounter;
             msg += "\n queue depth: " + _imageQueue.Count();
+            msg += "\n image size: " + _settings.quality + " / " + fetchImageUrlSize();
             msg += "\n time between images: " + getTimeSinceLast();
             msg += "\n exceptions raised: " + exceptionsRaised;
+            msg += "\n reloaded albums: " + restartCounter + " times.";
             msg += "\n memory: " + Process.GetCurrentProcess().WorkingSet64 / (1024*1024);
             msg += "\n Peak memory: " + Process.GetCurrentProcess().PeakPagedMemorySize64 / (1024 * 1024);
             msg += "\n Peak virtual memory: " + Process.GetCurrentProcess().PeakVirtualMemorySize64 / (1024 * 1024);
@@ -131,6 +201,8 @@ namespace SMEngine
         public authEnvelope getCode()
         {
             var e = new authEnvelope();
+
+
                 e.consumerToken = "a";
                 e.consumerSecret = "b";
                 e.token = "c";
@@ -304,6 +376,7 @@ namespace SMEngine
         static Random r = new Random();
         public CSMEngine(bool doStart)
         {
+            
             salt = 0xbad7eed;
             _settings = new CSettings();
             _imageQueue = new Queue<ImageSet>();
@@ -318,6 +391,7 @@ namespace SMEngine
             {
                 start();
             }
+            setupJob();
         }
         public CSMEngine() : this(true)
         {
@@ -1201,6 +1275,52 @@ namespace SMEngine
             var _imageList = await api.GetAlbumImages(a);
             return _imageList;
         }
+
+        private string fetchImageUrl(ImageSizes imageSize)
+        {
+            switch (_settings.quality)
+            {
+
+                case 0:
+                    return imageSize.TinyImageUrl;
+                case 1:
+                    return imageSize.SmallImageUrl;
+                case 2:
+                    return imageSize.MediumImageUrl;
+                case 3:
+                    return imageSize.LargeImageUrl;
+                case 4:
+                    return imageSize.X3LargeImageUrl;
+                case 5:
+                    return imageSize.OriginalImageUrl;
+                default:
+                    return imageSize.MediumImageUrl;
+
+            }
+        }
+
+        private string fetchImageUrlSize()
+        {
+            switch (_settings.quality)
+            {
+
+                case 0:
+                    return "TinyImageUrl";
+                case 1:
+                    return "SmallImageUrl";
+                case 2:
+                    return "MediumImageUrl";
+                case 3:
+                    return "LargeImageUrl";
+                case 4:
+                    return "X3LargeImageUrl";
+                case 5:
+                    return "OriginalImageUrl";
+                default:
+                    return "MediumImageUrl";
+
+            }
+        }
         private async void loadImages(Album? a, bool singleAlbumMode, int size = 2)
         {
             if (a == null || a.Uris.AlbumImages == null) { 
@@ -1241,13 +1361,8 @@ namespace SMEngine
                         {
                             throw new Exception("null imagesize");
                         }
-                        var imageUrl = imageSize.MediumImageUrl;
-                        if (size != 2)
-                        {
+                        var imageUrl = fetchImageUrl(imageSize);
 
-                            imageUrl = imageSize.TinyImageUrl;
-                            logMsg("dummy code - using small size");
-                        } //test code
 
                         if (imageSizes != null && i.ImageKey != null)
                         {
