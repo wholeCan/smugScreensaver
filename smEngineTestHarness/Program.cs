@@ -9,7 +9,7 @@ var engine = new SMEngine.CSMEngine(true);
 //var loggedIn = engine.login();
 //engine.addAllAlbums();
 var loggedIn = true;
-Thread.Sleep(1000*10);
+//Thread.Sleep(1000*10);
 
 for (int i = 0; i < 4; i++)
 {
