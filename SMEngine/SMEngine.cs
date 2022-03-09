@@ -2,6 +2,7 @@
 using SmugMug.NET;
 using System;
 using System.Collections.Generic;
+using System.Collections.ObjectModel;
 using System.Configuration;
 using System.Diagnostics;
 using System.IO;
@@ -139,8 +140,8 @@ namespace SMEngine
         {
 # if(DEBUG)
             var frequencyHours = 24;/// 24; //24 = 1 per day.  1 = 1 per hour
-            var startHour = DateTime.Now.Hour;
-            var startMinute = DateTime.Now.Minute + 1;
+            var startHour = 15;// DateTime.Now.Hour;
+            var startMinute = 15;// DateTime.Now.Minute + 1;
 #else
             var frequencyHours = 24;// run once per day
             var startHour = 2;
@@ -409,14 +410,13 @@ namespace SMEngine
             _settings = set;
         }
 
-        /**categories don't exist
-         * public bool checkCategoryForAlbums(String category)
+         public bool checkCategoryForAlbums(String category)
         {
             //todo
             bool retVal = false;
             foreach (Album a in _allAlbums)
             {
-                if (a.Category.Name == category)
+                if (getFolder(a) == category)
                 {
                     retVal = true;
                     break;
@@ -424,7 +424,7 @@ namespace SMEngine
             }
             return retVal;
         }
-        */
+        
             public void saveConfiguration()
         {
             saveGalleries();
@@ -614,6 +614,20 @@ namespace SMEngine
             _galleryTable.Rows.Add(cat, gal);
         }
 
+        public Collection<String> gteAllCategories()
+        {
+            var catList = new Collection<String>();
+            foreach(var a in _allAlbums)
+            {
+                var folderName = getFolder(a);
+                if (!catList.Contains(folderName))
+                {
+                    catList.Add(folderName);
+                }
+            }
+            return catList;
+        }
+
         public String[] getCategoriesAsync()
         {
             List<String> categories = new List<String>();
@@ -627,23 +641,23 @@ namespace SMEngine
             gettingCategories = false;
             return categories.ToArray();
             
-            /*
+            
             //todo
             if (_user != null)
             {
-                var myCats = await _user.GetCategoriesAsync();  //how can I make this async?
+                var myCats = getCategories(); /*await _user.GetCategoriesAsync()*/;  //how can I make this async?
                                                                 //    myCats.Sort();
                                                                 //     myCats.Reverse();
 
-                foreach (Category c in myCats)
+                foreach (var c in myCats)
                 {
-                    categories.Add(c.Name);
+                    categories.Add(c);
                 }
             }
             gettingCategories = false;
 
             return categories.ToArray();
-            */
+            
             //throw new NotImplementedException();
         }
         
@@ -1454,6 +1468,12 @@ namespace SMEngine
                 array[i] = temp;
             }
         }
+
+        private bool isLoadingAlbums = true;
+        public bool IsLoadingAlbums()
+        {
+            return isLoadingAlbums;
+        }
         private void loadAllImages()
         {
             _allAlbums = new List<Album>();
@@ -1461,6 +1481,7 @@ namespace SMEngine
             {
                 if (checkLogin(_envelope))
                 {
+                    isLoadingAlbums = true;
                     foreach (var username in fetchUsersToLoad())
                     {
                         if (username == "MY_NAME")
@@ -1472,6 +1493,7 @@ namespace SMEngine
                             loadAlbums(username); //todo: pass in the username/s to load
                         }
                     }
+                    isLoadingAlbums = false;
                     
                     if (_settings.load_all)
                     {
