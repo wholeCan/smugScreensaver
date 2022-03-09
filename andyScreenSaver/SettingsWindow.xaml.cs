@@ -199,17 +199,23 @@ namespace andyScreenSaver
                 if (success)
                 {
                     comboBox1.Items.Add("Waiting for data...");
+                    while (_engine.IsLoadingAlbums())
+                    {
+                        Debug.WriteLine("waiting for albums to load...");
+                        Thread.Sleep(100);
+                    }
+                    
                     String[] Cats = _engine.getCategoriesAsync();
                     comboBox1.Items.Clear();
                     comboBox2.Items.Clear();
-                    throw new NotImplementedException();
+                   // throw new NotImplementedException();
                     //todo: removed this, but don't really care.
-/*                    foreach (String s in Cats)
+                    foreach (String s in Cats)
                     {
                         if (_engine.checkCategoryForAlbums(s))
                             comboBox1.Items.Add(s);
                     }
-*/
+
                     if (comboBox1.HasItems)
                     {
                         comboBox1.SelectedIndex = 0;
