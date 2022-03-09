@@ -15,7 +15,16 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "andyScreenSaver", "andyScre
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution Items", "{176FF6AA-2FE0-4EAE-B0C6-2D8884232CCD}"
 	ProjectSection(SolutionItems) = preProject
+		nsisInstaller\andyScrSaver_small.nsi = nsisInstaller\andyScrSaver_small.nsi
 		README.md = README.md
+	EndProjectSection
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "nsis-build-stuff", "nsis-build-stuff", "{99C86410-5A33-495B-9312-7D8C052BC2F5}"
+	ProjectSection(SolutionItems) = preProject
+		nsisInstaller\andyScrSaver.nsi = nsisInstaller\andyScrSaver.nsi
+		nsisInstaller\andyScrSaver_small.nsi = nsisInstaller\andyScrSaver_small.nsi
+		nsisInstaller\build.bat = nsisInstaller\build.bat
+		nsisInstaller\manual_screensaver_install.bat = nsisInstaller\manual_screensaver_install.bat
 	EndProjectSection
 EndProject
 Global
