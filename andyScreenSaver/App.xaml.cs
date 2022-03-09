@@ -132,7 +132,28 @@ namespace andyScreenSaver
                  * **/
                 else
                 {//no parameters
-                    var win = new Window1();
+                 //var win = new Window1();
+
+                    var wins = new List<Window1>();
+                    var iter = 0;
+                    foreach (var s in System.Windows.Forms.Screen.AllScreens)
+                    {
+                        var win1 = new Window1();
+                        var workingArea = s.Bounds;
+                        win1.WindowStyle = WindowStyle.None;
+                        win1.setDimensions(workingArea.Height, workingArea.Width); //don't account for border height.
+                        win1.init();
+                        win1.disableActions();
+                        wins.Add(win1);
+                        wins.ElementAt(iter).Left = workingArea.X;
+                        wins.ElementAt(iter).Width = workingArea.Width;
+                        wins.ElementAt(iter).Top = workingArea.Top;
+                        wins.ElementAt(iter).Height = workingArea.Height;
+                        wins.ElementAt(iter).Show();
+                        
+                        iter++;
+                    }
+/*
                     win.setDimensions(333, 200);
                     win.init();
                     win.disableActions();
@@ -176,12 +197,13 @@ namespace andyScreenSaver
                     //win.WindowStyle = WindowStyle.SingleBorderWindow;
                     //win.ResizeMode = ResizeMode.CanResizeWithGrip;
                     win.Show();
+*/
                 }
             }
             catch (Exception ex)
             {
                 //var ln=ex.StackTrace.GetFrame(0).GetFileLineNumber();
-                var loc = Environment.SpecialFolder.LocalApplicationData; //.GetEnvironmentVariable("TEMP");
+                var loc = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData); //.GetEnvironmentVariable("TEMP");
                 var exceptionLog = loc + @"\errlog.startup.smug."+ DateTime.Now.ToShortDateString().Replace('/', '-') + ".txt";
                 if (File.Exists(exceptionLog))
                     File.Delete(exceptionLog);

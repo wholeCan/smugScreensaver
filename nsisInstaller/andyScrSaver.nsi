@@ -71,7 +71,7 @@ File /r "C:\Users\aholk\dev\smugScreensaver\andyScreenSaver\bin\Release\*"
   CreateDirectory "$SMPROGRAMS\andySlideShow"
   CreateShortCut "$SMPROGRAMS\andySlideShow\slideshow.lnk" "$INSTDIR\andyScrSaver.exe" "" "$INSTDIR\andyScrSaver.exe" 0
   CreateShortCut "$SMPROGRAMS\andySlideShow\config.lnk" "$INSTDIR\andyScrSaver.exe" "/c" "$INSTDIR\andyScrSaver.exe" 0
-  CreateShortCut "$SMPROGRAMS\andySlideShow\Borderless slideshow.lnk" "$INSTDIR\andyScrSaver.exe" "/s" "$INSTDIR\andyScrSaver.exe" 0
+;  CreateShortCut "$SMPROGRAMS\andySlideShow\Borderless slideshow.lnk" "$INSTDIR\andyScrSaver.exe" "/s" "$INSTDIR\andyScrSaver.exe" 0
 
   
 
@@ -111,7 +111,7 @@ IfFileExists $TEMP\smugmug.dat file_found file_not_found
 
 file_not_found:
 
-ExecWait '$INSTDIR\andyscrSaver /c'
+;ExecWait '$INSTDIR\andyscrSaver /c'
 file_found:
 ;MessageBox MB_OK "File found"
 SectionEnd
