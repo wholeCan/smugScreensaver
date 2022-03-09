@@ -12,6 +12,8 @@
  *  2/26/2022: major refactor of smEngine and everything else to upgrade to smugmug 2.0 api
  * **/
 
+//using Quartz;
+//using Quartz.Impl;
 using System;
 using System.Configuration;
 using System.Diagnostics;
@@ -29,9 +31,7 @@ using static SMEngine.CSMEngine;
 
 namespace andyScreenSaver
 {
-    /// <summary>
-    /// Interaction logic for Window1.xaml
-    /// </summary>
+    
     public partial class Window1 : Window
     {
         private Vector3D zoomDelta;
@@ -122,6 +122,9 @@ namespace andyScreenSaver
                 {
                     byte* p = (byte*)(void*)Scan0;
 
+                    //this logic is probably not really relevant since  I switchted to cropping the image.  leaving it in because it works ok.
+
+
                     for (int y = 0; y < height / 3; y++)  //note, dividing by two, because i want the top left region.
                     {
                         for (int x = 0; x < width / 2; x++)  //note, dividing by two, because i want the top left region.
@@ -136,13 +139,14 @@ namespace andyScreenSaver
                     }
                 }
 
+
                 var avgB = (int)totals[0] / (width * height);
                 var avgG = (int)totals[1] / (width * height);
                 var avgR = (int)totals[2] / (width * height);
 
                 var myColor = Color.FromArgb(avgR, avgB, avgG);
                 var measuredColor = ((float)avgR * 0.299 + (float)avgG * 0.587 + (float)avgB * 0.114);
-                if (measuredColor > 35.0)
+                if (measuredColor > 35.0)  //35 works pretty ok.
                     return Color.Black;
                 else
                     return Color.White;
@@ -152,6 +156,15 @@ namespace andyScreenSaver
                 LogError(ex.Message);
                 return Color.Black;
             }
+        }
+
+        private Bitmap getupperLeftCornerImage(Bitmap original)
+        {
+            Bitmap bmpImage = new Bitmap(original);
+            var cropArea = new Rectangle(0, 0, (int)original.Height / 3, (int)original.Width / 3);
+            return bmpImage.Clone(cropArea, bmpImage.PixelFormat);
+            //tmp = croppedImage;//remove this!
+
         }
         private void imageAddCaption(string text, ref Bitmap tmp)
         {
@@ -165,7 +178,10 @@ namespace andyScreenSaver
                     int.TryParse(ConfigurationSettings.AppSettings["captionPenSize"], out configPenSize);
 
                     var fontSize = configPenSize;
-                    var penColor = new SolidBrush(getAverageColor(tmp));// System.Drawing.Brushes.White;
+                    var croppedImage = getupperLeftCornerImage(tmp);
+
+
+                    var penColor = new SolidBrush(getAverageColor(croppedImage));// System.Drawing.Brushes.White;
                     if (tmp.HorizontalResolution < 150)
                     {
                         fontSize = fontSize + 7;
@@ -195,19 +211,40 @@ namespace andyScreenSaver
 
         bool statsEnabled = false;
 
+        private void logMsg(string msg)
+        {
+            Debug.WriteLine("Window: " + DateTime.Now.ToLongTimeString() + ": " + msg);
+        }
+
         private void LogError(String msg)
         {
             // Console.WriteLine(msg);
-            System.Diagnostics.Debug.WriteLine($"{DateTime.Now}: {msg}");
-            var dir = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
-            using (var sw = new StreamWriter($"{dir}\\errlog.smug."+DateTime.Now.ToShortDateString().Replace('/','-')+".txt", true))
+            logMsg($"{DateTime.Now}: {msg}");
+            lock (this)
             {
-                sw.WriteLine($"{DateTime.Now}: {msg}");
-                sw.Close();
+                try
+                {
+                    var dir = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
+                    using (var sw = new StreamWriter(
+                        $"{dir}\\errlog.smug." + DateTime.Now.ToShortDateString().Replace('/', '-') + ".txt",
+                        true)
+                        )
+                    {
+                        sw.WriteLine($"{DateTime.Now}: exception: {msg}");
+                        sw.Close();
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Debug.WriteLine("Uh Oh! Error writing error file!");
+                }
             }
         }
+
+      
         private void updateImage()
         {
+            
             hStack1.Dispatcher.BeginInvoke(new Action(delegate ()
                 {
                     //resuze each of the images to fit screen.
@@ -219,7 +256,7 @@ namespace andyScreenSaver
                             image.Height = myHeight / gridHeight - (100 / Math.Pow(2, gridHeight)); //161; 
                         }
                     }
-                    if (_engine.isExpired())
+                    if (_engine.screensaverExpired())
                     {
                         showMsg("service is shut down - press left or right arrow to wake up.");
                     }
@@ -243,7 +280,7 @@ namespace andyScreenSaver
                 }
                 else {
                     
-                    Thread.Sleep(100);
+                    //Thread.Sleep(100);
                 }
             }
             if (_engine.getLogin().login == "")
@@ -279,12 +316,14 @@ namespace andyScreenSaver
                 else
                 {//putting this in the else, because the blackImagePlaced is set in another thread and creates a race condition.
                     //  the red text disappears after resetting network connection, when really i want it to show up.
-                    if (!blackImagePlaced && !_engine.isExpired())
+                    if (!blackImagePlaced && !_engine.screensaverExpired())
+                    {
                         //todo: add switch here controlled by hotkey
                         if (statsEnabled)
-                        { showMsg("running since: " + _engine.getRuntimeStatsInfo()); }
+                        { showMsg(_engine.getRuntimeStatsInfo()); }
                         else
                         { showMsg(""); }
+                    }
                 }
                 hStack1.Dispatcher.Invoke(System.Windows.Threading.DispatcherPriority.Normal, new Action(delegate ()
                 {
@@ -388,11 +427,21 @@ namespace andyScreenSaver
             while (running)
             {
                 var runDelta = DateTime.Now - lastUpdate;
-                if (Convert.ToInt32(runDelta.TotalSeconds) >= _engine.settings.speed_s)
+//                if (Convert.ToInt32(runDelta.TotalSeconds) >= _engine.settings.speed_s)
                 {
                     updateImage();
+                    
+
                 }
-                Thread.Sleep(_engine.settings.speed_s * 500);
+                var millisecondsSinceLastRun = DateTime.Now.Subtract(lastUpdate).TotalMilliseconds;
+                var timeToSleep = _engine.settings.speed_s * 1000 - millisecondsSinceLastRun;
+                if (timeToSleep > 0)
+                {
+                    logMsg("sleeping for " + timeToSleep + " milliseconds");
+                    Thread.Sleep((Int32)timeToSleep);
+                }
+                lastUpdate = DateTime.Now;
+
             }
         }
 
@@ -407,13 +456,16 @@ namespace andyScreenSaver
             t.Start();
 
         }
+        Task task = null;
         private void initEngine(bool? forceStart = false)
         {
             //get dimensions
             var w = System.Windows.SystemParameters.WorkArea.Width;
             var h = System.Windows.SystemParameters.WorkArea.Height;
+            
             if (_engine == null || forceStart == true)
             {
+                
                 _engine = new SMEngine.CSMEngine();
                 _engine.setScreenDimensions(w, h);
                 {
@@ -423,7 +475,7 @@ namespace andyScreenSaver
                     _engine.fireException += showException;
                     try
                     {
-                        Task task = new Task(() => { loginSmugmug(); });
+                        task = new Task(() => { loginSmugmug(); });
                         task.Start();
                     }
                     catch (Exception ex)
@@ -433,8 +485,10 @@ namespace andyScreenSaver
                 }
             }
         }
+        //Application myParent;
         public Window1()
         {
+           // myParent = parent;
             InitializeComponent();
             int borderWidth = 0;
             int.TryParse(ConfigurationSettings.AppSettings["BorderWidth"], out borderWidth);
@@ -445,12 +499,17 @@ namespace andyScreenSaver
             var storageDirectory = Environment.GetFolderPath(Environment.SpecialFolder.CommonPictures) + @"\SmugAndy\";
             return storageDirectory;
         }
+
+
+
+        
         public void init()
 
         {
+           // setupJob(); //todo: this is broken, reloading causes multiple images to show.
 
-         //   LogError($"Starting up: {DateTime.Now}");
-            var tmp = Environment.GetEnvironmentVariable("TEMP");
+            //   LogError($"Starting up: {DateTime.Now}");
+            var tmp = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
             var file = tmp + @"\andyScr.trace.log";
 
             initEngine();
@@ -541,7 +600,7 @@ namespace andyScreenSaver
             actionsDisabled = false;
             myCursor = Cursor;
 
-            initEngine();
+            //initEngine();
 
             lastMouseMove = DateTime.Now;
             totalMouseMoves = 0;
@@ -585,10 +644,27 @@ namespace andyScreenSaver
             else if (e.Key == Key.S)
             {
                 statsEnabled = !statsEnabled;
+                if (statsEnabled)
+                {
+                    showMsg(_engine.getRuntimeStatsInfo());
+                }
+                else showMsg("");
             }
-            else if (e.Key == Key.Escape)
+            else if (e.Key == Key.Escape || e.Key== Key.Q)
             {
-                Close();
+                Application.Current.Shutdown();
+              //  Close();
+            }
+            else if (e.Key == Key.W)
+            {
+                 WindowStyle = WindowStyle.SingleBorderWindow;
+                 ResizeMode = ResizeMode.CanResizeWithGrip;
+            }
+            else if (e.Key == Key.B)
+            {
+                WindowStyle = WindowStyle.None;
+                ResizeMode = ResizeMode.NoResize;
+                WindowState = WindowState.Maximized;
             }
             else if (e.Key == Key.R)
             {
@@ -655,7 +731,7 @@ namespace andyScreenSaver
 
         private void Window_Closed(object sender, EventArgs e)
         {
-            System.Diagnostics.Debug.WriteLine("Closing");
+            logMsg("Closing");
         }
 
         private void image1_MouseUp(object sender, MouseButtonEventArgs e)
