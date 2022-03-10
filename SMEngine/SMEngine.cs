@@ -415,7 +415,8 @@ namespace SMEngine
             //we are checking to see if there are any albums in this category
             var albums = _allAlbums.FirstOrDefault(x => getFolder(x).Equals(category));
             if (albums == null)
-            { 
+            {
+                logMsg("albums was returned as false for some reason");
                 return false; 
             }
             return true;
