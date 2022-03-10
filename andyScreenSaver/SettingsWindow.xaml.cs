@@ -291,6 +291,7 @@ namespace andyScreenSaver
         {
 
             _engine.addAllAlbums();
+            MessageBox.Show("Next time just click the checkbox that says load all galleries");
 
         }
 
