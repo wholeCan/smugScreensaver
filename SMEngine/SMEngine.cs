@@ -110,7 +110,7 @@ namespace SMEngine
        
 
 #if (DEBUG)
-        private int debug_limit = 50;
+        private int debug_limit = 5000;
 #else
         private int debug_limit = 1000;
 #endif
@@ -412,17 +412,13 @@ namespace SMEngine
 
          public bool checkCategoryForAlbums(String category)
         {
-            //todo
-            bool retVal = false;
-            foreach (Album a in _allAlbums)
-            {
-                if (getFolder(a) == category)
-                {
-                    retVal = true;
-                    break;
-                }
+            //we are checking to see if there are any albums in this category
+            var albums = _allAlbums.FirstOrDefault(x => getFolder(x).Equals(category));
+            if (albums == null)
+            { 
+                return false; 
             }
-            return retVal;
+            return true;
         }
         
             public void saveConfiguration()
@@ -579,11 +575,17 @@ namespace SMEngine
             }
             for (int i = 0; i < galleries_present; i++)
             {
-                GalleryEntry g = new GalleryEntry();
+                var g = new GalleryEntry();
                 g.category = Read("Cat_" + i.ToString(), "def");
                 g.gallery = Read("Gal_" + i.ToString(), "def");
-
-                addGallery(g.category, g.gallery);
+                if (g.category != "def" && g.category != null)
+                {
+                    addGallery(g.category, g.gallery);
+                }
+                else
+                {
+                    logMsg("Skipping default category!");
+                }
             }
 
 
@@ -630,35 +632,28 @@ namespace SMEngine
 
         public String[] getCategoriesAsync()
         {
-            List<String> categories = new List<String>();
+            var categories = new List<String>();
 
             gettingCategories = true;
             foreach (var album in _allAlbums)
             {
                 if (!categories.Contains(getFolder(album)))
-                { categories.Add(getFolder(album)); }
+                {
+                    categories.Add(getFolder(album)); 
+                }
             }
             gettingCategories = false;
             return categories.ToArray();
-            
-            
-            //todo
             if (_user != null)
             {
-                var myCats = getCategories(); /*await _user.GetCategoriesAsync()*/;  //how can I make this async?
-                                                                //    myCats.Sort();
-                                                                //     myCats.Reverse();
-
+                var myCats = getCategories(); 
                 foreach (var c in myCats)
                 {
                     categories.Add(c);
                 }
             }
             gettingCategories = false;
-
             return categories.ToArray();
-            
-            //throw new NotImplementedException();
         }
         
         bool gettingCategories = false;
@@ -722,10 +717,9 @@ namespace SMEngine
 
         public void addAllAlbums(string byCategoryName)
         {
-            //  _galleryTable.Clear();
-            foreach (Album a in _allAlbums)
+            var albums = _allAlbums.Where(x => getFolder(x) == byCategoryName);
+            foreach (var a in albums)
             {
-                if (getFolder(a) == byCategoryName)
                     addGallery(getFolder(a), a.Name);
             }
         }
@@ -1340,10 +1334,6 @@ namespace SMEngine
             if (a == null || a.Uris.AlbumImages == null) { 
                 return; 
             }
-            if (a.AlbumKey=="B4rMTp")
-            {
-                Console.WriteLine("andy");
-            }
             
                 try
                 {
@@ -1547,6 +1537,7 @@ namespace SMEngine
                     }
                     else
                     {
+                        //we are loading only selected albums, based on configuration!
                         Album a = null;
                         if (_galleryTable.Rows.Count > 0)
                         {
@@ -1554,7 +1545,7 @@ namespace SMEngine
                             {
                                 var cat = _galleryTable.Rows[i].ItemArray[0].ToString();
                                 var gal = _galleryTable.Rows[i].ItemArray[1].ToString();
-                                a = _allAlbums.Find(Album => Album.Name == gal);
+                                a = _allAlbums.FirstOrDefault(x => getFolder(x) == cat && x.Name == gal);
                                 if (a != null)
                                 {
                                     loadImages(a, false);//load single album from gallery.

@@ -371,7 +371,6 @@ namespace andyScreenSaver
             if (comboBox1.SelectedValue != null)
             {
                 _engine.addAllAlbums(comboBox1.SelectedValue.ToString());
-
             }
 
 
