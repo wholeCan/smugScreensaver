@@ -218,8 +218,8 @@ namespace SMEngine
             //salty tokens
             var CONSUMERSECRET_SALTED_KEY = "SmugMugOAuthConsumerSecretSalted";
             var consumerTokenKey = "SmugMugOAuthConsumerTokenSalted";
-            envelope.consumerSecret = Authenticator.Decrypt(fetchKey(CONSUMERSECRET_SALTED_KEY), salt);
-            envelope.consumerToken = Authenticator.Decrypt(fetchKey(consumerTokenKey), salt);
+            envelope.consumerToken = Authenticator.Decrypt(fetchKey(CONSUMERSECRET_SALTED_KEY), salt);
+            envelope.consumerSecret = Authenticator.Decrypt(fetchKey(consumerTokenKey), salt);
 
 
             //this part isn't really necessary, as we already have from app.config.
@@ -273,6 +273,10 @@ namespace SMEngine
             //put them back into the registry.
             writeAuthTokens(envelope);
 
+            //token ends in dWn
+            //secret ends in 41e
+            //token ends in gV
+            //secret ends in ZJG
             return envelope;  //return null to fetch from config
             //return e; // return e if we're testing just storing internally.
         }
