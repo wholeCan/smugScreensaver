@@ -117,7 +117,7 @@ namespace andyScreenSaver
         private CSMEngine _engine;
         private void loadLoginInfo()
         {
-            loginInfo _login = _engine.getLogin();
+           // loginInfo _login = _engine.getLogin();
 
 
             comboBox3.SelectedIndex = _engine.settings.quality;
@@ -183,33 +183,31 @@ namespace andyScreenSaver
             try
             {
                 Cursor = Cursors.Wait;
-                loginInfo _login = new loginInfo();
-                _engine.saveConfiguration(_login);
-
-                //this is duplicate code.
                 authEnvelope e = _engine.getCode();
-/*                e.consumerToken = "";
-                e.consumerSecret = "";
-                e.token = "";
-                e.tokenSecret = "";
-*/
                 success = _engine.login(e);
+  
                 // success = false;  // test code!
 
                 if (success)
                 {
                     comboBox1.Items.Add("Waiting for data...");
+                    while (_engine.IsLoadingAlbums())
+                    {
+                        Debug.WriteLine("waiting for albums to load...");
+                        Thread.Sleep(100);
+                    }
+                    
                     String[] Cats = _engine.getCategoriesAsync();
                     comboBox1.Items.Clear();
                     comboBox2.Items.Clear();
-                    throw new NotImplementedException();
+                   // throw new NotImplementedException();
                     //todo: removed this, but don't really care.
-/*                    foreach (String s in Cats)
+                    foreach (String s in Cats)
                     {
                         if (_engine.checkCategoryForAlbums(s))
                             comboBox1.Items.Add(s);
                     }
-*/
+
                     if (comboBox1.HasItems)
                     {
                         comboBox1.SelectedIndex = 0;
@@ -285,6 +283,7 @@ namespace andyScreenSaver
         {
 
             _engine.addAllAlbums();
+            MessageBox.Show("Next time just click the checkbox that says load all galleries");
 
         }
 
@@ -365,7 +364,6 @@ namespace andyScreenSaver
             if (comboBox1.SelectedValue != null)
             {
                 _engine.addAllAlbums(comboBox1.SelectedValue.ToString());
-
             }
 
 

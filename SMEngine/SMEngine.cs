@@ -2,6 +2,7 @@
 using SmugMug.NET;
 using System;
 using System.Collections.Generic;
+using System.Collections.ObjectModel;
 using System.Configuration;
 using System.Diagnostics;
 using System.IO;
@@ -109,7 +110,7 @@ namespace SMEngine
        
 
 #if (DEBUG)
-        private int debug_limit = 50;
+        private int debug_limit = 5000;
 #else
         private int debug_limit = 1000;
 #endif
@@ -139,8 +140,8 @@ namespace SMEngine
         {
 # if(DEBUG)
             var frequencyHours = 24;/// 24; //24 = 1 per day.  1 = 1 per hour
-            var startHour = DateTime.Now.Hour;
-            var startMinute = DateTime.Now.Minute + 1;
+            var startHour = 15;// DateTime.Now.Hour;
+            var startMinute = 15;// DateTime.Now.Minute + 1;
 #else
             var frequencyHours = 24;// run once per day
             var startHour = 2;
@@ -200,14 +201,33 @@ namespace SMEngine
 
         public authEnvelope getCode()
         {
-            var e = new authEnvelope();
+
+            var envelope = new authEnvelope();
+
+            //salty tokens
+            var CONSUMERSECRET_SALTED_KEY = "SmugMugOAuthConsumerSecretSalted";
+            var consumerTokenKey = "SmugMugOAuthConsumerTokenSalted";
+            envelope.consumerToken = Authenticator.Decrypt(fetchKey(CONSUMERSECRET_SALTED_KEY), salt);
+            envelope.consumerSecret = Authenticator.Decrypt(fetchKey(consumerTokenKey), salt);
 
 
-                e.consumerToken = "a";
-                e.consumerSecret = "b";
-                e.token = "c";
-                e.tokenSecret = "d";
-            return null;  //return null to fetch from config
+            //this part isn't really necessary, as we already have from app.config.
+            /*
+            envelope.consumerSecret = Authenticator.Decrypt(
+                ReadRegistryValue(CONSUMERSECRET, consumerSecret), salt
+                );
+            envelope.consumerToken = Authenticator.Decrypt(
+                ReadRegistryValue(CONSUMERTOKEN, consumerToken), salt
+                ); 
+            */
+            //todo: read from registry, but only after auth is built out.
+            envelope.token = fetchKey(ACCESSTOKEN);
+            envelope.tokenSecret = fetchKey(ACCESSTOKENSECRET);
+
+            //put them back into the registry.
+            writeAuthTokens(envelope);
+
+            return envelope;  //return null to fetch from config
             //return e; // return e if we're testing just storing internally.
         }
 
@@ -248,17 +268,18 @@ namespace SMEngine
             }
             return consumerSecret;
         }
-        public static SmugMugAPI AuthenticateUsingOAuth(authEnvelope? envelope)
-        {
-            if (envelope == null)
-            {
-                envelope = new authEnvelope();
-                envelope.consumerToken = fetchKey(CONSUMERTOKEN);
-                envelope.consumerSecret = fetchKey(CONSUMERSECRET);
-                envelope.token = fetchKey(ACCESSTOKEN);
-                envelope.tokenSecret = fetchKey(ACCESSTOKENSECRET);
 
-            }
+        public static void writeAuthTokens(authEnvelope envelope)
+        {
+            //these 2 aren't really needed in registry.
+           // WriteRegistryValue(CONSUMERTOKEN, Authenticator.Encrypt(envelope.consumerToken, salt));
+           // WriteRegistryValue(CONSUMERSECRET, Authenticator.Encrypt(envelope.consumerSecret, salt));
+            WriteRegistryValue(ACCESSTOKEN, Authenticator.Encrypt(envelope.token, salt));
+            WriteRegistryValue(ACCESSTOKENSECRET, Authenticator.Encrypt(envelope.tokenSecret, salt));
+        }
+        public static SmugMugAPI AuthenticateUsingOAuth(authEnvelope envelope)
+        {
+           
 
             OAuthCredentials oAuthCredentials = null;
             if (envelope.token!= null)
@@ -377,7 +398,7 @@ namespace SMEngine
         public CSMEngine(bool doStart)
         {
             
-            salt = 0xbad7eed;
+            
             _settings = new CSettings();
             _imageQueue = new Queue<ImageSet>();
             _galleryTable = new System.Data.DataTable();
@@ -409,22 +430,18 @@ namespace SMEngine
             _settings = set;
         }
 
-        /**categories don't exist
-         * public bool checkCategoryForAlbums(String category)
+         public bool checkCategoryForAlbums(String category)
         {
-            //todo
-            bool retVal = false;
-            foreach (Album a in _allAlbums)
+            //we are checking to see if there are any albums in this category
+            var albums = _allAlbums.FirstOrDefault(x => getFolder(x).Equals(category));
+            if (albums == null)
             {
-                if (a.Category.Name == category)
-                {
-                    retVal = true;
-                    break;
-                }
+                logMsg("albums was returned as false for some reason");
+                return false; 
             }
-            return retVal;
+            return true;
         }
-        */
+        
             public void saveConfiguration()
         {
             saveGalleries();
@@ -438,7 +455,7 @@ namespace SMEngine
         }
 
 
-        public bool Write(string KeyName, object Value)
+        public static bool WriteRegistryValue(string KeyName, object Value)
         {
             try
             {
@@ -459,11 +476,11 @@ namespace SMEngine
             catch (Exception e)
             {
                 logMsg(e.Message);
-                doException(e.Message);
+                //doException(e.Message);
                 return false;
             }
         }
-        private string Read(string KeyName, string defValue)
+        private static string ReadRegistryValue(string KeyName, string defValue)
         {
             // Opening the registry key
             var subKey = "SOFTWARE\\andysScreensaver\\login";
@@ -490,7 +507,7 @@ namespace SMEngine
                         }
                         catch (Exception e)
                         {
-                            doException(e.Message);
+                            //doException(e.Message);
                             logMsg(e.Message);
                             // AAAAAAAAAAARGH, an error!
                             //ShowErrorMessage(e, "Reading registry " + KeyName.ToUpper());
@@ -506,44 +523,35 @@ namespace SMEngine
             }
         }
 
-        private int salt;
+        private static int salt = 0xbad7eed;
 
-
-        private void loadPassword()
-        {//load from registry.
-          /*  String tmp = Read("Password","1");
-            if (tmp != null)
-                _login.password = Authenticator.Decrypt(tmp, salt.ToString());
-            _login.login = Read("Login","1");
-          */
-        }
 
         public void saveSettings()
         {
-            Write("quality", _settings.quality.ToString());
-            Write("Speed_S", _settings.speed_s.ToString());
-            Write("LoadAll", _settings.load_all ? 1.ToString() : 0.ToString());
-            Write("ShowInfo", _settings.showInfo ? 1.ToString() : 0.ToString());
+            WriteRegistryValue("quality", _settings.quality.ToString());
+            WriteRegistryValue("Speed_S", _settings.speed_s.ToString());
+            WriteRegistryValue("LoadAll", _settings.load_all ? 1.ToString() : 0.ToString());
+            WriteRegistryValue("ShowInfo", _settings.showInfo ? 1.ToString() : 0.ToString());
 
-            Write("gridH", _settings.gridHeight.ToString());
-            Write("gridW", _settings.gridWidth.ToString());
-            Write("borderT", _settings.borderThickness.ToString());
+            WriteRegistryValue("gridH", _settings.gridHeight.ToString());
+            WriteRegistryValue("gridW", _settings.gridWidth.ToString());
+            WriteRegistryValue("borderT", _settings.borderThickness.ToString());
 
         }
         public void loadSettings()
         {
             try
             {
-                _settings.quality = Int32.Parse(Read("quality","2"));
-                _settings.speed_s = Int32.Parse(Read("Speed_S","5"));
-                var loadAll = Int32.Parse(Read("LoadAll","1"));
-                var showInfo = Int32.Parse(Read("ShowInfo","1" ));
+                _settings.quality = Int32.Parse(ReadRegistryValue("quality","2"));
+                _settings.speed_s = Int32.Parse(ReadRegistryValue("Speed_S","5"));
+                var loadAll = Int32.Parse(ReadRegistryValue("LoadAll","1"));
+                var showInfo = Int32.Parse(ReadRegistryValue("ShowInfo","1" ));
                 _settings.load_all = loadAll == 1 ? true : false;
                 _settings.showInfo = showInfo == 1 ? true : false;
 
-                _settings.gridHeight = Int32.Parse(Read("gridH","3"));
-                _settings.gridWidth = Int32.Parse(Read("gridW","4"));
-                _settings.borderThickness = Int32.Parse(Read("borderT","1"));
+                _settings.gridHeight = Int32.Parse(ReadRegistryValue("gridH","3"));
+                _settings.gridWidth = Int32.Parse(ReadRegistryValue("gridW","4"));
+                _settings.borderThickness = Int32.Parse(ReadRegistryValue("borderT","1"));
             }
             catch (Exception ex)
             {
@@ -568,7 +576,7 @@ namespace SMEngine
             int galleries_present = 0;
             try
             {
-                galleries_present = Int32.Parse(Read("GalleryCount","12"));
+                galleries_present = Int32.Parse(ReadRegistryValue("GalleryCount","12"));
             }
             catch (Exception ex)
             {
@@ -579,11 +587,17 @@ namespace SMEngine
             }
             for (int i = 0; i < galleries_present; i++)
             {
-                GalleryEntry g = new GalleryEntry();
-                g.category = Read("Cat_" + i.ToString(), "def");
-                g.gallery = Read("Gal_" + i.ToString(), "def");
-
-                addGallery(g.category, g.gallery);
+                var g = new GalleryEntry();
+                g.category = ReadRegistryValue("Cat_" + i.ToString(), "def");
+                g.gallery = ReadRegistryValue("Gal_" + i.ToString(), "def");
+                if (g.category != "def" && g.category != null)
+                {
+                    addGallery(g.category, g.gallery);
+                }
+                else
+                {
+                    logMsg("Skipping default category!");
+                }
             }
 
 
@@ -591,21 +605,20 @@ namespace SMEngine
         private void saveGalleries()
         {
             int galleries_present = _galleryTable.Rows.Count;
-            Write("GalleryCount", galleries_present.ToString());
+            WriteRegistryValue("GalleryCount", galleries_present.ToString());
             for (int i = 0; i < galleries_present; i++)
             {
                 var g = new GalleryEntry();
                 g.category = _galleryTable.Rows[i].ItemArray[0].ToString();
                 g.gallery = _galleryTable.Rows[i].ItemArray[1].ToString();
-                Write("Cat_" + i.ToString(), g.category);
-                Write("Gal_" + i.ToString(), g.gallery);
+                WriteRegistryValue("Cat_" + i.ToString(), g.category);
+                WriteRegistryValue("Gal_" + i.ToString(), g.gallery);
 
             }
         }
 
         private void loadConfiguration()
         {
-            loadPassword();
             loadGalleries();
             loadSettings();
         }
@@ -614,37 +627,44 @@ namespace SMEngine
             _galleryTable.Rows.Add(cat, gal);
         }
 
+        public Collection<String> gteAllCategories()
+        {
+            var catList = new Collection<String>();
+            foreach(var a in _allAlbums)
+            {
+                var folderName = getFolder(a);
+                if (!catList.Contains(folderName))
+                {
+                    catList.Add(folderName);
+                }
+            }
+            return catList;
+        }
+
         public String[] getCategoriesAsync()
         {
-            List<String> categories = new List<String>();
+            var categories = new List<String>();
 
             gettingCategories = true;
             foreach (var album in _allAlbums)
             {
                 if (!categories.Contains(getFolder(album)))
-                { categories.Add(getFolder(album)); }
-            }
-            gettingCategories = false;
-            return categories.ToArray();
-            
-            /*
-            //todo
-            if (_user != null)
-            {
-                var myCats = await _user.GetCategoriesAsync();  //how can I make this async?
-                                                                //    myCats.Sort();
-                                                                //     myCats.Reverse();
-
-                foreach (Category c in myCats)
                 {
-                    categories.Add(c.Name);
+                    categories.Add(getFolder(album)); 
                 }
             }
             gettingCategories = false;
-
             return categories.ToArray();
-            */
-            //throw new NotImplementedException();
+            if (_user != null)
+            {
+                var myCats = getCategories(); 
+                foreach (var c in myCats)
+                {
+                    categories.Add(c);
+                }
+            }
+            gettingCategories = false;
+            return categories.ToArray();
         }
         
         bool gettingCategories = false;
@@ -708,10 +728,9 @@ namespace SMEngine
 
         public void addAllAlbums(string byCategoryName)
         {
-            //  _galleryTable.Clear();
-            foreach (Album a in _allAlbums)
+            var albums = _allAlbums.Where(x => getFolder(x) == byCategoryName);
+            foreach (var a in albums)
             {
-                if (getFolder(a) == byCategoryName)
                     addGallery(getFolder(a), a.Name);
             }
         }
@@ -860,7 +879,7 @@ namespace SMEngine
             }
         }
 
-        private void logMsg(string msg)
+        private static void logMsg(string msg)
         {
             Debug.WriteLine(DateTime.Now.ToLongTimeString() + ": " + msg);
         }
@@ -1326,10 +1345,6 @@ namespace SMEngine
             if (a == null || a.Uris.AlbumImages == null) { 
                 return; 
             }
-            if (a.AlbumKey=="B4rMTp")
-            {
-                Console.WriteLine("andy");
-            }
             
                 try
                 {
@@ -1454,6 +1469,12 @@ namespace SMEngine
                 array[i] = temp;
             }
         }
+
+        private bool isLoadingAlbums = true;
+        public bool IsLoadingAlbums()
+        {
+            return isLoadingAlbums;
+        }
         private void loadAllImages()
         {
             _allAlbums = new List<Album>();
@@ -1461,6 +1482,7 @@ namespace SMEngine
             {
                 if (checkLogin(_envelope))
                 {
+                    isLoadingAlbums = true;
                     foreach (var username in fetchUsersToLoad())
                     {
                         if (username == "MY_NAME")
@@ -1472,6 +1494,7 @@ namespace SMEngine
                             loadAlbums(username); //todo: pass in the username/s to load
                         }
                     }
+                    isLoadingAlbums = false;
                     
                     if (_settings.load_all)
                     {
@@ -1525,6 +1548,7 @@ namespace SMEngine
                     }
                     else
                     {
+                        //we are loading only selected albums, based on configuration!
                         Album a = null;
                         if (_galleryTable.Rows.Count > 0)
                         {
@@ -1532,7 +1556,7 @@ namespace SMEngine
                             {
                                 var cat = _galleryTable.Rows[i].ItemArray[0].ToString();
                                 var gal = _galleryTable.Rows[i].ItemArray[1].ToString();
-                                a = _allAlbums.Find(Album => Album.Name == gal);
+                                a = _allAlbums.FirstOrDefault(x => getFolder(x) == cat && x.Name == gal);
                                 if (a != null)
                                 {
                                     loadImages(a, false);//load single album from gallery.
@@ -1625,22 +1649,22 @@ namespace SMEngine
     }
 
 
-    public class Authenticator
+    public static class Authenticator
     {
-        static public string Encrypt(string password, string salt)
+        static public string Encrypt(string password, int salt)
         {
             var passwordBytes = Encoding.Unicode.GetBytes(password);
-            var saltBytes = Encoding.Unicode.GetBytes(salt);
+            var saltBytes = Encoding.Unicode.GetBytes(salt.ToString());
 
             var cipherBytes = ProtectedData.Protect(passwordBytes, saltBytes, DataProtectionScope.CurrentUser);
 
             return Convert.ToBase64String(cipherBytes);
         }
 
-        static public string Decrypt(string cipher, string salt)
+        static public string Decrypt(string cipher, int salt)
         {
             var cipherBytes = Convert.FromBase64String(cipher);
-            var saltBytes = Encoding.Unicode.GetBytes(salt);
+            var saltBytes = Encoding.Unicode.GetBytes(salt.ToString());
 
             var passwordBytes = ProtectedData.Unprotect(cipherBytes, saltBytes, DataProtectionScope.CurrentUser);
 
