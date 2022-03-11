@@ -117,7 +117,7 @@ namespace andyScreenSaver
         private CSMEngine _engine;
         private void loadLoginInfo()
         {
-            loginInfo _login = _engine.getLogin();
+           // loginInfo _login = _engine.getLogin();
 
 
             comboBox3.SelectedIndex = _engine.settings.quality;
@@ -183,17 +183,9 @@ namespace andyScreenSaver
             try
             {
                 Cursor = Cursors.Wait;
-                loginInfo _login = new loginInfo();
-                _engine.saveConfiguration(_login);
-
-                //this is duplicate code.
                 authEnvelope e = _engine.getCode();
-/*                e.consumerToken = "";
-                e.consumerSecret = "";
-                e.token = "";
-                e.tokenSecret = "";
-*/
                 success = _engine.login(e);
+  
                 // success = false;  // test code!
 
                 if (success)
