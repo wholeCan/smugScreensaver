@@ -49,10 +49,12 @@ namespace andyScreenSaver
 
                 loadLoginInfo();
                 bool connected = await connect();
-                if (!connected)
+                if (_engine.isConnected())
                 {
-                    //start up new process to authenticate.
+                   // Thread.Sleep(10);
                     authenticateApp();
+                    //start up// new process to authenticate.
+                  //  authenticateApp();
                     //if (!connect())
                     //  MessageBox.Show("Error connecting, try again");
                 }
@@ -148,8 +150,20 @@ namespace andyScreenSaver
         }
 
 
+        //this fires up the old authenticator - no longer needed!
         private void authenticateApp()
         {
+            return;
+          //  var isLoggedIn = _engine.checkLogin(_engine.getCode());
+          //  if (!isLoggedIn)
+            {
+                var env = _engine.getCode();
+
+            //    _engine.AuthenticateUsingOauthNewConnection_part1(env);
+                //do we want to show the message box here?  no, this is dead code.
+
+            }
+
             // Prepare the process to run
             ProcessStartInfo start = new ProcessStartInfo();
             // Enter in the command line arguments, everything you would enter after the executable name itself
@@ -184,8 +198,25 @@ namespace andyScreenSaver
             {
                 Cursor = Cursors.Wait;
                 authEnvelope e = _engine.getCode();
+                            
                 success = _engine.login(e);
-  
+                if (!success)
+                {
+                    var p1 = _engine.AuthenticateUsingOauthNewConnection_part1(e);
+                    var window = new Window2();
+                    window.ShowDialog();
+                    var stringEntered = window.getCode();
+
+                    success = _engine.AuthenticateUsingOauthNewConnection_part2(p1, stringEntered);
+                    if (!success)
+                    {
+                        throw new Exception("Could not login successfully!");
+                    }
+                    //todo... finsh calling AuthenticateUsingOauthNewConnection_part1 and AuthenticateUsingOauthNewConnection_part2
+                }
+
+                //}
+
                 // success = false;  // test code!
 
                 if (success)
@@ -230,15 +261,16 @@ namespace andyScreenSaver
         }
         bool tmpStarted = false;
         private async void button1_Click(object sender, RoutedEventArgs e)
-        {
-            tmpStarted = true;
+        {//this button should be killed.
+/*            tmpStarted = true;
             var connected = await connect();
             if (!connected)
             {
 
                 //start up new process to authenticate.
-                authenticateApp();
-                connected = await connect();
+                
+               // connected = await connect();
+              //  authenticateApp();//this actually starts stuff up?
                 if (!connected)
                 {
                     MessageBox.Show("Incorrect Authentication");
@@ -254,7 +286,7 @@ namespace andyScreenSaver
                 button1.Content = "Validated";
                 button1.IsEnabled = false;
             }
-
+*/
         }
 
         private void comboBox1_SelectionChanged(object sender, SelectionChangedEventArgs e)
