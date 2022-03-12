@@ -8,8 +8,6 @@ using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Net;
-using System.Security.Cryptography;
-using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Windows.Media.Imaging;
@@ -17,89 +15,6 @@ using System.Windows.Media.Imaging;
 
 namespace SMEngine
 {
-
-    public class authEnvelope
-    {
-        public string consumerToken;
-        public string consumerSecret;
-        public string token;
-        public string tokenSecret;
-        public authEnvelope()
-        {
-
-        }
-        public authEnvelope(string a, string b, string c, string d)
-        {
-            consumerToken = a;
-            consumerSecret = b;
-            token = c;
-            tokenSecret = d;
-        }
-    }
-    /// <summary>
-    /// Originally written -- 4/2014
-    /// 
-    /// revision 5/8/2018:  Switched to Smugmug api 1.3 by upgrading to nuget version of SmugMugModel
-    /// SmugMug API is now available from nuget
-    /// 
-    /// 2/26/2022: major refactor to upgrade to smugmug 2.0 api
-
-    //    Following along source from:
-    //https://github.com/AlexGhiondea/SmugMug.NET/blob/master/nuGet/SmugMugModel.v2.nuspec
-
-    //Need to better understand the api
-    //https://api.smugmug.com/api/v2/doc/pages/concepts.html
-
-    ///
-    /// 2018 feature enhancements:
-    /// put a timeout period, stop pulling images after a couple hours.  restart after 24 hours.
-    /// </summary>
-
-    //is this class needeD? maybe not
-    public class ImageInfo
-    {
-        string key;
-        string caption;
-        string name;
-    }
-
-    /// <summary>
-    /// Interaction logic for Window1.xaml
-    /// </summary>
-    /// 
-    public class TaskScheduler
-    {
-
-        private List<Timer> timers = new List<Timer>();
-        public TaskScheduler() { }
-        private static TaskScheduler _instance;
-        public static TaskScheduler Instance => _instance ?? (_instance = new TaskScheduler());
-
-
-
-        public void ScheduleTask(int hour, int min, double intervalInHour, Action task)
-        {
-            DateTime now = DateTime.Now;
-            DateTime firstRun = new DateTime(now.Year, now.Month, now.Day, hour, min, 0, 0);
-            if (now > firstRun)
-            {
-                firstRun = firstRun.AddDays(1);
-            }
-
-            TimeSpan timeToGo = firstRun - now;
-            if (timeToGo <= TimeSpan.Zero)
-            {
-                timeToGo = TimeSpan.Zero;
-            }
-
-            var timer = new Timer(x =>
-            {
-                task.Invoke();
-            }, null, timeToGo, TimeSpan.FromHours(intervalInHour));
-
-            timers.Add(timer);
-        }
-    }
 
     public class CSMEngine
     {
@@ -134,7 +49,6 @@ namespace SMEngine
         #region NEW AUTH STUFF 2022
 
         const string CONSUMERTOKEN = "SmugMugOAuthConsumerToken";
-        const string CONSUMERSECRET = "SmugMugOAuthConsumerSecret";
         const string ACCESSTOKEN = "SmugmugOauthAccessToken";
         const string ACCESSTOKENSECRET = "SmugmugOauthAccessTokenSecret";
 
@@ -291,7 +205,7 @@ namespace SMEngine
 
             OAuthCredentials oAuthCredentials = null;
             if (envelope.token!= null && envelope.token != "")
-            {//todo: right now this is obviously hardcoded
+            {
                 oAuthCredentials = new OAuthCredentials(envelope.consumerToken, envelope.consumerSecret, 
                     envelope.token, envelope.tokenSecret);
             }
@@ -1815,68 +1729,6 @@ namespace SMEngine
             exceptionsRaised++;
             if (fireException != null)
                 fireException(msg);
-        }
-    }
-
-
-    public static class Authenticator
-    {
-        static public string Encrypt(string password, int salt)
-        {
-            if (password != null ) {
-                var passwordBytes = Encoding.Unicode.GetBytes(password);
-                var saltBytes = Encoding.Unicode.GetBytes(salt.ToString());
-
-                var cipherBytes = ProtectedData.Protect(passwordBytes, saltBytes, DataProtectionScope.CurrentUser);
-
-                return Convert.ToBase64String(cipherBytes);
-            }
-            return null;
-        }
-
-        static public string Decrypt(string cipher, int salt)
-        {
-            if (cipher == null) 
-                return null;
-            var cipherBytes = Convert.FromBase64String(cipher);
-            var saltBytes = Encoding.Unicode.GetBytes(salt.ToString());
-
-            var passwordBytes = ProtectedData.Unprotect(cipherBytes, saltBytes, DataProtectionScope.CurrentUser);
-
-            return Encoding.Unicode.GetString(passwordBytes);
-        }
-    }
-
-
-    public class loginInfo
-    {
-        public String login;
-        public String password;
-    }
-    public class GalleryEntry
-    {
-        public String category;
-        public String gallery;
-    }
-
-    public class CSettings
-    {
-        public bool load_all;
-        public int quality;
-        public int speed_s;
-        public bool showInfo;
-        public int gridWidth;
-        public int gridHeight;
-        public int borderThickness;
-        public CSettings()
-        {
-            quality = 2;
-            speed_s = 6;
-            load_all = false;
-            showInfo = true;
-            gridWidth = 5;
-            gridHeight = 4;
-            borderThickness = 0;
         }
     }
 
