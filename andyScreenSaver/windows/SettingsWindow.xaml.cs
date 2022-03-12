@@ -5,6 +5,7 @@
  * **/
 
 
+using andyScreenSaver.windows;
 using SMEngine;
 using System;
 using System.Configuration;
@@ -361,9 +362,11 @@ namespace andyScreenSaver
         private void button5_Click(object sender, RoutedEventArgs e)
         {
             //donate
-            MessageBox.Show("No fee is necessary, but if you like my software I would appreciate anything you contribute.  Thanks for clicking!\r\n\r\nYour web browser will now load my payment page.");
-            String paypalLink = "https://www.paypal.com/cgi-bin/webscr?cmd=_s-xclick&hosted_button_id=R434RMQYFAKBG";
-            Process.Start(paypalLink);
+            //MessageBox.Show("No fee is necessary, but if you like my software I would appreciate anything you contribute.  Thanks for clicking!\r\n\r\nYour web browser will now load my payment page.");
+            //String paypalLink = "https://www.paypal.com/cgi-bin/webscr?cmd=_s-xclick&hosted_button_id=R434RMQYFAKBG";
+            //Process.Start(paypalLink);
+            var iwin = new PaymentWindow();
+            iwin.ShowDialog();
         }
 
         private void Button_Click_1(object sender, RoutedEventArgs e)

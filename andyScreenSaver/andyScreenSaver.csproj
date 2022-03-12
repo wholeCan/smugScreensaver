@@ -198,6 +198,10 @@
     <Compile Include="windows\AuthenticationCodeWindow.xaml.cs">
       <DependentUpon>AuthenticationCodeWindow.xaml</DependentUpon>
     </Compile>
+    <Page Include="windows\PaymentWindow.xaml">
+      <SubType>Designer</SubType>
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
     <Page Include="windows\SettingsWindow.xaml">
       <SubType>Designer</SubType>
       <Generator>MSBuild:Compile</Generator>
@@ -241,6 +245,9 @@
     </Compile>
     <Compile Include="QueryPerfCounter.cs" />
     <Compile Include="rotatableImage.cs" />
+    <Compile Include="windows\PaymentWindow.xaml.cs">
+      <DependentUpon>PaymentWindow.xaml</DependentUpon>
+    </Compile>
     <Compile Include="windows\SettingsWindow.xaml.cs">
       <DependentUpon>SettingsWindow.xaml</DependentUpon>
     </Compile>
