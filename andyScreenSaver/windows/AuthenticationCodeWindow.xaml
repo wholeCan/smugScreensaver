@@ -5,8 +5,8 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:local="clr-namespace:andyScreenSaver"
         mc:Ignorable="d"
-        Title="Window2" Height="450" Width="800">
-    <Grid AutomationProperties.Name="VerificationCodeWindow">
+        Title="Authentication step - one time operation" Height="263" Width="587">
+    <Grid AutomationProperties.Name="VerificationCodeWindow" Margin="0,0,10,-6">
         <Label Content="Enter the code from smugmug here:" HorizontalAlignment="Left" Height="28" Margin="58,42,0,0" VerticalAlignment="Top" Width="271"/>
         <TextBox HorizontalAlignment="Left" Height="28" Margin="367,42,0,0" TextWrapping="Wrap" VerticalAlignment="Top" Width="162" Name="tbVerificationCode"/>
         <Button Content="Submit" HorizontalAlignment="Left" Height="39" Margin="382,114,0,0" VerticalAlignment="Top" Width="132" Click="Button_Click"/>
