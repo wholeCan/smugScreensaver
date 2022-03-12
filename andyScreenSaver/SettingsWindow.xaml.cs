@@ -60,8 +60,8 @@ namespace andyScreenSaver
                 }
                 else
                 {
-                    button1.Content = "Validated";
-                    button1.IsEnabled = false;
+                //    button1.Content = "Validated";
+                //    button1.IsEnabled = false;
                 }
 
             }));
@@ -341,14 +341,14 @@ namespace andyScreenSaver
 
         private void tLogin_TextChanged(object sender, TextChangedEventArgs e)
         {
-            button1.Content = "Connect";
-            button1.IsEnabled = true;
+      //      button1.Content = "Connect";
+        //    button1.IsEnabled = true;
         }
 
         private void tPassword_PasswordChanged(object sender, RoutedEventArgs e)
         {
-            button1.Content = "Connect";
-            button1.IsEnabled = true;
+          //  button1.Content = "Connect";
+          //  button1.IsEnabled = true;
         }
 
         private void button6_Click(object sender, RoutedEventArgs e)
@@ -399,6 +399,13 @@ namespace andyScreenSaver
             }
 
 
+        }
+
+        private void Button_Click_3(object sender, RoutedEventArgs e)
+        {
+            _engine.logout();
+            MessageBox.Show("Please restart the application to login. sorry!");
+            Application.Current.Shutdown();
         }
     }
     public class RoundingConverter : IValueConverter

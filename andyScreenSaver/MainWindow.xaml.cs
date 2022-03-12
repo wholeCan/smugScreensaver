@@ -43,7 +43,7 @@ namespace andyScreenSaver
             myHeight = _myHeight;
             myWidth = _myWidth;
         }
-        private SMEngine.CSMEngine _engine = null;
+        private SMEngine.CSMEngine _engine;
         ThreadStart ts = null;
         Thread t = null;
         static bool running = true;

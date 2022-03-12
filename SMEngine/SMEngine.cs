@@ -121,9 +121,9 @@ namespace SMEngine
        
 
 #if (DEBUG)
-        private int debug_limit = 50;
+        private int debug_limit = 5000;
 #else
-        private int debug_limit = 1000;
+        private int debug_limit = 5000;
 #endif
 
 
@@ -271,7 +271,7 @@ namespace SMEngine
             //   envelope.tokenSecret = fetchKey(ACCESSTOKENSECRET);
 
             //put them back into the registry.
-            writeAuthTokens(envelope);
+           // writeAuthTokens(envelope);
 
             //token ends in dWn
             //secret ends in 41e
@@ -324,12 +324,12 @@ namespace SMEngine
             //these 2 aren't really needed in registry.
             // WriteRegistryValue(CONSUMERTOKEN, Authenticator.Encrypt(envelope.consumerToken, salt));
             // WriteRegistryValue(CONSUMERSECRET, Authenticator.Encrypt(envelope.consumerSecret, salt));
-            if (envelope.token != "")
+         //   if (envelope.token != "")
             {
                 //WriteRegistryValue(ACCESSTOKEN, Authenticator.Encrypt(envelope.token, salt));
                 WriteRegistryValue("token", envelope.token);
             }
-            if (envelope.tokenSecret != "")
+           // if (envelope.tokenSecret != "")
             {
                 //WriteRegistryValue(ACCESSTOKENSECRET, Authenticator.Encrypt(envelope.tokenSecret, salt));
                 WriteRegistryValue("value", envelope.tokenSecret);
@@ -340,7 +340,7 @@ namespace SMEngine
            
 
             OAuthCredentials oAuthCredentials = null;
-            if (envelope.token!= null)
+            if (envelope.token!= null && envelope.token != "")
             {//todo: right now this is obviously hardcoded
                 oAuthCredentials = new OAuthCredentials(envelope.consumerToken, envelope.consumerSecret, 
                     envelope.token, envelope.tokenSecret);
@@ -378,8 +378,15 @@ namespace SMEngine
             return true;
         }
 
+        public void  logout()
+        {
+            var a = new authEnvelope("","","","");
+            writeAuthTokens(a);
+        }
+        //static OAuth.OAuthRequest gRequest;
         private static OAuthCredentials GenerateOAuthAccessToken(string consumerKey, string secret)
         {
+            throw new NotImplementedException("this is for console use only!");
             string baseUrl = "http://api.smugmug.com";
             string requestUrl = "/services/oauth/1.0a/getRequestToken";
             string authorizeUrl = "/services/oauth/1.0a/authorize";
@@ -479,21 +486,16 @@ namespace SMEngine
             string baseUrl = "http://api.smugmug.com";
             string requestUrl = "/services/oauth/1.0a/getRequestToken";
             string authorizeUrl = "/services/oauth/1.0a/authorize";
-            string accessUrl = "/services/oauth/1.0a/getAccessToken";
-
-
             string requestToken = null;
             string requestTokenSecret = null;
-            string accesstoken = null;
-            string accessTokenSecret = null;
 
             #region Request Token
-            var oAuthRequest = OAuth.OAuthRequest.ForRequestToken(consumerKey, secret, "oob");
+            var gRequest = OAuth.OAuthRequest.ForRequestToken(consumerKey, secret, "oob");
 
-            oAuthRequest.RequestUrl = baseUrl + requestUrl;
-            string auth = oAuthRequest.GetAuthorizationHeader();
+            gRequest.RequestUrl = baseUrl + requestUrl;
+            string auth = gRequest.GetAuthorizationHeader();
 
-            HttpWebRequest request = (HttpWebRequest)WebRequest.Create(oAuthRequest.RequestUrl);
+            HttpWebRequest request = (HttpWebRequest)WebRequest.Create(gRequest.RequestUrl);
             request.Headers.Add("Authorization", auth);
             HttpWebResponse response = (HttpWebResponse)request.GetResponse();
             Stream responseStream = response.GetResponseStream();
@@ -529,123 +531,30 @@ namespace SMEngine
             #endregion
 
             return new authEnvelope("", "", requestToken, requestTokenSecret);
-
-            //todo: once we fire off the web request, we should get the code from the wpf form.
-            // then we can continue the rest of the code.
-            /*
-            Console.WriteLine("Enter the six-digit code: ");
-            string verifier = Console.ReadLine();
-            #endregion
-
-            #region Access Token
-            oAuthRequest = OAuth.OAuthRequest.ForAccessToken(consumerKey, secret, requestToken, requestTokenSecret, verifier);
-            oAuthRequest.RequestUrl = baseUrl + accessUrl;
-            auth = oAuthRequest.GetAuthorizationHeader();
-            request = (HttpWebRequest)WebRequest.Create(oAuthRequest.RequestUrl);
-
-
-            request.Headers.Add("Authorization", auth);
-            response = (HttpWebResponse)request.GetResponse();
-            responseStream = response.GetResponseStream();
-            readStream = new StreamReader(responseStream, System.Text.Encoding.UTF8);
-            result = readStream.ReadToEnd();
-            foreach (string token in result.Split('&'))
-            {
-                string[] splitToken = token.Split('=');
-
-                switch (splitToken[0])
-                {
-                    case "oauth_token":
-                        accesstoken = splitToken[1];
-                        break;
-                    case "oauth_token_secret":
-                        accessTokenSecret = splitToken[1];
-                        break;
-                    default:
-                        break;
-                }
-            }
-            response.Close();
-            #endregion
-
-            return new OAuthCredentials(consumerKey, secret, accesstoken, accessTokenSecret);
-            */
         }
 
         //assuming part 1 fired, input the sixDigitCode - and complete authentication
         private static OAuthCredentials GenerateOAuthAccessToken_UI_PART2(authEnvelope envelope, string sixDigitCode)
         {
             string baseUrl = "http://api.smugmug.com";
-            string requestUrl = "/services/oauth/1.0a/getRequestToken";
-            string authorizeUrl = "/services/oauth/1.0a/authorize";
             string accessUrl = "/services/oauth/1.0a/getAccessToken";
 
 
-            string requestToken = null;
-            string requestTokenSecret = null;
-            string accesstoken = null;
-            string accessTokenSecret = null;
-            /*
-            #region Request Token
-            var oAuthRequest = OAuth.OAuthRequest.ForRequestToken(consumerKey, secret, "oob");
-
-            oAuthRequest.RequestUrl = baseUrl + requestUrl;
-            string auth = oAuthRequest.GetAuthorizationHeader();
-
-            HttpWebRequest request = (HttpWebRequest)WebRequest.Create(oAuthRequest.RequestUrl);
-            request.Headers.Add("Authorization", auth);
-            HttpWebResponse response = (HttpWebResponse)request.GetResponse();
-            Stream responseStream = response.GetResponseStream();
-            StreamReader readStream = new StreamReader(responseStream, System.Text.Encoding.UTF8);
-            string result = readStream.ReadToEnd();
-            foreach (string token in result.Split('&'))
-            {
-                string[] splitToken = token.Split('=');
-
-                switch (splitToken[0])
-                {
-                    case "oauth_token":
-                        requestToken = splitToken[1];
-                        break;
-                    case "oauth_token_secret":
-                        requestTokenSecret = splitToken[1];
-                        break;
-                    default:
-                        break;
-                }
-            }
-            response.Close();
-            #endregion
-
-            #region Authorization
-            string authorizationUrl = String.Format("{0}{1}?mode=auth_req_token&oauth_token={2}&Access=Full&Permissions=Modify", baseUrl, authorizeUrl, requestToken);
-            var ps = new ProcessStartInfo(authorizationUrl)
-            {
-                UseShellExecute = true,
-                Verb = "open"
-            };
-            System.Diagnostics.Process.Start(ps);
-
-            //todo: once we fire off the web request, we should get the code from the wpf form.
-            // then we can continue the rest of the code.
-            */
-
-            //Console.WriteLine("Enter the six-digit code: ");
             string verifier = sixDigitCode;
-            
+
 
             #region Access Token
-            var oAuthRequest = OAuth.OAuthRequest.ForAccessToken(
+            var gRequest = OAuth.OAuthRequest.ForAccessToken(
                 envelope.consumerToken, 
                 envelope.consumerSecret, 
                 envelope.token,
                 envelope.tokenSecret, 
                 verifier);
-            oAuthRequest.RequestUrl = baseUrl + accessUrl;
-            var auth = oAuthRequest.GetAuthorizationHeader();
-            var request = (HttpWebRequest)WebRequest.Create(oAuthRequest.RequestUrl);
+            gRequest.RequestUrl = baseUrl + accessUrl;
+            var auth = gRequest.GetAuthorizationHeader();
+            var request = (HttpWebRequest)WebRequest.Create(gRequest.RequestUrl);
 
-
+            //todo: add exception here if auth fails.
             request.Headers.Add("Authorization", auth);
             var response = (HttpWebResponse)request.GetResponse();
             var responseStream = response.GetResponseStream();
@@ -658,10 +567,10 @@ namespace SMEngine
                 switch (splitToken[0])
                 {
                     case "oauth_token":
-                        accesstoken = splitToken[1];
+                        envelope.token = splitToken[1];
                         break;
                     case "oauth_token_secret":
-                        accessTokenSecret = splitToken[1];
+                        envelope.tokenSecret = splitToken[1];
                         break;
                     default:
                         break;
@@ -679,17 +588,10 @@ namespace SMEngine
         }
         #endregion
 
-        //The following information was gathered by pulling info from the test app that came with the SmugMug API.
-        // static Token accessTok = new Token() { id = "8NH2CxKTCFjcPLGddGNVp4rqDz5ffzgV", Secret = "6ChgJLLcqzz8FgMMPZWZCN7THGmR3hGLFD2Z5jFmxp2vxtTzBJWHtZH7CQb7ZZJG" };
-        //  static Token accessTok = new Token() { id = null, Secret = null };
-
-
         private loginInfo _login;
         static Random r = new Random();
         public CSMEngine(bool doStart)
         {
-            
-            
             _settings = new CSettings();
             _imageQueue = new Queue<ImageSet>();
             _galleryTable = new System.Data.DataTable();
@@ -733,7 +635,7 @@ namespace SMEngine
             return true;
         }
         
-            public void saveConfiguration()
+        public void saveConfiguration()
         {
             saveGalleries();
             saveSettings();
@@ -1129,6 +1031,7 @@ namespace SMEngine
             
             try
             {
+                _loggedin = false;
                 if (api != null) return true;
                 api = AuthenticateUsingOAuth(envelope);
                 if (api == null)
@@ -1539,7 +1442,10 @@ namespace SMEngine
                     WebRequest request = WebRequest.Create(new Uri(URL, UriKind.Absolute));
 
                     request.Timeout = -1;
-                    HttpWebResponse response = (HttpWebResponse)request.GetResponse();
+                    try
+                    {
+                        HttpWebResponse response = (HttpWebResponse)request.GetResponse();
+                    
                     if (response.StatusCode != HttpStatusCode.OK)
                     {
                         throw new Exception("image not returned: " + URL);
@@ -1565,6 +1471,11 @@ namespace SMEngine
 
                     image.StreamSource = memoryStream;
                     image.EndInit();
+                    }
+                    catch (Exception ex)
+                    {
+                        return null;
+                    }
                 }
             }
 
