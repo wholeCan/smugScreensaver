@@ -135,8 +135,8 @@ namespace SMEngine
             //salty tokens
             var CONSUMERSECRET_SALTED_KEY = "SmugMugOAuthConsumerSecretSalted";
             var consumerTokenKey = "SmugMugOAuthConsumerTokenSalted";
-            envelope.consumerToken = Authenticator.Decrypt(fetchKey(CONSUMERSECRET_SALTED_KEY), salt);
-            envelope.consumerSecret = Authenticator.Decrypt(fetchKey(consumerTokenKey), salt);
+            envelope.consumerToken = Authenticator.Decrypt(fetchKey(consumerTokenKey), salt);
+            envelope.consumerSecret = Authenticator.Decrypt(fetchKey(CONSUMERSECRET_SALTED_KEY), salt);
 
             try
             {
