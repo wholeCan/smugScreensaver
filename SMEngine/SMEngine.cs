@@ -221,39 +221,14 @@ namespace SMEngine
             envelope.consumerToken = Authenticator.Decrypt(fetchKey(CONSUMERSECRET_SALTED_KEY), salt);
             envelope.consumerSecret = Authenticator.Decrypt(fetchKey(consumerTokenKey), salt);
 
-
-            //this part isn't really necessary, as we already have from app.config.
-            /*try
-            {
-                envelope.consumerSecret = Authenticator.Decrypt(
-                    ReadRegistryValue(CONSUMERSECRET, ""), salt
-                    );
-                envelope.consumerToken = Authenticator.Decrypt(
-                    ReadRegistryValue(CONSUMERTOKEN, ""), salt
-                    );
-            }
-            catch (Exception ex)
-            {
-                //token is either wrong, or missing - so return empty string.
-                envelope.consumerSecret = "";
-                envelope.consumerToken = "";
-            }
-            */
             try
             {
 
-                /*
-                   <add key="SmugMugOAuthAccessToken" value="8NH2CxKTCFjcPLGddGNVp4rqDz5ffzgV"/>
-	  <add key="SmugMugOAuthAccessTokenSecret" value="6ChgJLLcqzz8FgMMPZWZCN7THGmR3hGLFD2Z5jFmxp2vxtTzBJWHtZH7CQb7ZZJG"/>
-
-                 * */
-                envelope.token = ReadRegistryValue("token", ""); 
-                    //"8NH2CxKTCFjcPLGddGNVp4rqDz5ffzgV";
+                envelope.token = 
                     Authenticator.Decrypt(
                     ReadRegistryValue(ACCESSTOKEN, ""), salt
                     );
-                envelope.tokenSecret = ReadRegistryValue("value", "");
-                    //"6ChgJLLcqzz8FgMMPZWZCN7THGmR3hGLFD2Z5jFmxp2vxtTzBJWHtZH7CQb7ZZJG";
+                envelope.tokenSecret =
                     Authenticator.Decrypt(
                     ReadRegistryValue(ACCESSTOKENSECRET, ""), salt
                     );
@@ -264,21 +239,7 @@ namespace SMEngine
                 envelope.token = "";
                 envelope.tokenSecret = "";
             }
-
-
-            //todo: read from registry, but only after auth is built out.
-            //   envelope.token = fetchKey(ACCESSTOKEN);
-            //   envelope.tokenSecret = fetchKey(ACCESSTOKENSECRET);
-
-            //put them back into the registry.
-           // writeAuthTokens(envelope);
-
-            //token ends in dWn
-            //secret ends in 41e
-            //token ends in gV
-            //secret ends in ZJG
-            return envelope;  //return null to fetch from config
-            //return e; // return e if we're testing just storing internally.
+            return envelope;
         }
 
         private static SmugMugAPI AuthenticateUsingAnonymous()
@@ -326,13 +287,13 @@ namespace SMEngine
             // WriteRegistryValue(CONSUMERSECRET, Authenticator.Encrypt(envelope.consumerSecret, salt));
          //   if (envelope.token != "")
             {
-                //WriteRegistryValue(ACCESSTOKEN, Authenticator.Encrypt(envelope.token, salt));
-                WriteRegistryValue("token", envelope.token);
+                WriteRegistryValue(ACCESSTOKEN, Authenticator.Encrypt(envelope.token, salt));
+                //WriteRegistryValue("token", envelope.token);
             }
            // if (envelope.tokenSecret != "")
             {
-                //WriteRegistryValue(ACCESSTOKENSECRET, Authenticator.Encrypt(envelope.tokenSecret, salt));
-                WriteRegistryValue("value", envelope.tokenSecret);
+                WriteRegistryValue(ACCESSTOKENSECRET, Authenticator.Encrypt(envelope.tokenSecret, salt));
+                //WriteRegistryValue("value", envelope.tokenSecret);
             }
         }
         public static SmugMugAPI AuthenticateUsingOAuth(authEnvelope envelope)
