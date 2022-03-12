@@ -129,6 +129,9 @@ namespace SMEngine
 
             var envelope = new authEnvelope();
 
+            //todo: can I get build time variables from environment?
+            // todo: look into https://docs.microsoft.com/en-us/aspnet/core/security/app-secrets?view=aspnetcore-6.0&tabs=windows
+
             //salty tokens
             var CONSUMERSECRET_SALTED_KEY = "SmugMugOAuthConsumerSecretSalted";
             var consumerTokenKey = "SmugMugOAuthConsumerTokenSalted";
