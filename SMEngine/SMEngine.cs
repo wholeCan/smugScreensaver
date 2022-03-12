@@ -36,7 +36,7 @@ namespace SMEngine
        
 
 #if (DEBUG)
-        private int debug_limit = 5000;
+        private int debug_limit = 100;
 #else
         private int debug_limit = 5000;
 #endif
