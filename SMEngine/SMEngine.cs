@@ -282,19 +282,8 @@ namespace SMEngine
 
         public static void writeAuthTokens(authEnvelope envelope)
         {
-            //these 2 aren't really needed in registry.
-            // WriteRegistryValue(CONSUMERTOKEN, Authenticator.Encrypt(envelope.consumerToken, salt));
-            // WriteRegistryValue(CONSUMERSECRET, Authenticator.Encrypt(envelope.consumerSecret, salt));
-         //   if (envelope.token != "")
-            {
-                WriteRegistryValue(ACCESSTOKEN, Authenticator.Encrypt(envelope.token, salt));
-                //WriteRegistryValue("token", envelope.token);
-            }
-           // if (envelope.tokenSecret != "")
-            {
-                WriteRegistryValue(ACCESSTOKENSECRET, Authenticator.Encrypt(envelope.tokenSecret, salt));
-                //WriteRegistryValue("value", envelope.tokenSecret);
-            }
+           WriteRegistryValue(ACCESSTOKEN, Authenticator.Encrypt(envelope.token, salt));
+           WriteRegistryValue(ACCESSTOKENSECRET, Authenticator.Encrypt(envelope.tokenSecret, salt));
         }
         public static SmugMugAPI AuthenticateUsingOAuth(authEnvelope envelope)
         {
