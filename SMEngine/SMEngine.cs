@@ -138,14 +138,8 @@ namespace SMEngine
             try
             {
                 //can't encrypt this, as the current authentication is per machine.
-                envelope.consumerToken = //Authenticator.Decrypt(
-                    fetchKey(consumerTokenKey)
-                    //, salt)
-                    ;
-                envelope.consumerSecret = //Authenticator.Decrypt(
-                                          fetchKey(CONSUMERSECRET_SALTED_KEY)
-                                          //, salt)
-                                          ;
+                envelope.consumerToken = Constants.apiToken; //fetchKey(consumerTokenKey);
+                envelope.consumerSecret = Constants.apiSecret;//fetchKey(CONSUMERSECRET_SALTED_KEY);
             }
              
             catch (Exception ex)

@@ -107,6 +107,7 @@
   <ItemGroup>
     <Compile Include="Authenticator.cs" />
     <Compile Include="authEnvelope.cs" />
+    <Compile Include="Constants.cs" />
     <Compile Include="CSettings.cs" />
     <Compile Include="GalleryEntry.cs" />
     <Compile Include="ImageInfo.cs" />
