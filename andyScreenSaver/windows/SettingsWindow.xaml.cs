@@ -49,21 +49,8 @@ namespace andyScreenSaver
                 comboBox3.SelectedIndex = 2;
 
                 loadLoginInfo();
-                bool connected = await connect();
-                if (_engine.isConnected())
-                {
-                   // Thread.Sleep(10);
-                    authenticateApp();
-                    //start up// new process to authenticate.
-                  //  authenticateApp();
-                    //if (!connect())
-                    //  MessageBox.Show("Error connecting, try again");
-                }
-                else
-                {
-                //    button1.Content = "Validated";
-                //    button1.IsEnabled = false;
-                }
+                await connect();
+               
 
             }));
 
@@ -106,13 +93,8 @@ namespace andyScreenSaver
         /// <param name="e"></param>
         private void btnDefaults_Click(object sender, RoutedEventArgs e)
         {
-            // settings.SetDefaults();
             _engine._galleryTable.Clear();
             _engine.setSettings(new CSettings());
-            //tLogin.Text = "";
-            //tPassword.Password = "";
-
-            //SetSliders();
         }
 
 
@@ -120,9 +102,6 @@ namespace andyScreenSaver
         private CSMEngine _engine;
         private void loadLoginInfo()
         {
-           // loginInfo _login = _engine.getLogin();
-
-
             comboBox3.SelectedIndex = _engine.settings.quality;
 
             gridHeight.Text = _engine.settings.gridHeight.ToString();
@@ -149,47 +128,7 @@ namespace andyScreenSaver
 
             cbShowInfo.IsChecked = _engine.settings.showInfo;
         }
-
-
-        //this fires up the old authenticator - no longer needed!
-        private void authenticateApp()
-        {
-            return;
-          //  var isLoggedIn = _engine.checkLogin(_engine.getCode());
-          //  if (!isLoggedIn)
-            {
-                var env = _engine.getCode();
-
-            //    _engine.AuthenticateUsingOauthNewConnection_part1(env);
-                //do we want to show the message box here?  no, this is dead code.
-
-            }
-
-            // Prepare the process to run
-            ProcessStartInfo start = new ProcessStartInfo();
-            // Enter in the command line arguments, everything you would enter after the executable name itself
-            start.Arguments = "";
-            // Enter the executable to run, including the complete path
-            start.FileName = ConfigurationSettings.AppSettings["ConfigApp"];  //@"C:\Users\aholk\Documents\PROJECTS\2018Upgrade\screenSaver\screenSaver\setupApp\bin\Debug\setupApp.exe";
-
-            // Do you want to show a console window?
-            start.WindowStyle = ProcessWindowStyle.Normal;
-            start.CreateNoWindow = false;
-            int exitCode;
-
-
-            // Run the external process & wait for it to finish
-            using (Process proc = Process.Start(start))
-            {
-                proc.WaitForExit();
-
-                // Retrieve the app's exit code
-                exitCode = proc.ExitCode;
-
-            }
-
-
-        }
+       
         private async Task<bool> connect()
         {
             bool success = false;
@@ -203,17 +142,31 @@ namespace andyScreenSaver
                 success = _engine.login(e);
                 if (!success)
                 {
-                    var p1 = _engine.AuthenticateUsingOauthNewConnection_part1(e);
-                    var window = new Window2();
-                    window.ShowDialog();
-                    var stringEntered = window.getCode();
-
-                    success = _engine.AuthenticateUsingOauthNewConnection_part2(p1, stringEntered);
-                    if (!success)
+                    try
                     {
-                        throw new Exception("Could not login successfully!");
+                        var p1 = _engine.AuthenticateUsingOauthNewConnection_part1(e);
+                        var window = new Window2();
+                        window.ShowDialog();
+                        var stringEntered = window.getCode();
+
+                        success = _engine.AuthenticateUsingOauthNewConnection_part2(p1, stringEntered);
+                        if (!success)
+                        {
+                            throw new Exception("Could not login successfully!");
+                        }
                     }
-                    //todo... finsh calling AuthenticateUsingOauthNewConnection_part1 and AuthenticateUsingOauthNewConnection_part2
+                    catch (Exception ex)
+                    {
+                        if (ex.Message == "no browser")
+                        {//todo: can we do this more gracefully?
+                            MessageBox.Show("No browser set!");
+                            Close();
+                        }
+                        else
+                        {
+                            MessageBox.Show("Oh no, something failed! " + ex.Message);
+                        }
+                    }
                 }
 
                 //}
@@ -232,8 +185,6 @@ namespace andyScreenSaver
                     String[] Cats = _engine.getCategoriesAsync();
                     comboBox1.Items.Clear();
                     comboBox2.Items.Clear();
-                   // throw new NotImplementedException();
-                    //todo: removed this, but don't really care.
                     foreach (String s in Cats)
                     {
                         if (_engine.checkCategoryForAlbums(s))
@@ -252,6 +203,7 @@ namespace andyScreenSaver
             }
             catch (Exception ex)
             {
+                MessageBox.Show(ex.Message);
                 Console.WriteLine(ex.Message);
             }
             finally

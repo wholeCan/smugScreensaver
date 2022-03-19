@@ -133,11 +133,25 @@ namespace SMEngine
             // todo: look into https://docs.microsoft.com/en-us/aspnet/core/security/app-secrets?view=aspnetcore-6.0&tabs=windows
 
             //salty tokens
-            var CONSUMERSECRET_SALTED_KEY = "SmugMugOAuthConsumerSecretSalted";
-            var consumerTokenKey = "SmugMugOAuthConsumerTokenSalted";
-            envelope.consumerToken = Authenticator.Decrypt(fetchKey(consumerTokenKey), salt);
-            envelope.consumerSecret = Authenticator.Decrypt(fetchKey(CONSUMERSECRET_SALTED_KEY), salt);
-
+            var CONSUMERSECRET_SALTED_KEY = "SmugMugOAuthConsumerSecret";
+            var consumerTokenKey = "SmugMugOAuthConsumerToken";
+            try
+            {
+                //can't encrypt this, as the current authentication is per machine.
+                envelope.consumerToken = //Authenticator.Decrypt(
+                    fetchKey(consumerTokenKey)
+                    //, salt)
+                    ;
+                envelope.consumerSecret = //Authenticator.Decrypt(
+                                          fetchKey(CONSUMERSECRET_SALTED_KEY)
+                                          //, salt)
+                                          ;
+            }
+             
+            catch (Exception ex)
+            {
+                throw new ApplicationException("invalid token, sorry you lose.");
+            }
             try
             {
 
@@ -394,8 +408,25 @@ namespace SMEngine
                 UseShellExecute = true,
                 Verb = "open"
             };
-            System.Diagnostics.Process.Start(ps);
+            try {
+                System.Diagnostics.Process.Start(ps);
+            }
+            catch (System.ComponentModel.Win32Exception noBrowser)
+            {
+                if (noBrowser.ErrorCode == -2147467259)
+                {
+                    throw new Exception("no browser");
+                 //   MessageBox.Show(noBrowser.Message);
+                }
+            }
+            catch(Exception e)
+            {
+               
+                logMsg("exception: " + e.Message);
+                throw e;
+            }
             #endregion
+
 
             return new authEnvelope("", "", requestToken, requestTokenSecret);
         }
@@ -1038,7 +1069,14 @@ namespace SMEngine
         }
         private void start()
         {
-            _envelope = getCode();
+            try
+            {
+                _envelope = getCode();
+            }
+            catch (Exception ex)
+            {
+                return;
+            }
             if (tAlbumLoad == null)
             {
                 tsAlbumLoad = new ThreadStart(loadAllImages);
