@@ -20,4 +20,4 @@ Started in 2014, this code base is a hobby to build a screensaver based on a smu
   3. r:  reload the library.  useful if you want to pull in new galleries without restarting the whole app.
 
 
-Pre-built installer: [LINK](https://github.com/wholeCan/smugScreensaver/blob/5b7fce5334c7a07f4cad62c01d6a6004045e19c1/nsisInstaller/andysScreensaverInstaller_small.exe)
+Pre-built installer: [LINK](https://github.com/wholeCan/smugScreensaver/raw/5b7fce5334c7a07f4cad62c01d6a6004045e19c1/nsisInstaller/andysScreensaverInstaller_small.exe)
