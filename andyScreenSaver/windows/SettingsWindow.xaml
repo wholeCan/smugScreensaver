@@ -9,7 +9,6 @@
     <Grid Height="531" Width="458">
         <Button Height="23" Margin="0,0,31,0" Name="btnClose" VerticalAlignment="Bottom" Click="btnClose_Click" HorizontalAlignment="Right" Width="76">OK</Button>
         <Button Height="23" HorizontalAlignment="Left" Margin="19,0,0,0" Name="btnDefaults" VerticalAlignment="Bottom" Width="76" Click="btnDefaults_Click">Defaults</Button>
-        <Button Content="Connect" Height="28" HorizontalAlignment="Left" Margin="164,82,0,0" Name="button1" VerticalAlignment="Top" Width="66" Click="button1_Click" />
         <ComboBox Height="23" HorizontalAlignment="Left" Margin="12,174,0,0" Name="comboBox3" VerticalAlignment="Top" Width="120" />
         <Slider Height="21" HorizontalAlignment="Left" Margin="12,228,0,0" Name="slider1" VerticalAlignment="Top" Width="137" DataContext="{Binding}" Minimum="1" Maximum="60" Interval="1" />
         <TextBox Height="22" HorizontalAlignment="Left" Margin="103,246,0,0" Name="textBox1" VerticalAlignment="Top" Width="46" IsReadOnly="True" Text="{Binding ElementName=slider1, Path=Value, Converter={StaticResource  RoundingConverter}}"/>
@@ -46,5 +45,6 @@
         <TextBox HorizontalAlignment="Left" Name="BorderThickness" Height="23" Margin="215,505,0,0" TextWrapping="Wrap" Text="0" VerticalAlignment="Top" Width="47"/>
         <Label Content="border thickness" HorizontalAlignment="Left" Margin="112,505,0,0" VerticalAlignment="Top"/>
         <Button Content="Apply" HorizontalAlignment="Left" Margin="352,483,0,0" VerticalAlignment="Top" Width="75" Click="Button_Click_2"/>
+        <Button Content="Logout" HorizontalAlignment="Left" Height="41" Margin="315,31,0,0" VerticalAlignment="Top" Width="112" AutomationProperties.Name="logoutButton" Click="Button_Click_3"/>
     </Grid>
 </Window>

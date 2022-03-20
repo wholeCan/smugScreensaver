@@ -43,7 +43,7 @@ namespace andyScreenSaver
             myHeight = _myHeight;
             myWidth = _myWidth;
         }
-        private SMEngine.CSMEngine _engine = null;
+        private SMEngine.CSMEngine _engine;
         ThreadStart ts = null;
         Thread t = null;
         static bool running = true;
@@ -449,7 +449,16 @@ namespace andyScreenSaver
 
         private void loginSmugmug()
         {
-            _engine.login(_engine.getCode());
+            try
+            {
+                _engine.login(_engine.getCode());
+            }
+            catch (Exception e)
+            {
+                MessageBox.Show("Invalid login, shutting down!");
+                
+                return;
+            }
             ts = new ThreadStart(run);
             t = new Thread(ts);
             t.IsBackground = true;
@@ -482,6 +491,8 @@ namespace andyScreenSaver
                     {
                         LogError($"Invalid connection {ex.Message}");
                     }
+
+                    //todo how to shut down if failed?
                 }
             }
         }

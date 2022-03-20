@@ -64,7 +64,12 @@ Section "Install Application" ;No components page, name is not important
 
   
   ; Put file there
-File /r "C:\Users\aholk\dev\smugScreensaver\andyScreenSaver\bin\Release\*"
+  	File /r "C:\Users\aholk\dev\smugScreensaver\andyScreenSaver\bin\Release\*.exe"
+	File /r "C:\Users\aholk\dev\smugScreensaver\andyScreenSaver\bin\Release\*.dll"
+	File /r "C:\Users\aholk\dev\smugScreensaver\andyScreenSaver\bin\Release\*.config"
+	File /r "C:\Users\aholk\dev\smugScreensaver\andyScreenSaver\bin\Release\*.xml"
+
+; File /r "C:\Users\aholk\dev\smugScreensaver\andyScreenSaver\bin\Release\*"
 ;File "C:\Users\aholk\dev\smugScreensaver\andyScreenSaver\bin\Release\app.config"
 ;File "C:\Users\aholk\dev\smugScreensaver\andyScreenSaver\bin\Release\smUtility.pdb"
   
@@ -84,7 +89,8 @@ Section "install screensaver"
 
 	File .\manual_screensaver_install.bat
 
-	execwait $INSTDIR\manual_screensaver_install.bat
+	; no longer install screen saver stuff
+	; execwait $INSTDIR\manual_screensaver_install.bat
 	delete .\manual_screensaver_install.bat
 
 SectionEnd

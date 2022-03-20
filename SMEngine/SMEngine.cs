@@ -8,8 +8,6 @@ using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Net;
-using System.Security.Cryptography;
-using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Windows.Media.Imaging;
@@ -17,78 +15,6 @@ using System.Windows.Media.Imaging;
 
 namespace SMEngine
 {
-
-    public class authEnvelope
-    {
-        public string consumerToken;
-        public string consumerSecret;
-        public string token;
-        public string tokenSecret;
-    }
-    /// <summary>
-    /// Originally written -- 4/2014
-    /// 
-    /// revision 5/8/2018:  Switched to Smugmug api 1.3 by upgrading to nuget version of SmugMugModel
-    /// SmugMug API is now available from nuget
-    /// 
-    /// 2/26/2022: major refactor to upgrade to smugmug 2.0 api
-
-    //    Following along source from:
-    //https://github.com/AlexGhiondea/SmugMug.NET/blob/master/nuGet/SmugMugModel.v2.nuspec
-
-    //Need to better understand the api
-    //https://api.smugmug.com/api/v2/doc/pages/concepts.html
-
-    ///
-    /// 2018 feature enhancements:
-    /// put a timeout period, stop pulling images after a couple hours.  restart after 24 hours.
-    /// </summary>
-
-    //is this class needeD? maybe not
-    public class ImageInfo
-    {
-        string key;
-        string caption;
-        string name;
-    }
-
-    /// <summary>
-    /// Interaction logic for Window1.xaml
-    /// </summary>
-    /// 
-    public class TaskScheduler
-    {
-
-        private List<Timer> timers = new List<Timer>();
-        public TaskScheduler() { }
-        private static TaskScheduler _instance;
-        public static TaskScheduler Instance => _instance ?? (_instance = new TaskScheduler());
-
-
-
-        public void ScheduleTask(int hour, int min, double intervalInHour, Action task)
-        {
-            DateTime now = DateTime.Now;
-            DateTime firstRun = new DateTime(now.Year, now.Month, now.Day, hour, min, 0, 0);
-            if (now > firstRun)
-            {
-                firstRun = firstRun.AddDays(1);
-            }
-
-            TimeSpan timeToGo = firstRun - now;
-            if (timeToGo <= TimeSpan.Zero)
-            {
-                timeToGo = TimeSpan.Zero;
-            }
-
-            var timer = new Timer(x =>
-            {
-                task.Invoke();
-            }, null, timeToGo, TimeSpan.FromHours(intervalInHour));
-
-            timers.Add(timer);
-        }
-    }
 
     public class CSMEngine
     {
@@ -110,9 +36,9 @@ namespace SMEngine
        
 
 #if (DEBUG)
-        private int debug_limit = 5000;
+        private int debug_limit = 100;
 #else
-        private int debug_limit = 1000;
+        private int debug_limit = 5000;
 #endif
 
 
@@ -123,7 +49,6 @@ namespace SMEngine
         #region NEW AUTH STUFF 2022
 
         const string CONSUMERTOKEN = "SmugMugOAuthConsumerToken";
-        const string CONSUMERSECRET = "SmugMugOAuthConsumerSecret";
         const string ACCESSTOKEN = "SmugmugOauthAccessToken";
         const string ACCESSTOKENSECRET = "SmugmugOauthAccessTokenSecret";
 
@@ -204,31 +129,42 @@ namespace SMEngine
 
             var envelope = new authEnvelope();
 
+            //todo: can I get build time variables from environment?
+            // todo: look into https://docs.microsoft.com/en-us/aspnet/core/security/app-secrets?view=aspnetcore-6.0&tabs=windows
+
             //salty tokens
-            var CONSUMERSECRET_SALTED_KEY = "SmugMugOAuthConsumerSecretSalted";
-            var consumerTokenKey = "SmugMugOAuthConsumerTokenSalted";
-            envelope.consumerToken = Authenticator.Decrypt(fetchKey(CONSUMERSECRET_SALTED_KEY), salt);
-            envelope.consumerSecret = Authenticator.Decrypt(fetchKey(consumerTokenKey), salt);
+            var CONSUMERSECRET_SALTED_KEY = "SmugMugOAuthConsumerSecret";
+            var consumerTokenKey = "SmugMugOAuthConsumerToken";
+            try
+            {
+                //can't encrypt this, as the current authentication is per machine.
+                envelope.consumerToken = Constants.apiToken; //fetchKey(consumerTokenKey);
+                envelope.consumerSecret = Constants.apiSecret;//fetchKey(CONSUMERSECRET_SALTED_KEY);
+            }
+             
+            catch (Exception ex)
+            {
+                throw new ApplicationException("invalid token, sorry you lose.");
+            }
+            try
+            {
 
-
-            //this part isn't really necessary, as we already have from app.config.
-            /*
-            envelope.consumerSecret = Authenticator.Decrypt(
-                ReadRegistryValue(CONSUMERSECRET, consumerSecret), salt
-                );
-            envelope.consumerToken = Authenticator.Decrypt(
-                ReadRegistryValue(CONSUMERTOKEN, consumerToken), salt
-                ); 
-            */
-            //todo: read from registry, but only after auth is built out.
-            envelope.token = fetchKey(ACCESSTOKEN);
-            envelope.tokenSecret = fetchKey(ACCESSTOKENSECRET);
-
-            //put them back into the registry.
-            writeAuthTokens(envelope);
-
-            return envelope;  //return null to fetch from config
-            //return e; // return e if we're testing just storing internally.
+                envelope.token = 
+                    Authenticator.Decrypt(
+                    ReadRegistryValue(ACCESSTOKEN, ""), salt
+                    );
+                envelope.tokenSecret =
+                    Authenticator.Decrypt(
+                    ReadRegistryValue(ACCESSTOKENSECRET, ""), salt
+                    );
+            }
+            catch (Exception ex)
+            {
+                //token is either wrong, or missing - so return empty string.
+                envelope.token = "";
+                envelope.tokenSecret = "";
+            }
+            return envelope;
         }
 
         private static SmugMugAPI AuthenticateUsingAnonymous()
@@ -271,25 +207,22 @@ namespace SMEngine
 
         public static void writeAuthTokens(authEnvelope envelope)
         {
-            //these 2 aren't really needed in registry.
-           // WriteRegistryValue(CONSUMERTOKEN, Authenticator.Encrypt(envelope.consumerToken, salt));
-           // WriteRegistryValue(CONSUMERSECRET, Authenticator.Encrypt(envelope.consumerSecret, salt));
-            WriteRegistryValue(ACCESSTOKEN, Authenticator.Encrypt(envelope.token, salt));
-            WriteRegistryValue(ACCESSTOKENSECRET, Authenticator.Encrypt(envelope.tokenSecret, salt));
+           WriteRegistryValue(ACCESSTOKEN, Authenticator.Encrypt(envelope.token, salt));
+           WriteRegistryValue(ACCESSTOKENSECRET, Authenticator.Encrypt(envelope.tokenSecret, salt));
         }
         public static SmugMugAPI AuthenticateUsingOAuth(authEnvelope envelope)
         {
            
 
             OAuthCredentials oAuthCredentials = null;
-            if (envelope.token!= null)
-            {//todo: right now this is obviously hardcoded
+            if (envelope.token!= null && envelope.token != "")
+            {
                 oAuthCredentials = new OAuthCredentials(envelope.consumerToken, envelope.consumerSecret, 
                     envelope.token, envelope.tokenSecret);
             }
             else
             {
-                oAuthCredentials = GenerateOAuthAccessToken(envelope.consumerToken, envelope.consumerSecret);
+                return null;
             }
 
             //Connect to SmugMug using oAuth
@@ -297,8 +230,38 @@ namespace SMEngine
             return apiOAuth;
         }
 
+        public authEnvelope AuthenticateUsingOauthNewConnection_part1(authEnvelope envelope)
+        {
+            var tokens = GenerateOAuthAccessToken_UI_PART1(envelope.consumerToken, envelope.consumerSecret);
+            tokens.consumerToken = envelope.consumerToken;
+            tokens.consumerSecret = envelope.consumerSecret;
+
+            return tokens;
+        }
+        public bool AuthenticateUsingOauthNewConnection_part2(authEnvelope tokens, string six)
+        { 
+            //attach debugger here?
+
+            var token = GenerateOAuthAccessToken_UI_PART2(tokens, six);
+
+            tokens.token = token.AccessToken;
+            tokens.tokenSecret = token.AccessTokenSecret;
+            writeAuthTokens(tokens);
+            SmugMugAPI apiOAuth = new SmugMugAPI(LoginType.OAuth, token);
+            api = apiOAuth;
+            _loggedin = true;
+            return true;
+        }
+
+        public void  logout()
+        {
+            var a = new authEnvelope("","","","");
+            writeAuthTokens(a);
+        }
+        //static OAuth.OAuthRequest gRequest;
         private static OAuthCredentials GenerateOAuthAccessToken(string consumerKey, string secret)
         {
+            throw new NotImplementedException("this is for console use only!");
             string baseUrl = "http://api.smugmug.com";
             string requestUrl = "/services/oauth/1.0a/getRequestToken";
             string authorizeUrl = "/services/oauth/1.0a/authorize";
@@ -350,6 +313,9 @@ namespace SMEngine
             };
             System.Diagnostics.Process.Start(ps);
 
+            //todo: once we fire off the web request, we should get the code from the wpf form.
+            // then we can continue the rest of the code.
+
             Console.WriteLine("Enter the six-digit code: ");
             string verifier = Console.ReadLine();
             #endregion
@@ -359,6 +325,8 @@ namespace SMEngine
             oAuthRequest.RequestUrl = baseUrl + accessUrl;
             auth = oAuthRequest.GetAuthorizationHeader();
             request = (HttpWebRequest)WebRequest.Create(oAuthRequest.RequestUrl);
+
+            
             request.Headers.Add("Authorization", auth);
             response = (HttpWebResponse)request.GetResponse();
             responseStream = response.GetResponseStream();
@@ -386,19 +354,136 @@ namespace SMEngine
             return new OAuthCredentials(consumerKey, secret, accesstoken, accessTokenSecret);
         }
 
+
+        //fire off the web request to authenticate
+        private static authEnvelope GenerateOAuthAccessToken_UI_PART1(string consumerKey, string secret)
+        {
+            string baseUrl = "http://api.smugmug.com";
+            string requestUrl = "/services/oauth/1.0a/getRequestToken";
+            string authorizeUrl = "/services/oauth/1.0a/authorize";
+            string requestToken = null;
+            string requestTokenSecret = null;
+
+            #region Request Token
+            var gRequest = OAuth.OAuthRequest.ForRequestToken(consumerKey, secret, "oob");
+
+            gRequest.RequestUrl = baseUrl + requestUrl;
+            string auth = gRequest.GetAuthorizationHeader();
+
+            HttpWebRequest request = (HttpWebRequest)WebRequest.Create(gRequest.RequestUrl);
+            request.Headers.Add("Authorization", auth);
+            HttpWebResponse response = (HttpWebResponse)request.GetResponse();
+            Stream responseStream = response.GetResponseStream();
+            StreamReader readStream = new StreamReader(responseStream, System.Text.Encoding.UTF8);
+            string result = readStream.ReadToEnd();
+            foreach (string token in result.Split('&'))
+            {
+                string[] splitToken = token.Split('=');
+
+                switch (splitToken[0])
+                {
+                    case "oauth_token":
+                        requestToken = splitToken[1];
+                        break;
+                    case "oauth_token_secret":
+                        requestTokenSecret = splitToken[1];
+                        break;
+                    default:
+                        break;
+                }
+            }
+            response.Close();
+            #endregion
+
+            #region Authorization
+            string authorizationUrl = String.Format("{0}{1}?mode=auth_req_token&oauth_token={2}&Access=Full&Permissions=Modify", baseUrl, authorizeUrl, requestToken);
+            var ps = new ProcessStartInfo(authorizationUrl)
+            {
+                UseShellExecute = true,
+                Verb = "open"
+            };
+            try {
+                System.Diagnostics.Process.Start(ps);
+            }
+            catch (System.ComponentModel.Win32Exception noBrowser)
+            {
+                if (noBrowser.ErrorCode == -2147467259)
+                {
+                    throw new Exception("no browser");
+                 //   MessageBox.Show(noBrowser.Message);
+                }
+            }
+            catch(Exception e)
+            {
+               
+                logMsg("exception: " + e.Message);
+                throw e;
+            }
+            #endregion
+
+
+            return new authEnvelope("", "", requestToken, requestTokenSecret);
+        }
+
+        //assuming part 1 fired, input the sixDigitCode - and complete authentication
+        private static OAuthCredentials GenerateOAuthAccessToken_UI_PART2(authEnvelope envelope, string sixDigitCode)
+        {
+            string baseUrl = "http://api.smugmug.com";
+            string accessUrl = "/services/oauth/1.0a/getAccessToken";
+
+
+            string verifier = sixDigitCode;
+
+
+            #region Access Token
+            var gRequest = OAuth.OAuthRequest.ForAccessToken(
+                envelope.consumerToken, 
+                envelope.consumerSecret, 
+                envelope.token,
+                envelope.tokenSecret, 
+                verifier);
+            gRequest.RequestUrl = baseUrl + accessUrl;
+            var auth = gRequest.GetAuthorizationHeader();
+            var request = (HttpWebRequest)WebRequest.Create(gRequest.RequestUrl);
+
+            //todo: add exception here if auth fails.
+            request.Headers.Add("Authorization", auth);
+            var response = (HttpWebResponse)request.GetResponse();
+            var responseStream = response.GetResponseStream();
+            var readStream = new StreamReader(responseStream, System.Text.Encoding.UTF8);
+            var result = readStream.ReadToEnd();
+            foreach (string token in result.Split('&'))
+            {
+                string[] splitToken = token.Split('=');
+
+                switch (splitToken[0])
+                {
+                    case "oauth_token":
+                        envelope.token = splitToken[1];
+                        break;
+                    case "oauth_token_secret":
+                        envelope.tokenSecret = splitToken[1];
+                        break;
+                    default:
+                        break;
+                }
+            }
+            response.Close();
+            #endregion
+
+            return new OAuthCredentials(
+                envelope.consumerToken, 
+                envelope.consumerSecret, 
+                envelope.token, 
+                envelope.tokenSecret
+                );
+        }
         #endregion
-
-        //The following information was gathered by pulling info from the test app that came with the SmugMug API.
-        // static Token accessTok = new Token() { id = "8NH2CxKTCFjcPLGddGNVp4rqDz5ffzgV", Secret = "6ChgJLLcqzz8FgMMPZWZCN7THGmR3hGLFD2Z5jFmxp2vxtTzBJWHtZH7CQb7ZZJG" };
-      //  static Token accessTok = new Token() { id = null, Secret = null };
-
 
         private loginInfo _login;
         static Random r = new Random();
         public CSMEngine(bool doStart)
         {
-            
-            
             _settings = new CSettings();
             _imageQueue = new Queue<ImageSet>();
             _galleryTable = new System.Data.DataTable();
@@ -442,7 +527,7 @@ namespace SMEngine
             return true;
         }
         
-            public void saveConfiguration()
+        public void saveConfiguration()
         {
             saveGalleries();
             saveSettings();
@@ -457,21 +542,29 @@ namespace SMEngine
 
         public static bool WriteRegistryValue(string KeyName, object Value)
         {
+            if (Value == null)
+                return false;
             try
             {
                 // Setting
-                RegistryKey rk = RegistryKey.OpenBaseKey(RegistryHive.CurrentUser, RegistryView.Default); ;
-                // I have to use CreateSubKey 
                 String subKey = "SOFTWARE\\andysScreensaver\\login";
-                // (create or open it if already exits), 
-                // 'cause OpenSubKey open a subKey as read-only
-                var sk1 = rk.CreateSubKey(subKey);
-                // Save the value
-                sk1.SetValue(KeyName.ToUpper(), Value);
+                using (RegistryKey rk = RegistryKey.OpenBaseKey(RegistryHive.CurrentUser, RegistryView.Default))
+                {
+                    using (var sk1 = rk.CreateSubKey(subKey))
+                    {
+                        // I have to use CreateSubKey 
 
-                sk1.Close();
-                rk.Close();
-                return true;
+                        // (create or open it if already exits), 
+                        // 'cause OpenSubKey open a subKey as read-only
+
+                        // Save the value
+                        sk1.SetValue(KeyName.ToUpper(), Value);
+
+                        sk1.Close();
+                        rk.Close();
+                        return true;
+                    }
+                }
             }
             catch (Exception e)
             {
@@ -762,8 +855,8 @@ namespace SMEngine
         private bool _loggedin = false;
         public bool checkLogin(authEnvelope e)
         {
-            if (!_loggedin)
-                login(e);
+            //if (!_loggedin)
+                //login(e);
 
             return _loggedin;
         }
@@ -820,14 +913,21 @@ namespace SMEngine
             running = false;
         }
         
+        public bool isConnected()
+        {
+            return _loggedin;
+        }
         public bool login(authEnvelope envelope)
         {
             _envelope = envelope;
             
             try
             {
+                _loggedin = false;
                 if (api != null) return true;
                 api = AuthenticateUsingOAuth(envelope);
+                if (api == null)
+                    return false;
                // loadAlbums();
                 _loggedin = true; // used for thread control.
                 //note: the old login would also load albums and load the user, it's not clear we want to do this yet.
@@ -963,7 +1063,14 @@ namespace SMEngine
         }
         private void start()
         {
-            _envelope = getCode();
+            try
+            {
+                _envelope = getCode();
+            }
+            catch (Exception ex)
+            {
+                return;
+            }
             if (tAlbumLoad == null)
             {
                 tsAlbumLoad = new ThreadStart(loadAllImages);
@@ -1234,7 +1341,10 @@ namespace SMEngine
                     WebRequest request = WebRequest.Create(new Uri(URL, UriKind.Absolute));
 
                     request.Timeout = -1;
-                    HttpWebResponse response = (HttpWebResponse)request.GetResponse();
+                    try
+                    {
+                        HttpWebResponse response = (HttpWebResponse)request.GetResponse();
+                    
                     if (response.StatusCode != HttpStatusCode.OK)
                     {
                         throw new Exception("image not returned: " + URL);
@@ -1260,6 +1370,11 @@ namespace SMEngine
 
                     image.StreamSource = memoryStream;
                     image.EndInit();
+                    }
+                    catch (Exception ex)
+                    {
+                        return null;
+                    }
                 }
             }
 
@@ -1480,6 +1595,10 @@ namespace SMEngine
             _allAlbums = new List<Album>();
             try
             {
+                while (_loggedin == false)
+                {// I don't think I really want to do this. what if running app, we would probably want to start up config.
+                    Thread.Sleep(100); //waiting for login to complete.
+                }
                 if (checkLogin(_envelope))
                 {
                     isLoadingAlbums = true;
@@ -1645,63 +1764,6 @@ namespace SMEngine
             exceptionsRaised++;
             if (fireException != null)
                 fireException(msg);
-        }
-    }
-
-
-    public static class Authenticator
-    {
-        static public string Encrypt(string password, int salt)
-        {
-            var passwordBytes = Encoding.Unicode.GetBytes(password);
-            var saltBytes = Encoding.Unicode.GetBytes(salt.ToString());
-
-            var cipherBytes = ProtectedData.Protect(passwordBytes, saltBytes, DataProtectionScope.CurrentUser);
-
-            return Convert.ToBase64String(cipherBytes);
-        }
-
-        static public string Decrypt(string cipher, int salt)
-        {
-            var cipherBytes = Convert.FromBase64String(cipher);
-            var saltBytes = Encoding.Unicode.GetBytes(salt.ToString());
-
-            var passwordBytes = ProtectedData.Unprotect(cipherBytes, saltBytes, DataProtectionScope.CurrentUser);
-
-            return Encoding.Unicode.GetString(passwordBytes);
-        }
-    }
-
-
-    public class loginInfo
-    {
-        public String login;
-        public String password;
-    }
-    public class GalleryEntry
-    {
-        public String category;
-        public String gallery;
-    }
-
-    public class CSettings
-    {
-        public bool load_all;
-        public int quality;
-        public int speed_s;
-        public bool showInfo;
-        public int gridWidth;
-        public int gridHeight;
-        public int borderThickness;
-        public CSettings()
-        {
-            quality = 2;
-            speed_s = 6;
-            load_all = false;
-            showInfo = true;
-            gridWidth = 5;
-            gridHeight = 4;
-            borderThickness = 0;
         }
     }
 
