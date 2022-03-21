@@ -30,7 +30,7 @@ namespace andyScreenSaver
         }
 
         private BitmapImage Bitmap2BitmapImage(System.Drawing.Bitmap bitmap)
-        {//copied from main, experimental.
+        {
             BitmapImage bitmapImage = null;
             try
             {
@@ -74,9 +74,7 @@ namespace andyScreenSaver
             SMEngine.CSMEngine.ImageSet s = new SMEngine.CSMEngine.ImageSet();
             this.Dispatcher.Invoke(System.Windows.Threading.DispatcherPriority.Normal, new Action(delegate()
                 {
-                    //System.Drawing.Bitmap bmyImage = null;
-
-                    Bitmap bmyImage = s.b;// _engine.getImage();
+                    Bitmap bmyImage = s.b;
 
                     if (bmyImage != null)
                     {
@@ -86,7 +84,7 @@ namespace andyScreenSaver
                         int rIndex = new Random().Next(beginIndex, maxTotalCells);
                         int randWidth = rIndex % gridWidth;
                         int randHeight = rIndex / gridWidth;
-                        while (lm.isInList(new Tuple<int, int>(randWidth, randHeight)) /*&& maxTotalCells > maxCtr++*/)
+                        while (lm.isInList(new Tuple<int, int>(randWidth, randHeight)))
                         {
                             rIndex = new Random().Next(beginIndex, maxTotalCells);
                             randWidth = rIndex % gridWidth;

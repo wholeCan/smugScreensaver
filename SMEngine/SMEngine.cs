@@ -41,8 +41,6 @@ namespace SMEngine
         private int debug_limit = 5000;
 #endif
 
-
-
         private authEnvelope _envelope;
         private int exceptionsRaised = 0;
 
@@ -586,8 +584,6 @@ namespace SMEngine
                     // If the RegistrySubKey doesn't exist -> (null)
                     if (sk1 == null)
                     {
-                        // sk1.Close();
-                        //rk.Close();
                         return defValue;
                     }
                     else
@@ -770,20 +766,6 @@ namespace SMEngine
                 gettingCategories = true;
                 throw new NotImplementedException();
             }
-                /*
-                if (_user != null)
-                {
-                    var myCats = _user.GetCategories();  //how can I make this async?
-                    myCats.Sort((c1, c2) => c1.Name.CompareTo(c2.Name));
-                    foreach (Category c in myCats)
-                    {
-                        categories.Add(c.Name);
-                    }
-                }
-                gettingCategories = false;
-            }
-            return categories.ToArray();
-                */
         }
         
 
@@ -855,57 +837,7 @@ namespace SMEngine
         private bool _loggedin = false;
         public bool checkLogin(authEnvelope e)
         {
-            //if (!_loggedin)
-                //login(e);
-
             return _loggedin;
-        }
-
-        public Album checkCreateAlbum(String cat, String album)
-        {
-            throw new NotImplementedException();
-            /* I don't think this function is needed)
-            var v = _allAlbums.Find(x => x.Name == album && getFolder(x) == cat);
-            try
-            {
-                if (v == null)
-                {//create album
-                    var myCategory = api.GetCategories();
-                    var c = myCategory.Find(x => x.Name == cat);
-
-                    if (c == null)
-                    {
-                        c = _user.CreateCategory(cat);
-                    }
-                    if (c == null)
-                        throw new Exception("AHH");
-
-                    v = c.CreateAlbum(album, false);
-
-                    if (v == null)
-                        throw new Exception("AHHHH");
-
-                    //let's default to private.
-                    v.Protected = true;
-                    v.WorldSearchable = false;
-                    v.SmugSearchable = false;
-                    v.Public = false;
-                    v.ChangeSettings();
-                    lock (_allAlbums)
-                    {
-                        _allAlbums.Add(v);
-                    }
-
-                }
-                //  return v
-
-            }
-            catch (Exception ex)
-            {
-                logMsg(ex.Message);
-            }
-            return v;
-            */
         }
 
         public void disableStuff()
@@ -928,20 +860,18 @@ namespace SMEngine
                 api = AuthenticateUsingOAuth(envelope);
                 if (api == null)
                     return false;
-               // loadAlbums();
                 _loggedin = true; // used for thread control.
                 //note: the old login would also load albums and load the user, it's not clear we want to do this yet.
                 return true;
             }
             catch (Exception ex)
             {
-                //todo: log error.
                 doException("login: " + ex.Message);
                 return false;
             }
         }
 
-        private async void loadAlbums(string userNickName = null) //do we want to take in a list of accounts, or just the primary?  we can do both.
+        private async void loadAlbums(string userNickName = null) 
         {
             try
             {
@@ -955,7 +885,7 @@ namespace SMEngine
                 }
 
                 
-                var albums = await api.GetAlbums(_user, debug_limit); // todo: do we care about the limit?
+                var albums = await api.GetAlbums(_user, debug_limit); 
                 logMsg("returned albums: " + albums.Count());
                 lock (_allAlbums)
                 {
@@ -986,11 +916,8 @@ namespace SMEngine
 
         private void runImageCollection()
         {
-           // System.Threading.Thread.Sleep(50);//experimental.
             if (running == false )
             {
-             //   while (gettingCategories)
-             //       System.Threading.Thread.Sleep(50);//experimental.
                 running = true;
                 bool startIt = true;
                 while (running)
@@ -1012,11 +939,6 @@ namespace SMEngine
                                         logMsg($"Image queue depth: {qSize}");
                                     }
                                 }
-                                else
-                                {
-                                    //logMsg("waiting - used to sleep.");
-                                    //   System.Threading.Thread.Sleep(5);
-                                }
                             }
                             else
                             {//wait for thread to wake up!
@@ -1037,7 +959,6 @@ namespace SMEngine
                         startIt = false;
                     }
 
-                    //logMsg("Sleeping longer");
                     System.Threading.Thread.Sleep(10);//don't overrun processor.
                 }
                 running = false;//reset if stopped for any reason.
@@ -1048,7 +969,6 @@ namespace SMEngine
 
         ThreadStart tsAlbumLoad = null;
         Thread tAlbumLoad = null;
-       // String[] userNameList = { "MY_NAME", "user2" };
 
         private String[] fetchUsersToLoad()
         {
@@ -1059,7 +979,6 @@ namespace SMEngine
             }
             var list= usernameList.Split(',');
             return list; 
-            //return userNameList;
         }
         private void start()
         {
@@ -1102,7 +1021,6 @@ namespace SMEngine
                         enc.Frames.Add(BitmapFrame.Create(bitmapImage));
                         enc.Save(outStream);
                         bitmap = new System.Drawing.Bitmap(outStream);
-                        // return bitmap; <-- leads to problems, stream is closed/closing ...
                         outStream.Close();
                     }
                 }
@@ -1115,7 +1033,6 @@ namespace SMEngine
             return bitmap;
 
         }
-
 
         DateTime? timeWentBlack = null;
 
@@ -1159,7 +1076,6 @@ namespace SMEngine
                 timeWentBlack = null;
                 expired = false;
             }
-            //start();
         }
         private bool expired = false;
         private void setScreensaverToExpired()
@@ -1168,7 +1084,6 @@ namespace SMEngine
         }
         public ImageSet getImage()
         {
-          //  lastImageRequested = DateTime.Now;
             ImageSet b = new ImageSet();
             logMsg("fetching image...");
             lock (_imageQueue)
@@ -1179,19 +1094,14 @@ namespace SMEngine
                     logMsg($"Dequeue, Image queue depth: { qSize}");
                     imageCounter++;
                 }
-                else
-                {
-                  //  return null;
-                }
             }
             if (!screensaverExpired())
             {
-                b.b = BitmapImage2Bitmap(b.bm); //cropImage(b.bm);//used to be simple bitmap2BitmapImage
+                b.b = BitmapImage2Bitmap(b.bm);
             }
             else
             {
                 b.b = getBlackImagePixel();
-               // setScreensaverToExpired();
             }
             return b;
         }
@@ -1316,15 +1226,12 @@ namespace SMEngine
             {//no connection, wait longer.
                 doException(ex.Message);
                 logMsg(ex.Message);
-               // System.Threading.Thread.Sleep(1000);
             }
             catch (Exception ex)
             {
                 doException(ex.Message);
-                //doException("showImage: " + ex.Message);
                 logMsg(ex.Message);
                 logMsg(ex.StackTrace);
-               // System.Threading.Thread.Sleep(50);
             }
             return image;
 
@@ -1383,16 +1290,13 @@ namespace SMEngine
             {//no connection, wait longer.
                 doException(ex.Message);
                 logMsg(ex.Message);
-           //     System.Threading.Thread.Sleep(1000);
                 return null;
             }
             catch (Exception ex)
             {
                 doException(ex.Message);
-                //doException("showImage: " + ex.Message);
                 logMsg(ex.Message);
                 logMsg(ex.StackTrace);
-               // System.Threading.Thread.Sleep(50);
                 return null;
             }
             return image;
@@ -1472,7 +1376,7 @@ namespace SMEngine
                         }
                     }
                 
-                   var images = await api.GetAlbumImagesWithSizes(a, debug_limit); //todo: do we care about sizes?
+                   var images = await api.GetAlbumImagesWithSizes(a, debug_limit);
                     if (images == null)
                     {
                         doException("images is null!");
@@ -1549,7 +1453,6 @@ namespace SMEngine
             public String albumTitle;
             public String CAtegory;
             public String exif;
-            //public String date;
             public DateTime MyDate;
             public String Name;
             public String ImageURL;
@@ -1567,7 +1470,6 @@ namespace SMEngine
             {
                 caption = "";
                 exif = "";
-               // date = "";
             }
         }
 
@@ -1606,11 +1508,11 @@ namespace SMEngine
                     {
                         if (username == "MY_NAME")
                         {
-                            loadAlbums(); //todo: pass in the username/s to load
+                            loadAlbums(); 
                         }
                         else
                         {
-                            loadAlbums(username); //todo: pass in the username/s to load
+                            loadAlbums(username); 
                         }
                     }
                     isLoadingAlbums = false;
@@ -1631,12 +1533,7 @@ namespace SMEngine
                                new ParallelOptions { MaxDegreeOfParallelism = 4 },
                             a =>
                       {
-                          if (a == null)
-                          {
-                              //do nothing.continue;
-                          }
-                          //while (gettingCategories)
-                          //   System.Threading.Thread.Sleep(50);
+                          
                           if (getFolder(a).Contains("Surveilance"))
                           {
                               logMsg("Throwing out surveilance");
@@ -1645,7 +1542,6 @@ namespace SMEngine
                           {
                               if (!screensaverExpired())
                               {
-                                  //   logMsg($"Loading {getFolder(a)}:{a.Name}");
                                   try
                                   {
                                       loadImages(a, false);
@@ -1660,7 +1556,6 @@ namespace SMEngine
                                   logMsg("Skipping loadImages - expired");
                               }
                           }
-                          //  System.Threading.Thread.Sleep(1);
                       });
 
                         logMsg($"Time to load all albums: {sw.ElapsedMilliseconds} milliseconds");
@@ -1705,13 +1600,6 @@ namespace SMEngine
        
             checkLogin(_envelope);
             {
-                //assume configuration is loaded.
-                //load an image from smugmug, and return it.
-              //  var myimage = new SmugMugModel.Image();//todo..  select a random image;
-
-
-
-//                Album a = null;
                 var imageSet = new ImageSet();
                 imageSet.bm = null;
 
@@ -1737,25 +1625,15 @@ namespace SMEngine
                             imageSet.albumTitle = element.albumTitle; //element.Album.Title;
                             imageSet.caption = element.caption;
                             imageSet.exif = element.exif;
-
-                            
-                            //imageSet.exif = element.GetEXIF().ToString();
-                            // imageSet = element;
                         }
                         catch (Exception ex)
                         {
                             doException("random: " + ex.Message);
                             logMsg(ex.Message + "\r\n" + ex.StackTrace);
                         }
-
                     }
                     else { return null; }
                 }
- 
-
-
-
-
                 return imageSet;
             }
         }
