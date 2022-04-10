@@ -1057,8 +1057,10 @@ namespace SMEngine
             var totalRuntimeSeconds = DateTime.Now.Subtract(timeStarted).TotalSeconds;
             logMsg("runtime is:" + totalRuntimeSeconds.ToString("0.00"));
             //we want to allow to run for a couple hours if manually woken up.
-            var wakeupTime = 8;
-            var goToBedTime = 12 + 10;  //9PM  
+
+            var wakeupTime = 8;  // 8am
+            var goToBedTime = 12 + 10;  //10PM  
+
             expired = (totalRuntimeSeconds > maxRuntimeSeconds) &&
                 !(hourOfDay >= wakeupTime && hourOfDay < goToBedTime);  //for testing, let it run a couple hours. then see if it wakes back up at 2p.
 
