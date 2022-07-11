@@ -95,14 +95,15 @@ namespace SMEngine
             msg += "\n Uptime: " + DateTime.Now.Subtract(timeBooted).ToString();
             lock (_imageDictionary)
             {
-                msg += "\n images: " + _imageDictionary.Count();
+                msg += "\n images: " + _imageDictionary.Count;
             }
             lock (_allAlbums)
             {
-                msg += "\n albums: " + _allAlbums.Count();
+                msg += "\n albums: " + _allAlbums.Count;
             }
             msg += "\n images shown: " + imageCounter;
-            msg += "\n queue depth: " + _imageQueue.Count();
+            msg += "\n images deduped: " + playedImages.Count;
+            msg += "\n queue depth: " + _imageQueue.Count;
             msg += "\n image size: " + _settings.quality + " / " + fetchImageUrlSize();
             msg += "\n time between images: " + getTimeSinceLast();
             msg += "\n exceptions raised: " + exceptionsRaised;
@@ -486,6 +487,7 @@ namespace SMEngine
             _imageQueue = new Queue<ImageSet>();
             _galleryTable = new System.Data.DataTable();
             _imageDictionary = new Dictionary<string, ImageSet>();  //image id, and url
+            playedImages = new Dictionary<string, ImageSet>();
             _galleryTable.Columns.Add(new System.Data.DataColumn("Category", typeof(String)));
             _galleryTable.Columns.Add(new System.Data.DataColumn("Album", typeof(String)));
             _allAlbums = new List<Album>();
@@ -1594,7 +1596,7 @@ namespace SMEngine
 
         }
 
-
+        Dictionary<string, ImageSet> playedImages = new Dictionary<string, ImageSet>();
 
         private ImageSet getRandomImage()
         {
@@ -1609,11 +1611,24 @@ namespace SMEngine
                 {
                     if (_imageDictionary.Count > 0)
                     {
-                        var imageIndex = r.Next(_imageDictionary.Count);
+                        
+                       
                         try
                         {
                             var myQuality = _imageQueue.Count > 0 ? settings.quality : 1;  //allow low res for first pics.
-                            var element = _imageDictionary.ElementAt(imageIndex).Value;  //optimizing to avoid multiple lookups.
+
+                            if (_imageDictionary.Count == 0 && playedImages.Count > 0)
+                            {
+                                //reset dictionary!
+                                //note: never really tested this, I hope it works... but could cause an issue I suppose.
+                                _imageDictionary = playedImages;
+                                playedImages = new Dictionary<string, ImageSet>();
+                            }
+                            var imageIndex = r.Next(_imageDictionary.Count);
+                            var key = _imageDictionary.Keys.ElementAt(imageIndex);
+                            var element = _imageDictionary[key];  //optimizing to avoid multiple lookups.
+                            _imageDictionary.Remove(key);
+                            playedImages.Add(key, element);
                             var image = showImage(element.ImageURL); 
                             if (image == null){
                                 throw new Exception("image returned is null: " + element.ImageURL);
