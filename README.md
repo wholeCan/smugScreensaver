@@ -5,7 +5,8 @@ Started in 2013, this code base is a hobby to build a screensaver based on a smu
 - there are some really bad software patterns, but this was started a long time ago.  There are also some interesting patterns I like, for example the SMEngine.
 - major updates performed in 2018, and then 2022 as the API changed.
 - the slideshow functionality replaced the screensaver bits after some windows updates seemed to alter my ability to run easily in screensaver mode, so I removed the ability to run as a screensaver in 2022.  
-- 7/22, added a feature to dedupe the images by offloading the image dictionary once an image is shown.
+
+5/7/22:  let's make the repo public! Kind of a big deal for me, I have quite a few projects I've built for work, or on the side... this is the first one I decided to take public to see how it goes.
 
 ### requirements:
 - I wanted 0 hard disk usage, or at least as little as possible.  the photo URLs are loaded into memory at startup, and there is an engine that maintains about 10 images in memory at any given time.
