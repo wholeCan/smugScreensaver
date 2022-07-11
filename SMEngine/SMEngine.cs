@@ -1620,6 +1620,7 @@ namespace SMEngine
                             if (_imageDictionary.Count == 0 && playedImages.Count > 0)
                             {
                                 //reset dictionary!
+                                //note: never really tested this, I hope it works... but could cause an issue I suppose.
                                 _imageDictionary = playedImages;
                                 playedImages = new Dictionary<string, ImageSet>();
                             }
