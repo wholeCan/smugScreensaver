@@ -111,6 +111,7 @@ namespace SMEngine
             msg += "\n memory: " + Process.GetCurrentProcess().WorkingSet64 / (1024*1024);
             msg += "\n Peak memory: " + Process.GetCurrentProcess().PeakPagedMemorySize64 / (1024 * 1024);
             msg += "\n Peak virtual memory: " + Process.GetCurrentProcess().PeakVirtualMemorySize64 / (1024 * 1024);
+            msg += "\n Schedule: " + _settings.startTime.ToString() + " - " + _settings.stopTime.ToString();
 
             msg += "\n Menu:";
             msg += "\n\t ESC or Q: exit program";
@@ -710,6 +711,8 @@ namespace SMEngine
 
         private void loadConfiguration()
         {
+            int.TryParse(fetchKey("startTime"), out _settings.startTime);
+            int.TryParse(fetchKey("stopTime"), out _settings.stopTime);
             loadGalleries();
             loadSettings();
         }
@@ -1060,8 +1063,8 @@ namespace SMEngine
             logMsg("runtime is:" + totalRuntimeSeconds.ToString("0.00"));
             //we want to allow to run for a couple hours if manually woken up.
 
-            var wakeupTime = 8;  // 8am
-            var goToBedTime = 12 + 10;  //10PM  
+            var wakeupTime = _settings.startTime;  // 8am
+            var goToBedTime = _settings.stopTime;  //10PM  
 
             expired = (totalRuntimeSeconds > maxRuntimeSeconds) &&
                 !(hourOfDay >= wakeupTime && hourOfDay < goToBedTime);  //for testing, let it run a couple hours. then see if it wakes back up at 2p.
