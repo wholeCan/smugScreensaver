@@ -1058,16 +1058,17 @@ namespace SMEngine
             var minutesToRun = 30;
 #endif
             var maxRuntimeSeconds = minutesToRun*60;  //only run for an hour to conserve smugmugs api.
-            var hourOfDay = DateTime.Now.Hour;
+            
+            var timeOfDay = DateTime.Now.Hour * 100 + DateTime.Now.Minute;
             var totalRuntimeSeconds = DateTime.Now.Subtract(timeStarted).TotalSeconds;
             logMsg("runtime is:" + totalRuntimeSeconds.ToString("0.00"));
             //we want to allow to run for a couple hours if manually woken up.
 
-            var wakeupTime = _settings.startTime;  // 8am
-            var goToBedTime = _settings.stopTime;  //10PM  
+            var wakeupTime = _settings.startTime;  // 8am,  (800 = 8am
+            var goToBedTime = _settings.stopTime;  //10PM,  2200=10pm)  
 
             expired = (totalRuntimeSeconds > maxRuntimeSeconds) &&
-                !(hourOfDay >= wakeupTime && hourOfDay < goToBedTime);  //for testing, let it run a couple hours. then see if it wakes back up at 2p.
+                !(timeOfDay >= wakeupTime && timeOfDay < goToBedTime);  //for testing, let it run a couple hours. then see if it wakes back up at 2p.
 
             return expired;
         }
