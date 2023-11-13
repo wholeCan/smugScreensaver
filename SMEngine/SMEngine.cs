@@ -71,7 +71,7 @@ namespace SMEngine
             var startMinute = 15;
 #endif
 
-            TaskScheduler.Instance.ScheduleTask(startHour, startMinute, frequencyHours,  //run at 11:15a daily
+            TaskScheduler.Instance.ScheduleTask(startHour, startMinute, frequencyHours,  //run at 2:15a daily
                () =>
                {
                    logMsg("reloading library!!!");
@@ -1503,6 +1503,7 @@ namespace SMEngine
         private void loadAllImages()
         {
             _allAlbums = new List<Album>();
+            playedImages = new Dictionary<string, ImageSet>();
             try
             {
                 while (_loggedin == false)
