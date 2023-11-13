@@ -1621,21 +1621,13 @@ namespace SMEngine
 
                 lock (_imageDictionary)
                 {
-                    if (_imageDictionary.Count > 0 || playedImages.Count > 0 && !isLoadingAlbums)
+                    if (_imageDictionary.Count > 0 )//|| playedImages.Count > 0)
+                        // only enter if images either are loaded, or have completed at some point in the past.
                     {
-                        
-                       
                         try
                         {
                             var myQuality = _imageQueue.Count > 0 ? settings.quality : 1;  //allow low res for first pics.
-                            if (_imageDictionary.Count == 0 && playedImages.Count >0)
-                            {
-                                Task.Factory.StartNew(() => { 
-                                    logMsg("reloading library!!!");
-                                    rePullAlbums();
-
-                                });
-                            }
+                            
                             var imageIndex = r.Next(_imageDictionary.Count);
                             var key = _imageDictionary.Keys.ElementAt(imageIndex);
                             var element = _imageDictionary[key];  //optimizing to avoid multiple lookups.
@@ -1660,6 +1652,14 @@ namespace SMEngine
                             doException("random: " + ex.Message);
                             logMsg(ex.Message + "\r\n" + ex.StackTrace);
                         }
+                    }
+                    else if ((playedImages.Count > 0) && !isLoadingAlbums)
+                    {// if we're out of images, and loading is completed - then let's start a new load.
+                        Task.Factory.StartNew(() => {
+                            logMsg("reloading library!!!");
+                            rePullAlbums();
+                        });
+                        return null;
                     }
                     else { return null; }
                 }
