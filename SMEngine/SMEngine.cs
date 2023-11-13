@@ -1621,13 +1621,13 @@ namespace SMEngine
                         try
                         {
                             var myQuality = _imageQueue.Count > 0 ? settings.quality : 1;  //allow low res for first pics.
-
                             if (_imageDictionary.Count == 0 && playedImages.Count > 0)
                             {
+                                rePullAlbums();
                                 //reset dictionary!
                                 //note: never really tested this, I hope it works... but could cause an issue I suppose.
-                                _imageDictionary = playedImages;
-                                playedImages = new Dictionary<string, ImageSet>();
+                               // _imageDictionary = playedImages;
+                               // playedImages = new Dictionary<string, ImageSet>();
                             }
                             var imageIndex = r.Next(_imageDictionary.Count);
                             var key = _imageDictionary.Keys.ElementAt(imageIndex);
