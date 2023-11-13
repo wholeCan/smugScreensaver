@@ -36,9 +36,9 @@ namespace SMEngine
        
 
 #if (DEBUG)
-        private int debug_limit = 100;
+        private int debug_limit = 5;
 #else
-        private int debug_limit = 5000;
+        private int debug_limit = 5000000;
 #endif
 
         private authEnvelope _envelope;
@@ -93,6 +93,7 @@ namespace SMEngine
                 + " : "
                 + timeBooted.ToShortTimeString();
             msg += "\n Uptime: " + DateTime.Now.Subtract(timeBooted).ToString();
+            
             lock (_imageDictionary)
             {
                 msg += "\n images: " + _imageDictionary.Count;
@@ -894,7 +895,7 @@ namespace SMEngine
                 logMsg("returned albums: " + albums.Count());
                 lock (_allAlbums)
                 {
-                    _allAlbums.AddRange(albums);
+                    _allAlbums.AddRange(albums.Take(debug_limit));
                 }
             
             
@@ -1385,6 +1386,7 @@ namespace SMEngine
                     }
                 
                    var images = await api.GetAlbumImagesWithSizes(a, debug_limit);
+                
                     if (images == null)
                     {
                         doException("images is null!");
@@ -1502,6 +1504,7 @@ namespace SMEngine
         }
         private void loadAllImages()
         {
+            isLoadingAlbums = true;
             _allAlbums = new List<Album>();
             playedImages = new Dictionary<string, ImageSet>();
             try
@@ -1512,7 +1515,7 @@ namespace SMEngine
                 }
                 if (checkLogin(_envelope))
                 {
-                    isLoadingAlbums = true;
+              
                     foreach (var username in fetchUsersToLoad())
                     {
                         if (username == "MY_NAME")
@@ -1524,7 +1527,7 @@ namespace SMEngine
                             loadAlbums(username); 
                         }
                     }
-                    isLoadingAlbums = false;
+               
                     
                     if (_settings.load_all)
                     {
@@ -1598,6 +1601,10 @@ namespace SMEngine
                 //invalid login.  Stopping.
                 logMsg("invalid login.  Stopping.");
             }
+            finally
+            {
+                isLoadingAlbums = false;
+            }
 
         }
 
@@ -1614,20 +1621,20 @@ namespace SMEngine
 
                 lock (_imageDictionary)
                 {
-                    if (_imageDictionary.Count > 0)
+                    if (_imageDictionary.Count > 0 || playedImages.Count > 0 && !isLoadingAlbums)
                     {
                         
                        
                         try
                         {
                             var myQuality = _imageQueue.Count > 0 ? settings.quality : 1;  //allow low res for first pics.
-                            if (_imageDictionary.Count == 0 && playedImages.Count > 0)
+                            if (_imageDictionary.Count == 0 && playedImages.Count >0)
                             {
-                                rePullAlbums();
-                                //reset dictionary!
-                                //note: never really tested this, I hope it works... but could cause an issue I suppose.
-                               // _imageDictionary = playedImages;
-                               // playedImages = new Dictionary<string, ImageSet>();
+                                Task.Factory.StartNew(() => { 
+                                    logMsg("reloading library!!!");
+                                    rePullAlbums();
+
+                                });
                             }
                             var imageIndex = r.Next(_imageDictionary.Count);
                             var key = _imageDictionary.Keys.ElementAt(imageIndex);
