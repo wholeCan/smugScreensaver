@@ -264,7 +264,7 @@ namespace andyScreenSaver
                     }
                     if (_engine.screensaverExpired())
                     {
-                        showMsg("service is shut down - press left or right arrow to wake up.");
+                        showMsg("Slide show is stopped until morning - press <left> or <right> arrow to wake up.");
                     }
                 }));
             var run = false;
