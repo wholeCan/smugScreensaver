@@ -1649,7 +1649,8 @@ namespace SMEngine
                         }
                         catch (Exception ex)
                         {
-                            doException("random: " + ex.Message);
+                           // doException("random: " + ex.Message);
+                            //most likely a failed image download for some reason.  Turn off logger for now.
                             logMsg(ex.Message + "\r\n" + ex.StackTrace);
                         }
                     }

@@ -104,10 +104,16 @@ namespace andyScreenSaver
             try
             {
                 var bm = new Bitmap(tmp);
+                if (bm.Width == 0 || bm.Height == 0)
+                {
+                    //frequent error seen at run time.
+                    return Color.Black;
+                }
                 var srcData = bm.LockBits(
-                 new Rectangle(0, 0, bm.Width, bm.Height),
-                 ImageLockMode.ReadOnly,
-                 PixelFormat.Format32bppArgb);
+                        new Rectangle(0, 0, bm.Width, bm.Height),
+                        ImageLockMode.ReadOnly,
+                        PixelFormat.Format32bppArgb
+                    );
 
                 var stride = srcData.Stride;
 
