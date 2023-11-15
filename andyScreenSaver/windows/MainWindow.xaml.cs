@@ -166,9 +166,16 @@ namespace andyScreenSaver
 
         private Bitmap getupperLeftCornerImage(Bitmap original)
         {
-            Bitmap bmpImage = new Bitmap(original);
-            var cropArea = new Rectangle(0, 0, (int)original.Height / 3, (int)original.Width / 3);
-            return bmpImage.Clone(cropArea, bmpImage.PixelFormat);
+            try
+            {
+                Bitmap bmpImage = new Bitmap(original);
+                var cropArea = new Rectangle(0, 0, (int)original.Height / 3, (int)original.Width / 3);
+                return bmpImage.Clone(cropArea, bmpImage.PixelFormat);
+            }
+            catch (Exception ex)
+            {
+                return null;
+            }
             //tmp = croppedImage;//remove this!
 
         }
@@ -185,7 +192,11 @@ namespace andyScreenSaver
 
                     var fontSize = configPenSize;
                     var croppedImage = getupperLeftCornerImage(tmp);
-
+                    if (croppedImage == null)
+                    {
+                        //throw new Exception("could not find corner");
+                        return;
+                    }
 
                     var penColor = new SolidBrush(getAverageColor(croppedImage));// System.Drawing.Brushes.White;
                     if (tmp.HorizontalResolution < 150)
@@ -264,7 +275,14 @@ namespace andyScreenSaver
                     }
                     if (_engine.screensaverExpired())
                     {
-                        showMsg("Slide show is stopped until morning - press <left> or <right> arrow to wake up.");
+                        showMsg(
+                            DateTime.Now.ToShortTimeString()+ 
+                            ": Slide show is stopped until " +
+                            (_engine.settings.startTime/100).ToString() + 
+                            ":"+
+                            (_engine.settings.startTime % 100).ToString("00") + 
+                            " - press <left> or <right> arrow to wake up."
+                            );
                     }
                 }));
             var run = false;
@@ -370,6 +388,10 @@ namespace andyScreenSaver
                         bmyImage2 = s.b;
                         if (_engine.settings.showInfo)
                         {
+                            if (bmyImage2.Height == 0)
+                            {
+                                LogError("empty bmp");
+                            }
                             setImageCaption(ref s, ref bmyImage2, randWidth, randHeight);
                         }
                     }
@@ -433,12 +455,9 @@ namespace andyScreenSaver
             while (running)
             {
                 var runDelta = DateTime.Now - lastUpdate;
-//                if (Convert.ToInt32(runDelta.TotalSeconds) >= _engine.settings.speed_s)
-                {
-                    updateImage();
+                updateImage();
                     
 
-                }
                 var millisecondsSinceLastRun = DateTime.Now.Subtract(lastUpdate).TotalMilliseconds;
                 var timeToSleep = _engine.settings.speed_s * 1000 - millisecondsSinceLastRun;
                 if (timeToSleep > 0)

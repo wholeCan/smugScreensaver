@@ -6,10 +6,7 @@ using System.Windows.Media.Imaging;
 using static SMEngine.CSMEngine;
 
 var engine = new SMEngine.CSMEngine(true);
-//var loggedIn = engine.login();
-//engine.addAllAlbums();
 var loggedIn = true;
-//Thread.Sleep(1000*10);
 
 for (int i = 0; i < 4; i++)
 {
@@ -33,9 +30,6 @@ for (int i = 0; i < 4; i++)
         enc.Save(outStream);
         var bitmap = new System.Drawing.Bitmap(outStream);
 
-
-
-        // return bitmap; <-- leads to problems, stream is closed/closing ...
         outStream.Close();
     }
     else

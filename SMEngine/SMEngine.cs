@@ -36,7 +36,7 @@ namespace SMEngine
        
 
 #if (DEBUG)
-        private int debug_limit = 5;
+        private int debug_limit = 5000;
 #else
         private int debug_limit = 5000000;
 #endif
@@ -600,10 +600,7 @@ namespace SMEngine
                         }
                         catch (Exception e)
                         {
-                            //doException(e.Message);
                             logMsg(e.Message);
-                            // AAAAAAAAAAARGH, an error!
-                            //ShowErrorMessage(e, "Reading registry " + KeyName.ToUpper());
                             return null;
                         }
                         finally
@@ -1031,8 +1028,8 @@ namespace SMEngine
                     }
                 }
                 catch (Exception ex)
-                {
-                    doException("bm2m: " + ex.Message);
+                {   //do nothing.
+                    //doException("bm2m: " + ex.Message);
                     logMsg(ex.Message);
                 }
             }
@@ -1062,7 +1059,7 @@ namespace SMEngine
             
             var timeOfDay = DateTime.Now.Hour * 100 + DateTime.Now.Minute;
             var totalRuntimeSeconds = DateTime.Now.Subtract(timeStarted).TotalSeconds;
-            logMsg("runtime is:" + totalRuntimeSeconds.ToString("0.00"));
+            //logMsg("runtime is:" + totalRuntimeSeconds.ToString("0.00"));
             //we want to allow to run for a couple hours if manually woken up.
 
             var wakeupTime = _settings.startTime;  // 8am,  (800 = 8am
@@ -1414,17 +1411,24 @@ namespace SMEngine
                             {
                                        try
                                        {
-                                           _imageDictionary.Add(
-                                                   i.ImageKey,
-                                                   new ImageSet(
-                                                       imageUrl,
-                                                       i.Caption == null ? "" : i.Caption,
-                                                       i.FileName == null ? "" : i.FileName,
-                                                       i.Date == null ? DateTime.Now : i.Date,
-                                                       getFolder(a) == null ? "" : getFolder(a),
-                                                       a.Name == null ? "" : a.Name
-                                                       )
-                                                   );
+                                           if (!_imageDictionary.ContainsKey(i.ImageKey))
+                                           {
+                                               _imageDictionary.Add(
+                                                  i.ImageKey,
+                                                  new ImageSet(
+                                                      imageUrl,
+                                                      i.Caption == null ? "" : i.Caption,
+                                                      i.FileName == null ? "" : i.FileName,
+                                                      i.Date == null ? DateTime.Now : i.Date,
+                                                      getFolder(a) == null ? "" : getFolder(a),
+                                                      a.Name == null ? "" : a.Name
+                                                      )
+                                                  );
+                                           }
+                                           else
+                                           {
+                                               logMsg("duplicate image: " + i.ImageKey);
+                                           }
                                        }
                                        catch (ArgumentException ex)
                                        {
@@ -1446,7 +1450,8 @@ namespace SMEngine
                 }
                 catch (Exception ex)
                 {
-                    doException("loadImages: " + ex.Message);
+                //relatively safe.
+//                    doException("loadImages: " + ex.Message);
                     logMsg(ex.Message);
                 }
         }
@@ -1632,7 +1637,10 @@ namespace SMEngine
                             var key = _imageDictionary.Keys.ElementAt(imageIndex);
                             var element = _imageDictionary[key];  //optimizing to avoid multiple lookups.
                             _imageDictionary.Remove(key);
-                            playedImages.Add(key, element);
+                            if (!playedImages.ContainsKey(key))
+                            {
+                                playedImages.Add(key, element);
+                            }
                             var image = showImage(element.ImageURL); 
                             if (image == null){
                                 throw new Exception("image returned is null: " + element.ImageURL);
