@@ -22,7 +22,7 @@ namespace SMEngine
 
         static public string Decrypt(string cipher, int salt)
         {
-            if (cipher == null) 
+            if (string.IsNullOrEmpty(cipher)) 
                 return null;
            
            

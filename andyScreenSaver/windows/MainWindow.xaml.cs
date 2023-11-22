@@ -233,7 +233,7 @@ namespace andyScreenSaver
             Debug.WriteLine("Window: " + DateTime.Now.ToLongTimeString() + ": " + msg);
         }
 
-        private void LogError(String msg)
+        private void LogError(string msg)
         {
             // Console.WriteLine(msg);
             logMsg($"{DateTime.Now}: {msg}");
@@ -286,7 +286,7 @@ namespace andyScreenSaver
                     }
                 }));
             var run = false;
-            ImageSet image =null;
+            ImageSet image = null;
             
             var counter = 0;
             var blackImagePlaced = false;
@@ -455,18 +455,25 @@ namespace andyScreenSaver
             while (running)
             {
                 var runDelta = DateTime.Now - lastUpdate;
-                updateImage();
-                    
-
-                var millisecondsSinceLastRun = DateTime.Now.Subtract(lastUpdate).TotalMilliseconds;
-                var timeToSleep = _engine.settings.speed_s * 1000 - millisecondsSinceLastRun;
-                if (timeToSleep > 0)
+                try
                 {
-                    logMsg("sleeping for " + timeToSleep + " milliseconds");
-                    Thread.Sleep((Int32)timeToSleep);
+                    updateImage();
                 }
-                lastUpdate = DateTime.Now;
-
+                catch (Exception ex)
+                {
+                    LogError("updateImage failed: " + ex.Message);
+                }
+                finally
+                {
+                    var millisecondsSinceLastRun = DateTime.Now.Subtract(lastUpdate).TotalMilliseconds;
+                    var timeToSleep = _engine.settings.speed_s * 1000 - millisecondsSinceLastRun;
+                    if (timeToSleep > 0)
+                    {
+                        logMsg("sleeping for " + timeToSleep + " milliseconds");
+                        Thread.Sleep((Int32)timeToSleep);
+                    }
+                    lastUpdate = DateTime.Now;
+                }
             }
         }
 
@@ -485,8 +492,10 @@ namespace andyScreenSaver
                 return;
             }
             ts = new ThreadStart(run);
-            t = new Thread(ts);
-            t.IsBackground = true;
+            t = new Thread(ts)
+            {
+                IsBackground = true
+            };
             t.Start();
 
         }
@@ -521,12 +530,14 @@ namespace andyScreenSaver
                 }
             }
         }
+
         //Application myParent;
+        [Obsolete]
         public Window1()
         {
            // myParent = parent;
             InitializeComponent();
-            int borderWidth = 0;
+            var borderWidth = 0;
             int.TryParse(ConfigurationSettings.AppSettings["BorderWidth"], out borderWidth);
         }
         int[] imageCounterArray;
@@ -546,21 +557,25 @@ namespace andyScreenSaver
 
             //   LogError($"Starting up: {DateTime.Now}");
             var tmp = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
-            var file = tmp + @"\andyScr.trace.log";
+           // var file = tmp + @"\andyScr.trace.log";
 
             initEngine();
 
             lm = new listManager(gridWidth * gridHeight);
             imageCounterArray = new int[gridHeight * gridWidth];
 
-            for (int i = 0; i < gridHeight * gridWidth - 1; i++)
-                imageCounterArray[i] = 0;
-
-            for (int idx = 0; idx < gridWidth; idx++)
+            for (var i = 0; i < gridHeight * gridWidth - 1; i++)
             {
-                var sp = new StackPanel();
-                sp.HorizontalAlignment = System.Windows.HorizontalAlignment.Center;
-                sp.Orientation = Orientation.Vertical;
+                imageCounterArray[i] = 0;
+            }
+
+            for (var idx = 0; idx < gridWidth; idx++)
+            {
+                var sp = new StackPanel
+                {
+                    HorizontalAlignment = System.Windows.HorizontalAlignment.Center,
+                    Orientation = Orientation.Vertical
+                };
 
 
                 hStack1.Children.Add(sp);//add vertical stack panel.
@@ -571,7 +586,9 @@ namespace andyScreenSaver
             try
             {
                 if (!Directory.Exists(storageDirectory) && doSmartStart)
-                    Directory.CreateDirectory(storageDirectory);
+                { 
+                    Directory.CreateDirectory(storageDirectory); 
+                }
             }
             catch (Exception ex)
             {
@@ -585,7 +602,7 @@ namespace andyScreenSaver
                     var myBorder = new Border();
                     myBorder.BorderThickness = new Thickness(_engine.settings.borderThickness);
 
-                    rotatableImage i = new rotatableImage(_engine);
+                    var i = new rotatableImage(_engine);
                     myBorder.Child = i;
 
                     var bi3 = new BitmapImage();
@@ -712,14 +729,14 @@ namespace andyScreenSaver
             }
         }
 
-        private void showMsg(String msg)
+        private void showMsg(string msg)
         {
 
             SetupRequired.Dispatcher.BeginInvoke(new Action(delegate ()
             {
                 if (!actionsDisabled)
                 {
-                    Random r = new Random();
+                    var r = new Random();
                     VerticalAlignment vAlign = System.Windows.VerticalAlignment.Bottom;
                     HorizontalAlignment hAlign = System.Windows.HorizontalAlignment.Center;
                     do

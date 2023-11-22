@@ -5,8 +5,8 @@ namespace SMEngine
 {
     public class GalleryEntry
     {
-        public String category;
-        public String gallery;
+        public string category;
+        public string gallery;
     }
 
 }

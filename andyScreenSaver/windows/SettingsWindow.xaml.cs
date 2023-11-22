@@ -182,10 +182,10 @@ namespace andyScreenSaver
                         Thread.Sleep(100);
                     }
                     
-                    String[] Cats = _engine.getCategoriesAsync();
+                    string[] Cats = _engine.getCategoriesAsync();
                     comboBox1.Items.Clear();
                     comboBox2.Items.Clear();
-                    foreach (String s in Cats)
+                    foreach (string s in Cats)
                     {
                         if (_engine.checkCategoryForAlbums(s))
                             comboBox1.Items.Add(s);
@@ -245,8 +245,8 @@ namespace andyScreenSaver
         private void comboBox1_SelectionChanged(object sender, SelectionChangedEventArgs e)
         {
             comboBox2.Items.Clear();
-            String[] albums = _engine.getAlbums(comboBox1.SelectedValue.ToString());
-            foreach (String s in albums)
+            string[] albums = _engine.getAlbums(comboBox1.SelectedValue.ToString());
+            foreach (string s in albums)
             {
                 comboBox2.Items.Add(s);
             }

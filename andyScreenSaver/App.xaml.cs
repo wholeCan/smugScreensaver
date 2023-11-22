@@ -153,51 +153,7 @@ namespace andyScreenSaver
                         
                         iter++;
                     }
-/*
-                    win.setDimensions(333, 200);
-                    win.init();
-                    win.disableActions();
 
-                    var h = System.Windows.SystemParameters.PrimaryScreenHeight;
-                    var w = System.Windows.SystemParameters.PrimaryScreenWidth;
-                    var myHeight = 600;
-                    var myWidth = 1200;
-                    var maxAtSTartup = false;
-                    if (!Boolean.TryParse(ConfigurationSettings.AppSettings["maxAtStartup"], out maxAtSTartup))
-                    {
-                        maxAtSTartup = false;
-
-                    }
-                    if (
-                        int.TryParse(ConfigurationSettings.AppSettings["windowHeight"], out myHeight) && //default value.
-                        int.TryParse(ConfigurationSettings.AppSettings["windowwidth"], out myWidth)
-                    )//default value.
-                        if (myHeight > 0 && myWidth > 0)
-                        {
-                            if (h < myHeight || w < myWidth )
-                            {
-                                win.Height = 300;//default if out of bounds.
-                                win.Width = 600;
-                            }
-                            else
-                            {
-                                win.Height = myHeight;
-                                win.Width = myWidth;
-                            }
-                        }
-                    if (maxAtSTartup || true)
-                    {
-                        win.WindowState = WindowState.Maximized;
-                    }
-                    else
-                    {
-                        win.WindowState = WindowState.Normal;
-                    }
-
-                    //win.WindowStyle = WindowStyle.SingleBorderWindow;
-                    //win.ResizeMode = ResizeMode.CanResizeWithGrip;
-                    win.Show();
-*/
                 }
             }
             catch (Exception ex)

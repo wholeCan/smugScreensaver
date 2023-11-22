@@ -19,16 +19,16 @@ namespace SMEngine
     public class CSMEngine
     {
         private static DateTime timeStarted = DateTime.Now;
-        private static DateTime timeBooted = DateTime.Now;
+        private readonly static DateTime timeBooted = DateTime.Now;
 
-        private Dictionary<String, ImageSet> _imageDictionary;
+        private readonly Dictionary<String, ImageSet> _imageDictionary;
         private static Int64 imageCounter = 0;
 
         private SmugMugAPI api = null;
         private User _user = null;
         public System.Data.DataTable _galleryTable;
         private static List<Album> _allAlbums;
-        private Queue<ImageSet> _imageQueue;
+        private readonly Queue<ImageSet> _imageQueue;
 
         private const int maximumQ = 10;   //window, only download if q is less than max and greater than min.
         private const int minQ = 2;
@@ -36,7 +36,7 @@ namespace SMEngine
        
 
 #if (DEBUG)
-        private int debug_limit = 5000;
+        private readonly int debug_limit = 5000;
 #else
         private int debug_limit = 5000000;
 #endif
@@ -134,8 +134,8 @@ namespace SMEngine
             // todo: look into https://docs.microsoft.com/en-us/aspnet/core/security/app-secrets?view=aspnetcore-6.0&tabs=windows
 
             //salty tokens
-            var CONSUMERSECRET_SALTED_KEY = "SmugMugOAuthConsumerSecret";
-            var consumerTokenKey = "SmugMugOAuthConsumerToken";
+            //var CONSUMERSECRET_SALTED_KEY = "SmugMugOAuthConsumerSecret";
+            //var consumerTokenKey = "SmugMugOAuthConsumerToken";
             try
             {
                 //can't encrypt this, as the current authentication is per machine.
@@ -185,7 +185,7 @@ namespace SMEngine
             }
 
             //Connect to SmugMug using Anonymous access
-            SmugMugAPI apiAnonymous = new SmugMugAPI(LoginType.Anonymous, new OAuthCredentials(consumerKey));
+            SmugMugAPI apiAnonymous = new(LoginType.Anonymous, new OAuthCredentials(consumerKey));
             return apiAnonymous;
         }
         private static string fetchKey(string key)
@@ -490,8 +490,8 @@ namespace SMEngine
             _galleryTable = new System.Data.DataTable();
             _imageDictionary = new Dictionary<string, ImageSet>();  //image id, and url
             playedImages = new Dictionary<string, ImageSet>();
-            _galleryTable.Columns.Add(new System.Data.DataColumn("Category", typeof(String)));
-            _galleryTable.Columns.Add(new System.Data.DataColumn("Album", typeof(String)));
+            _galleryTable.Columns.Add(new System.Data.DataColumn("Category", typeof(string)));
+            _galleryTable.Columns.Add(new System.Data.DataColumn("Album", typeof(string)));
             _allAlbums = new List<Album>();
             _login = new loginInfo();
             loadConfiguration();
@@ -517,7 +517,7 @@ namespace SMEngine
             _settings = set;
         }
 
-         public bool checkCategoryForAlbums(String category)
+         public bool checkCategoryForAlbums(string category)
         {
             //we are checking to see if there are any albums in this category
             var albums = _allAlbums.FirstOrDefault(x => getFolder(x).Equals(category));
@@ -549,7 +549,7 @@ namespace SMEngine
             try
             {
                 // Setting
-                String subKey = "SOFTWARE\\andysScreensaver\\login";
+                string subKey = "SOFTWARE\\andysScreensaver\\login";
                 using (RegistryKey rk = RegistryKey.OpenBaseKey(RegistryHive.CurrentUser, RegistryView.Default))
                 {
                     using (var sk1 = rk.CreateSubKey(subKey))
@@ -714,14 +714,14 @@ namespace SMEngine
             loadGalleries();
             loadSettings();
         }
-        public void addGallery(String cat, String gal)
+        public void addGallery(string cat, string gal)
         {
             _galleryTable.Rows.Add(cat, gal);
         }
 
-        public Collection<String> gteAllCategories()
+        public Collection<string> gteAllCategories()
         {
-            var catList = new Collection<String>();
+            var catList = new Collection<string>();
             foreach(var a in _allAlbums)
             {
                 var folderName = getFolder(a);
@@ -733,7 +733,7 @@ namespace SMEngine
             return catList;
         }
 
-        public String[] getCategoriesAsync()
+        public string[] getCategoriesAsync()
         {
             var categories = new List<String>();
 
@@ -761,9 +761,9 @@ namespace SMEngine
         
         bool gettingCategories = false;
 
-        public String[] getCategories()
+        public string[] getCategories()
         {
-            List<String> categories = new List<String>();
+            var categories = new List<string>();
             lock (this)
             {
                 gettingCategories = true;
@@ -783,9 +783,9 @@ namespace SMEngine
             return category;
         }
 
-        public String[] getAlbums(String category)
+        public string[] getAlbums(string category)
         {
-            var catAlbums = new List<String>();
+            var catAlbums = new List<string>();
             foreach (Album album in _allAlbums)
             {
                 if (getFolder(album).Equals(category))
@@ -926,7 +926,9 @@ namespace SMEngine
                 while (running)
                 {
                     if (_imageQueue.Count < minQ)
+                    {
                         startIt = true;
+                    }
                     if (_imageQueue.Count < maximumQ && startIt)
                     {
                         try
@@ -973,14 +975,15 @@ namespace SMEngine
         ThreadStart tsAlbumLoad = null;
         Thread tAlbumLoad = null;
 
-        private String[] fetchUsersToLoad()
+        private string[] fetchUsersToLoad()
         {
             var usernameList = fetchKey("UserNameList");
+            Debug.Assert(!string.IsNullOrEmpty(usernameList));
             if (usernameList == null)
             {
                 usernameList = "MY_NAME";
             }
-            var list= usernameList.Split(',');
+            var list = usernameList.Split(',');
             return list; 
         }
         private void start()
@@ -996,16 +999,20 @@ namespace SMEngine
             if (tAlbumLoad == null)
             {
                 tsAlbumLoad = new ThreadStart(loadAllImages);
-                tAlbumLoad = new Thread(tsAlbumLoad);
-                tAlbumLoad.IsBackground = true;
+                tAlbumLoad = new Thread(tsAlbumLoad)
+                {
+                    IsBackground = true
+                };
                 tAlbumLoad.Start();
             }
             //System.Threading.Thread.Sleep(50);//experimental.
             if (t == null)
             {
                 ts = new ThreadStart(runImageCollection);
-                t = new Thread(ts);
-                t.IsBackground = true;
+                t = new Thread(ts)
+                {
+                    IsBackground = true
+                };
                 t.Start();
             }
 
@@ -1018,14 +1025,12 @@ namespace SMEngine
             {
                 try
                 {
-                    using (var outStream = new MemoryStream())
-                    {
-                        var enc = new BmpBitmapEncoder();
-                        enc.Frames.Add(BitmapFrame.Create(bitmapImage));
-                        enc.Save(outStream);
-                        bitmap = new System.Drawing.Bitmap(outStream);
-                        outStream.Close();
-                    }
+                    using var outStream = new MemoryStream();
+                    var enc = new BmpBitmapEncoder();
+                    enc.Frames.Add(BitmapFrame.Create(bitmapImage));
+                    enc.Save(outStream);
+                    bitmap = new System.Drawing.Bitmap(outStream);
+                    outStream.Close();
                 }
                 catch (Exception ex)
                 {   //do nothing.
@@ -1049,7 +1054,6 @@ namespace SMEngine
         public bool screensaverExpired()
         {
 
-            var hoursToRun = 1;
 #if (DEBUG)
             var minutesToRun = 15;//put back to 30
 #else
@@ -1090,7 +1094,7 @@ namespace SMEngine
         }
         public ImageSet getImage()
         {
-            ImageSet b = new ImageSet();
+            var b = new ImageSet();
             logMsg("fetching image...");
             lock (_imageQueue)
             {
@@ -1136,8 +1140,8 @@ namespace SMEngine
         }
         private System.Drawing.Bitmap cropAtRect(System.Drawing.Bitmap b, System.Drawing.Rectangle r)
         {
-            System.Drawing.Bitmap nb = new System.Drawing.Bitmap(r.Width, r.Height);
-            System.Drawing.Graphics g = System.Drawing.Graphics.FromImage(nb);
+            var nb = new System.Drawing.Bitmap(r.Width, r.Height);
+            var g = System.Drawing.Graphics.FromImage(nb);
             g.DrawImage(b, -r.X, -r.Y);
             return nb;
         }
@@ -1182,7 +1186,13 @@ namespace SMEngine
             var curHeight = img.Height;
             var scale = (double)curHeight / (double)targetHeight;
 
-            var resized = new System.Drawing.Bitmap(img, new System.Drawing.Size(Convert.ToInt32((double)original.Width / scale), Convert.ToInt32((double)original.Height / scale)));
+            var resized = new System.Drawing.Bitmap(
+                img, 
+                new System.Drawing.Size(
+                    Convert.ToInt32((double)original.Width / scale), 
+                    Convert.ToInt32((double)original.Height / scale)
+                    )
+                );
             logMsg("Scaling by " + scale.ToString());
             return resized;
         }
@@ -1194,35 +1204,24 @@ namespace SMEngine
             {
                 if (myimage != null)
                 {
-                    //load image;
-
-                    int BytesToRead = 2500;
                     if (myimage != null)
                     {
-                        String URL = myimage.SmallImageUrl;
+                        var URL = myimage.SmallImageUrl;
                         switch (quality)
                         {
                             case 0:
-                                URL = myimage.TinyImageUrl;
-                                break;
+                                URL = myimage.TinyImageUrl; break;
                             case 1:
-                                URL = myimage.MediumImageUrl;
-                                break;
+                                URL = myimage.MediumImageUrl; break;
                             case 2:
-                                URL = myimage.SmallImageUrl;
-                                break;
-
+                                URL = myimage.SmallImageUrl; break;
                             case 3:
                                 URL = myimage.LargeImageUrl; break;
                             case 4:
                                 URL = myimage.X3LargeImageUrl; break;
                             case 5:
-                                URL = myimage.OriginalImageUrl;
-                                break;
-                            default:
-                                break;
-
-
+                                URL = myimage.OriginalImageUrl; break;
+                            default: break;
                         }
                         return showImage(URL);
                     }
@@ -1245,44 +1244,42 @@ namespace SMEngine
 
         private BitmapImage showImage(string URL)
         {
-            int BytesToRead = 2500;
+            var BytesToRead = 2500;
             var image = new BitmapImage();
 
             try {
                 if (URL != null)
                 {
-                    WebRequest request = WebRequest.Create(new Uri(URL, UriKind.Absolute));
-
+                    var request = WebRequest.Create(new Uri(URL, UriKind.Absolute));
                     request.Timeout = -1;
                     try
                     {
-                        HttpWebResponse response = (HttpWebResponse)request.GetResponse();
+                        var response = (HttpWebResponse)request.GetResponse();
                     
-                    if (response.StatusCode != HttpStatusCode.OK)
-                    {
-                        throw new Exception("image not returned: " + URL);
-                    }
-                    var responseStream = response.GetResponseStream();
-                    var reader = new BinaryReader(responseStream);
-                    var memoryStream = new MemoryStream();
+                        if (response.StatusCode != HttpStatusCode.OK)
+                        {
+                            throw new Exception("image not returned: " + URL);
+                        }
+                        var responseStream = response.GetResponseStream();
+                        var reader = new BinaryReader(responseStream);
+                        var memoryStream = new MemoryStream();
 
-                    var bytebuffer = new byte[BytesToRead];
-                    int bytesRead = reader.Read(bytebuffer, 0, BytesToRead);
-                    var sw = new System.Diagnostics.Stopwatch();
-                    sw.Start();
-                    while (bytesRead > 0)
-                    {
-                        memoryStream.Write(bytebuffer, 0, bytesRead);
-                        bytesRead = reader.Read(bytebuffer, 0, BytesToRead);
-                    }
+                        var bytebuffer = new byte[BytesToRead];
+                        var bytesRead = reader.Read(bytebuffer, 0, BytesToRead);
+                        var sw = new Stopwatch();
+                        sw.Start();
+                        while (bytesRead > 0)
+                        {
+                            memoryStream.Write(bytebuffer, 0, bytesRead);
+                            bytesRead = reader.Read(bytebuffer, 0, BytesToRead);
+                        }
 
-                    sw.Stop();
-                    logMsg($"Get Image { URL} took: {sw.ElapsedMilliseconds}ms.");
-                    image.BeginInit();
-                    memoryStream.Seek(0, SeekOrigin.Begin);
-
-                    image.StreamSource = memoryStream;
-                    image.EndInit();
+                        sw.Stop();
+                        logMsg($"Get Image { URL} took: {sw.ElapsedMilliseconds}ms.");
+                        image.BeginInit();
+                        memoryStream.Seek(0, SeekOrigin.Begin);
+                        image.StreamSource = memoryStream;
+                        image.EndInit();
                     }
                     catch (Exception ex)
                     {
@@ -1312,10 +1309,10 @@ namespace SMEngine
 
              
 
-        public async Task<ICollection<AlbumImage>> GetImageList(string cat, String albumName)
+        public async Task<ICollection<AlbumImage>> GetImageList(string cat, string albumName)
         {
             var a = _allAlbums.Find(x => x.Name == albumName);
-            //System.Diagnostics.Debug.Assert(a.Name == cat);
+            Debug.Assert(!string.IsNullOrEmpty(a.Name));
             var _imageList = await api.GetAlbumImages(a);
             return _imageList;
         }
@@ -1389,12 +1386,10 @@ namespace SMEngine
                         doException("images is null!");
                     }
                     logMsg("loaded "+ images.AlbumImages.Count() + " images from album " +  a.Name);
-                   // lock (_imageDictionary)
                     {
-                    Parallel.ForEach(images.AlbumImages,
+                        Parallel.ForEach(images.AlbumImages,
                            new ParallelOptions { MaxDegreeOfParallelism = 4 },
                            i =>
-                           //(var i in images.AlbumImages)
                            {
                         var imageSizes = images.ImageSizes.Where(x => x.Key.Contains(i.ImageKey));
                         var imageSize = imageSizes.First().Value.ImageSizes;
@@ -1403,41 +1398,39 @@ namespace SMEngine
                             throw new Exception("null imagesize");
                         }
                         var imageUrl = fetchImageUrl(imageSize);
-
-
                         if (imageSizes != null && i.ImageKey != null)
                         {
                             lock (_imageDictionary)
                             {
-                                       try
-                                       {
-                                           if (!_imageDictionary.ContainsKey(i.ImageKey))
-                                           {
-                                               _imageDictionary.Add(
-                                                  i.ImageKey,
-                                                  new ImageSet(
-                                                      imageUrl,
-                                                      i.Caption == null ? "" : i.Caption,
-                                                      i.FileName == null ? "" : i.FileName,
-                                                      i.Date == null ? DateTime.Now : i.Date,
-                                                      getFolder(a) == null ? "" : getFolder(a),
-                                                      a.Name == null ? "" : a.Name
-                                                      )
-                                                  );
-                                           }
-                                           else
-                                           {
-                                               logMsg("duplicate image: " + i.ImageKey);
-                                           }
-                                       }
-                                       catch (ArgumentException ex)
-                                       {
-                                           doException("duplicate image: " + i.FileName + " : " + ex.Message);
-                                       }
-                                       catch (Exception ex)
-                                       {
-                                           doException(ex.Message);
-                                       }
+                                try
+                                {
+                                    if (!_imageDictionary.ContainsKey(i.ImageKey))
+                                    {
+                                        _imageDictionary.Add(
+                                            i.ImageKey,
+                                            new ImageSet(
+                                                imageUrl,
+                                                string.IsNullOrEmpty(i.Caption) ? "" : i.Caption,
+                                                string.IsNullOrEmpty(i.FileName) ? "" : i.FileName,
+                                                i.Date == null ? DateTime.Now : i.Date,
+                                                string.IsNullOrEmpty(getFolder(a)) ? "" : getFolder(a),
+                                                string.IsNullOrEmpty(a.Name) ? "" : a.Name
+                                                )
+                                            );
+                                    }
+                                    else
+                                    {
+                                        logMsg("duplicate image: " + i.ImageKey);
+                                    }
+                                }
+                                catch (ArgumentException ex)
+                                {
+                                    doException("duplicate image: " + i.FileName + " : " + ex.Message);
+                                }
+                                catch (Exception ex)
+                                {
+                                    doException(ex.Message);
+                                }
                             }
                         }
                         else
@@ -1458,19 +1451,19 @@ namespace SMEngine
 
         
 
-        public delegate void fireExceptionDel(String msg);
+        public delegate void fireExceptionDel(string msg);
         public event fireExceptionDel fireException;
         public class ImageSet
         {
             public System.Drawing.Bitmap b;
             public BitmapImage bm;
-            public String caption;
-            public String albumTitle;
-            public String CAtegory;
-            public String exif;
+            public string caption;
+            public string albumTitle;
+            public string CAtegory;
+            public string exif;
             public DateTime MyDate;
-            public String Name;
-            public String ImageURL;
+            public string Name;
+            public string ImageURL;
             public ImageSet(string mediumUrl, string Caption, string name, DateTime mydate, string folder, string albumname)
             {
                 ImageURL = mediumUrl;
@@ -1537,7 +1530,6 @@ namespace SMEngine
                     if (_settings.load_all)
                     {
                         var ary = getCategoriesAsync();
-                        var rand = new Random();
                         var rnd = new Random();
                         var shuffledCats = ary.OrderBy(x => rnd.Next()).ToList();
 
@@ -1549,31 +1541,31 @@ namespace SMEngine
                             shuffledAlbums,
                                new ParallelOptions { MaxDegreeOfParallelism = 4 },
                             a =>
-                      {
+                          {
                           
-                          if (getFolder(a).Contains("Surveilance"))
-                          {
-                              logMsg("Throwing out surveilance");
-                          }
-                          else
-                          {
-                              if (!screensaverExpired())
+                              if (getFolder(a).Contains("Surveilance"))
                               {
-                                  try
-                                  {
-                                      loadImages(a, false);
-                                  }
-                                  catch (Exception ex)
-                                  {
-                                      doException(ex.Message);
-                                  }
+                                  logMsg("Throwing out surveilance");
                               }
                               else
                               {
-                                  logMsg("Skipping loadImages - expired");
+                                  if (!screensaverExpired())
+                                  {
+                                      try
+                                      {
+                                          loadImages(a, false);
+                                      }
+                                      catch (Exception ex)
+                                      {
+                                          doException(ex.Message);
+                                      }
+                                  }
+                                  else
+                                  {
+                                      logMsg("Skipping loadImages - expired");
+                                  }
                               }
-                          }
-                      });
+                          });
 
                         logMsg($"Time to load all albums: {sw.ElapsedMilliseconds} milliseconds");
                     }
@@ -1613,12 +1605,10 @@ namespace SMEngine
 
         }
 
-        Dictionary<string, ImageSet> playedImages = new Dictionary<string, ImageSet>();
+        Dictionary<string, ImageSet> playedImages = new();// Dictionary<string, ImageSet>();
 
         private ImageSet getRandomImage()
         {
-
-       
             checkLogin(_envelope);
             {
                 var imageSet = new ImageSet();
@@ -1675,7 +1665,7 @@ namespace SMEngine
                 return imageSet;
             }
         }
-        public void doException(String msg)
+        public void doException(string msg)
         {
             exceptionsRaised++;
             if (fireException != null)
