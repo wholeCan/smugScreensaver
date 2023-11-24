@@ -8,7 +8,6 @@
 using andyScreenSaver.windows;
 using SMEngine;
 using System;
-using System.Configuration;
 using System.Diagnostics;
 using System.Threading;
 using System.Threading.Tasks;
@@ -50,7 +49,7 @@ namespace andyScreenSaver
 
                 loadLoginInfo();
                 await connect();
-               
+
 
             }));
 
@@ -128,7 +127,7 @@ namespace andyScreenSaver
 
             cbShowInfo.IsChecked = _engine.settings.showInfo;
         }
-       
+
         private async Task<bool> connect()
         {
             bool success = false;
@@ -138,7 +137,7 @@ namespace andyScreenSaver
             {
                 Cursor = Cursors.Wait;
                 authEnvelope e = _engine.getCode();
-                            
+
                 success = _engine.login(e);
                 if (!success)
                 {
@@ -181,7 +180,7 @@ namespace andyScreenSaver
                         Debug.WriteLine("waiting for albums to load...");
                         Thread.Sleep(100);
                     }
-                    
+
                     string[] Cats = _engine.getCategoriesAsync();
                     comboBox1.Items.Clear();
                     comboBox2.Items.Clear();
@@ -215,31 +214,31 @@ namespace andyScreenSaver
         bool tmpStarted = false;
         private async void button1_Click(object sender, RoutedEventArgs e)
         {//this button should be killed.
-/*            tmpStarted = true;
-            var connected = await connect();
-            if (!connected)
-            {
+            /*            tmpStarted = true;
+                        var connected = await connect();
+                        if (!connected)
+                        {
 
-                //start up new process to authenticate.
-                
-               // connected = await connect();
-              //  authenticateApp();//this actually starts stuff up?
-                if (!connected)
-                {
-                    MessageBox.Show("Incorrect Authentication");
-                }
-                else
-                {
-                    button1.Content = "Validated";
-                    button1.IsEnabled = false;
-                }
-            }
-            else
-            {
-                button1.Content = "Validated";
-                button1.IsEnabled = false;
-            }
-*/
+                            //start up new process to authenticate.
+
+                           // connected = await connect();
+                          //  authenticateApp();//this actually starts stuff up?
+                            if (!connected)
+                            {
+                                MessageBox.Show("Incorrect Authentication");
+                            }
+                            else
+                            {
+                                button1.Content = "Validated";
+                                button1.IsEnabled = false;
+                            }
+                        }
+                        else
+                        {
+                            button1.Content = "Validated";
+                            button1.IsEnabled = false;
+                        }
+            */
         }
 
         private void comboBox1_SelectionChanged(object sender, SelectionChangedEventArgs e)
@@ -294,14 +293,14 @@ namespace andyScreenSaver
 
         private void tLogin_TextChanged(object sender, TextChangedEventArgs e)
         {
-      //      button1.Content = "Connect";
-        //    button1.IsEnabled = true;
+            //      button1.Content = "Connect";
+            //    button1.IsEnabled = true;
         }
 
         private void tPassword_PasswordChanged(object sender, RoutedEventArgs e)
         {
-          //  button1.Content = "Connect";
-          //  button1.IsEnabled = true;
+            //  button1.Content = "Connect";
+            //  button1.IsEnabled = true;
         }
 
         private void button6_Click(object sender, RoutedEventArgs e)

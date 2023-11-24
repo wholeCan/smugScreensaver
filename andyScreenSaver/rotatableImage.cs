@@ -1,11 +1,10 @@
 ﻿using System;
-using System.Windows.Media;
-using System.Drawing;
-using System.Windows.Media.Imaging;
-
 using System.Diagnostics;
-using System.IO;
+using System.Drawing;
 using System.Drawing.Imaging;
+using System.IO;
+using System.Windows.Media;
+using System.Windows.Media.Imaging;
 
 
 namespace andyScreenSaver
@@ -13,14 +12,14 @@ namespace andyScreenSaver
     public class rotatableImage : System.Windows.Controls.Image
     {
         private SMEngine.CSMEngine _engine = null;
-        private int _imageIndex=0;
+        private int _imageIndex = 0;
         private int _imageCounter = 0;
         public int ImageIndex
         {
-            get{ return _imageIndex;}
-            set {_imageIndex=value;}
+            get { return _imageIndex; }
+            set { _imageIndex = value; }
         }
-        
+
         public RotateTransform AnimatedRotateTransform = new RotateTransform();
         public rotatableImage(SMEngine.CSMEngine engine)
         {
@@ -57,7 +56,7 @@ namespace andyScreenSaver
         {
 
             var storageDirectory = Environment.GetFolderPath(Environment.SpecialFolder.CommonPictures) + @"\SmugAndy\";
-            var fileNameStorage=storageDirectory + @"\" + _imageIndex + @".jpg"; // used for file storage.
+            var fileNameStorage = storageDirectory + @"\" + _imageIndex + @".jpg"; // used for file storage.
 
             //experimantal, not in use yet.  in idea, we add event to 'click' and load new image.
             var gridWidth = 5;  // 2->4x4, 3 => 8x8, 6 => 64 x 64
@@ -65,16 +64,16 @@ namespace andyScreenSaver
             var borderWidth = 5;
             var lastUpdate = DateTime.Now;
 
-            var lm = new listManager(gridWidth*gridHeight);
+            var lm = new listManager(gridWidth * gridHeight);
 
             var s = new SMEngine.CSMEngine.ImageSet();
-            this.Dispatcher.Invoke(System.Windows.Threading.DispatcherPriority.Normal, new Action(delegate()
+            this.Dispatcher.Invoke(System.Windows.Threading.DispatcherPriority.Normal, new Action(delegate ()
                 {
-                     
+
                     var bmyImage = s.B;
 
-                        if (bmyImage != null)
-                        {
+                    if (bmyImage != null)
+                    {
                         try
                         {
                             var maxTotalCells = Convert.ToInt32(gridWidth) * Convert.ToInt32(gridHeight);
@@ -138,12 +137,12 @@ namespace andyScreenSaver
                     }
 
                 }));
-            
+
         }
 
         public void resetRotation()
         {
-            this.Dispatcher.BeginInvoke(new Action(delegate()
+            this.Dispatcher.BeginInvoke(new Action(delegate ()
                {
                    try
                    {
@@ -160,7 +159,7 @@ namespace andyScreenSaver
         {
             if (true)//not ready yet.
             {
-                this.Dispatcher.BeginInvoke(new Action(delegate()
+                this.Dispatcher.BeginInvoke(new Action(delegate ()
                 {
                     try
                     {

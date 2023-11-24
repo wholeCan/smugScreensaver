@@ -33,7 +33,7 @@ using static SMEngine.CSMEngine;
 
 namespace andyScreenSaver
 {
-    
+
     public partial class Window1 : Window
     {
         private Vector3D zoomDelta;
@@ -260,10 +260,10 @@ namespace andyScreenSaver
             }
         }
 
-      
+
         private void updateImage()
         {
-            
+
             hStack1.Dispatcher.BeginInvoke(new Action(delegate ()
                 {
                     //resuze each of the images to fit screen.
@@ -278,18 +278,18 @@ namespace andyScreenSaver
                     if (Engine.screensaverExpired())
                     {
                         showMsg(
-                            DateTime.Now.ToShortTimeString()+ 
+                            DateTime.Now.ToShortTimeString() +
                             ": Slide show is stopped until " +
-                            (Engine.settings.startTime/100).ToString() + 
-                            ":"+
-                            (Engine.settings.startTime % 100).ToString("00") + 
+                            (Engine.settings.startTime / 100).ToString() +
+                            ":" +
+                            (Engine.settings.startTime % 100).ToString("00") +
                             " - press <left> or <right> arrow to wake up."
                             );
                     }
                 }));
             var run = false;
             ImageSet image = null;
-            
+
             var counter = 0;
             var blackImagePlaced = false;
 
@@ -304,8 +304,9 @@ namespace andyScreenSaver
                         hideSetup();
                     }
                 }
-                else {
-                    
+                else
+                {
+
                     //Thread.Sleep(100);
                 }
             }
@@ -412,9 +413,9 @@ namespace andyScreenSaver
                 sb.Append(s.CAtegory + ": " + s.AlbumTitle);
                 if (!string.IsNullOrEmpty(s.Caption) && !s.Caption.Contains("OLYMPUS"))
                 {
-                    sb.Append( ": " + s.Caption);
+                    sb.Append(": " + s.Caption);
                 }
-                imageAddCaption(sb.ToString(), ref bmyImage2); 
+                imageAddCaption(sb.ToString(), ref bmyImage2);
             }
             catch (Exception ex)
             {
@@ -488,7 +489,7 @@ namespace andyScreenSaver
             catch (Exception e)
             {
                 MessageBox.Show("Invalid login, shutting down!");
-                
+
                 return;
             }
             Ts = new ThreadStart(run);
@@ -505,10 +506,10 @@ namespace andyScreenSaver
             //get dimensions
             var w = System.Windows.SystemParameters.WorkArea.Width;
             var h = System.Windows.SystemParameters.WorkArea.Height;
-            
+
             if (Engine == null || forceStart == true)
             {
-                
+
                 Engine = new SMEngine.CSMEngine();
                 Engine.setScreenDimensions(w, h);
                 {
@@ -535,7 +536,7 @@ namespace andyScreenSaver
         [Obsolete]
         public Window1()
         {
-           // myParent = parent;
+            // myParent = parent;
             InitializeComponent();
             var borderWidth = 0;
             int.TryParse(ConfigurationSettings.AppSettings["BorderWidth"], out borderWidth);
@@ -549,15 +550,15 @@ namespace andyScreenSaver
 
 
 
-        
+
         public void init()
 
         {
-           // setupJob(); //todo: this is broken, reloading causes multiple images to show.
+            // setupJob(); //todo: this is broken, reloading causes multiple images to show.
 
             //   LogError($"Starting up: {DateTime.Now}");
             var tmp = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
-           // var file = tmp + @"\andyScr.trace.log";
+            // var file = tmp + @"\andyScr.trace.log";
 
             initEngine();
 
@@ -586,8 +587,8 @@ namespace andyScreenSaver
             try
             {
                 if (!Directory.Exists(storageDirectory) && DoSmartStart)
-                { 
-                    Directory.CreateDirectory(storageDirectory); 
+                {
+                    Directory.CreateDirectory(storageDirectory);
                 }
             }
             catch (Exception ex)
@@ -703,15 +704,15 @@ namespace andyScreenSaver
                 }
                 else showMsg("");
             }
-            else if (e.Key == Key.Escape || e.Key== Key.Q)
+            else if (e.Key == Key.Escape || e.Key == Key.Q)
             {
                 Application.Current.Shutdown();
-              //  Close();
+                //  Close();
             }
             else if (e.Key == Key.W)
             {
-                 WindowStyle = WindowStyle.SingleBorderWindow;
-                 ResizeMode = ResizeMode.CanResizeWithGrip;
+                WindowStyle = WindowStyle.SingleBorderWindow;
+                ResizeMode = ResizeMode.CanResizeWithGrip;
             }
             else if (e.Key == Key.B)
             {

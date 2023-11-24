@@ -1,7 +1,4 @@
-﻿using System;
-
-
-namespace SMEngine
+﻿namespace SMEngine
 {
     public class loginInfo
     {
