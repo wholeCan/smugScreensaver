@@ -16,15 +16,15 @@ for (int i = 0; i < 4; i++)
         image = engine.getImage();
         Thread.Sleep(100);
     }
-    Console.WriteLine("Logged in: {0} album: {1} category {2}", loggedIn.ToString(), image.albumTitle, image.CAtegory);
+    Console.WriteLine("Logged in: {0} album: {1} category {2}", loggedIn.ToString(), image.AlbumTitle, image.CAtegory);
 
     var name = image.Name != null ? image.Name : "unknown";
     var outStream = new FileStream("outputimage" + name + ".bmp", FileMode.Create);
 
-    if (image.bm != null)
+    if (image.Bm != null)
     {
         var enc = new BmpBitmapEncoder();
-        var bitmapImage = image.bm;
+        var bitmapImage = image.Bm;
         enc.Frames.Add(BitmapFrame.Create(bitmapImage));
 
         enc.Save(outStream);

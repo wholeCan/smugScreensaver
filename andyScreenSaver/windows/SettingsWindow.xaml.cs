@@ -39,7 +39,7 @@ namespace andyScreenSaver
             {
 
 
-                dataGrid1.ItemsSource = _engine._galleryTable.DefaultView;
+                dataGrid1.ItemsSource = _engine.GalleryTable.DefaultView;
                 comboBox3.Items.Add("Tiny");
                 comboBox3.Items.Add("Small");
                 comboBox3.Items.Add("Medium");
@@ -93,7 +93,7 @@ namespace andyScreenSaver
         /// <param name="e"></param>
         private void btnDefaults_Click(object sender, RoutedEventArgs e)
         {
-            _engine._galleryTable.Clear();
+            _engine.GalleryTable.Clear();
             _engine.setSettings(new CSettings());
         }
 
@@ -276,7 +276,7 @@ namespace andyScreenSaver
         {
             dataGrid1.Dispatcher.BeginInvoke(new Action(delegate ()
                 {
-                    _engine._galleryTable.Clear();
+                    _engine.GalleryTable.Clear();
                 }));
         }
 

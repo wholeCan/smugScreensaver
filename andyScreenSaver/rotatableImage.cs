@@ -71,7 +71,7 @@ namespace andyScreenSaver
             this.Dispatcher.Invoke(System.Windows.Threading.DispatcherPriority.Normal, new Action(delegate()
                 {
                      
-                    var bmyImage = s.b;
+                    var bmyImage = s.B;
 
                         if (bmyImage != null)
                         {
@@ -93,9 +93,9 @@ namespace andyScreenSaver
 
                             s = _engine.getImage();
                             Bitmap bmyImage2;
-                            if (s.b != null)
+                            if (s.B != null)
                             {
-                                bmyImage2 = s.b;
+                                bmyImage2 = s.B;
                                 var image = this;
                                 var myHeight = Height;
                                 image.Height = /*this.Height*/ myHeight / gridHeight - (borderWidth / gridHeight); //161; 

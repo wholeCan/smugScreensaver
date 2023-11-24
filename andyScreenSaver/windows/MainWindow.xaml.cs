@@ -21,6 +21,7 @@ using System.Diagnostics;
 using System.Drawing;
 using System.Drawing.Imaging;
 using System.IO;
+using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Windows;
@@ -331,7 +332,7 @@ namespace andyScreenSaver
                         {
                             if (image != null)
                             {
-                                image.b = Engine.getBlackImagePixel();
+                                image.B = Engine.getBlackImagePixel();
                                 blackImagePlaced = true;
                             }
                         }
@@ -384,9 +385,9 @@ namespace andyScreenSaver
 
                     }
                     Bitmap bmyImage2;
-                    if (s != null && s.b != null)
+                    if (s != null && s.B != null)
                     {
-                        bmyImage2 = s.b;
+                        bmyImage2 = s.B;
                         if (Engine.settings.showInfo)
                         {
                             if (bmyImage2.Height == 0)
@@ -407,15 +408,13 @@ namespace andyScreenSaver
         {
             try
             {
-                var d = DateTime.Now;
-                var caption = //s.MyDate.ToShortDateString() 
-                    s.CAtegory 
-                    + ": "+ s.albumTitle;
-                if (s.caption != "" && !s.caption.Contains("OLYMPUS"))
+                var sb = new StringBuilder();
+                sb.Append(s.CAtegory + ": " + s.AlbumTitle);
+                if (!string.IsNullOrEmpty(s.Caption) && !s.Caption.Contains("OLYMPUS"))
                 {
-                    caption += ": " + s.caption;
+                    sb.Append( ": " + s.Caption);
                 }
-                imageAddCaption(caption, ref bmyImage2); 
+                imageAddCaption(sb.ToString(), ref bmyImage2); 
             }
             catch (Exception ex)
             {
@@ -425,7 +424,7 @@ namespace andyScreenSaver
 
             image.Height = /*this.Height*/ MyHeight / GridHeight - (BorderWidth / GridHeight); //161; 
 
-            (image as System.Windows.Controls.Image).Source = Bitmap2BitmapImage(s.b);
+            (image as System.Windows.Controls.Image).Source = Bitmap2BitmapImage(s.B);
 
             Lm.addToList(new Tuple<int, int>(randWidth, randHeight));
             var imageIndex = (int)(randWidth + (randHeight * (GridWidth)));
