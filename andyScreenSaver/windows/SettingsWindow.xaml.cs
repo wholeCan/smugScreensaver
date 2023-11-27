@@ -8,7 +8,6 @@
 using andyScreenSaver.windows;
 using SMEngine;
 using System;
-using System.Configuration;
 using System.Diagnostics;
 using System.Threading;
 using System.Threading.Tasks;
@@ -39,7 +38,7 @@ namespace andyScreenSaver
             {
 
 
-                dataGrid1.ItemsSource = _engine._galleryTable.DefaultView;
+                dataGrid1.ItemsSource = _engine.GalleryTable.DefaultView;
                 comboBox3.Items.Add("Tiny");
                 comboBox3.Items.Add("Small");
                 comboBox3.Items.Add("Medium");
@@ -50,7 +49,7 @@ namespace andyScreenSaver
 
                 loadLoginInfo();
                 await connect();
-               
+
 
             }));
 
@@ -93,7 +92,7 @@ namespace andyScreenSaver
         /// <param name="e"></param>
         private void btnDefaults_Click(object sender, RoutedEventArgs e)
         {
-            _engine._galleryTable.Clear();
+            _engine.GalleryTable.Clear();
             _engine.setSettings(new CSettings());
         }
 
@@ -128,7 +127,7 @@ namespace andyScreenSaver
 
             cbShowInfo.IsChecked = _engine.settings.showInfo;
         }
-       
+
         private async Task<bool> connect()
         {
             bool success = false;
@@ -138,7 +137,7 @@ namespace andyScreenSaver
             {
                 Cursor = Cursors.Wait;
                 authEnvelope e = _engine.getCode();
-                            
+
                 success = _engine.login(e);
                 if (!success)
                 {
@@ -181,11 +180,11 @@ namespace andyScreenSaver
                         Debug.WriteLine("waiting for albums to load...");
                         Thread.Sleep(100);
                     }
-                    
-                    String[] Cats = _engine.getCategoriesAsync();
+
+                    string[] Cats = _engine.getCategoriesAsync();
                     comboBox1.Items.Clear();
                     comboBox2.Items.Clear();
-                    foreach (String s in Cats)
+                    foreach (string s in Cats)
                     {
                         if (_engine.checkCategoryForAlbums(s))
                             comboBox1.Items.Add(s);
@@ -215,38 +214,38 @@ namespace andyScreenSaver
         bool tmpStarted = false;
         private async void button1_Click(object sender, RoutedEventArgs e)
         {//this button should be killed.
-/*            tmpStarted = true;
-            var connected = await connect();
-            if (!connected)
-            {
+            /*            tmpStarted = true;
+                        var connected = await connect();
+                        if (!connected)
+                        {
 
-                //start up new process to authenticate.
-                
-               // connected = await connect();
-              //  authenticateApp();//this actually starts stuff up?
-                if (!connected)
-                {
-                    MessageBox.Show("Incorrect Authentication");
-                }
-                else
-                {
-                    button1.Content = "Validated";
-                    button1.IsEnabled = false;
-                }
-            }
-            else
-            {
-                button1.Content = "Validated";
-                button1.IsEnabled = false;
-            }
-*/
+                            //start up new process to authenticate.
+
+                           // connected = await connect();
+                          //  authenticateApp();//this actually starts stuff up?
+                            if (!connected)
+                            {
+                                MessageBox.Show("Incorrect Authentication");
+                            }
+                            else
+                            {
+                                button1.Content = "Validated";
+                                button1.IsEnabled = false;
+                            }
+                        }
+                        else
+                        {
+                            button1.Content = "Validated";
+                            button1.IsEnabled = false;
+                        }
+            */
         }
 
         private void comboBox1_SelectionChanged(object sender, SelectionChangedEventArgs e)
         {
             comboBox2.Items.Clear();
-            String[] albums = _engine.getAlbums(comboBox1.SelectedValue.ToString());
-            foreach (String s in albums)
+            string[] albums = _engine.getAlbums(comboBox1.SelectedValue.ToString());
+            foreach (string s in albums)
             {
                 comboBox2.Items.Add(s);
             }
@@ -276,7 +275,7 @@ namespace andyScreenSaver
         {
             dataGrid1.Dispatcher.BeginInvoke(new Action(delegate ()
                 {
-                    _engine._galleryTable.Clear();
+                    _engine.GalleryTable.Clear();
                 }));
         }
 
@@ -294,14 +293,14 @@ namespace andyScreenSaver
 
         private void tLogin_TextChanged(object sender, TextChangedEventArgs e)
         {
-      //      button1.Content = "Connect";
-        //    button1.IsEnabled = true;
+            //      button1.Content = "Connect";
+            //    button1.IsEnabled = true;
         }
 
         private void tPassword_PasswordChanged(object sender, RoutedEventArgs e)
         {
-          //  button1.Content = "Connect";
-          //  button1.IsEnabled = true;
+            //  button1.Content = "Connect";
+            //  button1.IsEnabled = true;
         }
 
         private void button6_Click(object sender, RoutedEventArgs e)

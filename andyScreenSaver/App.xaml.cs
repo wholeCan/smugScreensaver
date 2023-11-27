@@ -6,10 +6,9 @@
 
 using System;
 using System.Collections.Generic;
-using System.Configuration;
+using System.IO;
 using System.Linq;
 using System.Windows;
-using System.IO;
 using System.Windows.Interop;
 
 namespace andyScreenSaver
@@ -25,7 +24,7 @@ namespace andyScreenSaver
 
         private void Application_Startup(object sender, StartupEventArgs e)
         {
-            
+
             try
             {
                 if (e == null || e.Args == null)
@@ -95,7 +94,7 @@ namespace andyScreenSaver
                             {
 
                                 var env = Environment.SpecialFolder.LocalApplicationData;
-                                sw1 = new StreamWriter(env+@"\smugmug.startup.log");
+                                sw1 = new StreamWriter(env + @"\smugmug.startup.log");
                             }
                             var wins = new List<Window1>();
                             var iter = 0;
@@ -115,7 +114,7 @@ namespace andyScreenSaver
                                 iter++;
                             }
                             if (doWriteLogs)
-                            { sw1.Close();}
+                            { sw1.Close(); }
                         }
                     }
 
@@ -150,64 +149,21 @@ namespace andyScreenSaver
                         wins.ElementAt(iter).Top = workingArea.Top;
                         wins.ElementAt(iter).Height = workingArea.Height;
                         wins.ElementAt(iter).Show();
-                        
+
                         iter++;
                     }
-/*
-                    win.setDimensions(333, 200);
-                    win.init();
-                    win.disableActions();
 
-                    var h = System.Windows.SystemParameters.PrimaryScreenHeight;
-                    var w = System.Windows.SystemParameters.PrimaryScreenWidth;
-                    var myHeight = 600;
-                    var myWidth = 1200;
-                    var maxAtSTartup = false;
-                    if (!Boolean.TryParse(ConfigurationSettings.AppSettings["maxAtStartup"], out maxAtSTartup))
-                    {
-                        maxAtSTartup = false;
-
-                    }
-                    if (
-                        int.TryParse(ConfigurationSettings.AppSettings["windowHeight"], out myHeight) && //default value.
-                        int.TryParse(ConfigurationSettings.AppSettings["windowwidth"], out myWidth)
-                    )//default value.
-                        if (myHeight > 0 && myWidth > 0)
-                        {
-                            if (h < myHeight || w < myWidth )
-                            {
-                                win.Height = 300;//default if out of bounds.
-                                win.Width = 600;
-                            }
-                            else
-                            {
-                                win.Height = myHeight;
-                                win.Width = myWidth;
-                            }
-                        }
-                    if (maxAtSTartup || true)
-                    {
-                        win.WindowState = WindowState.Maximized;
-                    }
-                    else
-                    {
-                        win.WindowState = WindowState.Normal;
-                    }
-
-                    //win.WindowStyle = WindowStyle.SingleBorderWindow;
-                    //win.ResizeMode = ResizeMode.CanResizeWithGrip;
-                    win.Show();
-*/
                 }
             }
             catch (Exception ex)
             {
                 //var ln=ex.StackTrace.GetFrame(0).GetFileLineNumber();
                 var loc = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData); //.GetEnvironmentVariable("TEMP");
-                var exceptionLog = loc + @"\errlog.startup.smug."+ DateTime.Now.ToShortDateString().Replace('/', '-') + ".txt";
+                var exceptionLog = loc + @"\errlog.startup.smug." + DateTime.Now.ToShortDateString().Replace('/', '-') + ".txt";
                 if (File.Exists(exceptionLog))
                     File.Delete(exceptionLog);
-                using (var sw = new StreamWriter(exceptionLog)) {
+                using (var sw = new StreamWriter(exceptionLog))
+                {
 
                     // Get stack trace for the exception with source file information
                     var st = new System.Diagnostics.StackTrace(ex, true);

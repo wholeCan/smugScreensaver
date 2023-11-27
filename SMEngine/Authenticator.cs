@@ -9,7 +9,8 @@ namespace SMEngine
     {
         static public string Encrypt(string password, int salt)
         {
-            if (password != null ) {
+            if (password != null)
+            {
                 var passwordBytes = Encoding.Unicode.GetBytes(password);
                 var saltBytes = Encoding.Unicode.GetBytes(salt.ToString());
                 //note: this locks decryption to CurrentUser on CurrentMachine!
@@ -22,17 +23,17 @@ namespace SMEngine
 
         static public string Decrypt(string cipher, int salt)
         {
-            if (cipher == null) 
+            if (string.IsNullOrEmpty(cipher))
                 return null;
-           
-           
-                var cipherBytes = Convert.FromBase64String(cipher);
-                var saltBytes = Encoding.Unicode.GetBytes(salt.ToString());
-            //note: this locks decryption to CurrentUser on CurrentMachine!
-                var passwordBytes = ProtectedData.Unprotect(cipherBytes, saltBytes, DataProtectionScope.CurrentUser);
 
-                return Encoding.Unicode.GetString(passwordBytes);
-           
+
+            var cipherBytes = Convert.FromBase64String(cipher);
+            var saltBytes = Encoding.Unicode.GetBytes(salt.ToString());
+            //note: this locks decryption to CurrentUser on CurrentMachine!
+            var passwordBytes = ProtectedData.Unprotect(cipherBytes, saltBytes, DataProtectionScope.CurrentUser);
+
+            return Encoding.Unicode.GetString(passwordBytes);
+
         }
     }
 

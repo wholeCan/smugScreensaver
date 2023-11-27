@@ -1,9 +1,9 @@
-﻿using System.Diagnostics;
-using System.Net;
+﻿using Nito.AsyncEx;
 using SmugMug.NET;
 using System.Configuration;
+using System.Diagnostics;
 using System.IO;
-using Nito.AsyncEx;
+using System.Net;
 
 namespace SmugMugTest
 {
@@ -70,11 +70,11 @@ namespace SmugMugTest
             else
             {
                 //allow app to generate
-                oAuthCredentials = GenerateOAuthAccessToken(consumerKey, consumerSecret); 
+                oAuthCredentials = GenerateOAuthAccessToken(consumerKey, consumerSecret);
             }
 
             //Console.WriteLine("token {0} secret {1}", oAuthCredentials.AccessToken, oAuthCredentials.AccessTokenSecret);
-                
+
             //Connect to SmugMug using oAuth
             SmugMugAPI apiOAuth = new SmugMugAPI(LoginType.OAuth, oAuthCredentials);
             return apiOAuth;
@@ -188,7 +188,7 @@ namespace SmugMugTest
             try
             {
                 var api = AuthenticateUsingOAuth();
-                
+
 
                 var user = await api.GetUser("andyholkan");
 

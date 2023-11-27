@@ -14,12 +14,14 @@
 
 //using Quartz;
 //using Quartz.Impl;
+using SMEngine;
 using System;
 using System.Configuration;
 using System.Diagnostics;
 using System.Drawing;
 using System.Drawing.Imaging;
 using System.IO;
+using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Windows;
@@ -31,7 +33,7 @@ using static SMEngine.CSMEngine;
 
 namespace andyScreenSaver
 {
-    
+
     public partial class Window1 : Window
     {
         private Vector3D zoomDelta;
@@ -40,8 +42,8 @@ namespace andyScreenSaver
         const bool doSmartStart = true;
         public void setDimensions(int _myHeight, int _myWidth)
         {
-            myHeight = _myHeight;
-            myWidth = _myWidth;
+            MyHeight = _myHeight;
+            MyWidth = _myWidth;
         }
         private SMEngine.CSMEngine _engine;
         ThreadStart ts = null;
@@ -53,7 +55,7 @@ namespace andyScreenSaver
         int borderWidth = 5;//see config file for setting.
         public void disableActions()
         {
-            actionsDisabled = true;
+            ActionsDisabled = true;
             Topmost = false;
             Cursor = Cursors.Arrow;
         }
@@ -233,7 +235,7 @@ namespace andyScreenSaver
             Debug.WriteLine("Window: " + DateTime.Now.ToLongTimeString() + ": " + msg);
         }
 
-        private void LogError(String msg)
+        private void LogError(string msg)
         {
             // Console.WriteLine(msg);
             logMsg($"{DateTime.Now}: {msg}");
@@ -258,10 +260,10 @@ namespace andyScreenSaver
             }
         }
 
-      
+
         private void updateImage()
         {
-            
+
             hStack1.Dispatcher.BeginInvoke(new Action(delegate ()
                 {
                     //resuze each of the images to fit screen.
@@ -270,30 +272,30 @@ namespace andyScreenSaver
                         foreach (Border borderImage in (v as StackPanel).Children)
                         {
                             var image = borderImage.Child as rotatableImage;
-                            image.Height = myHeight / gridHeight - (100 / Math.Pow(2, gridHeight)); //161; 
+                            image.Height = MyHeight / GridHeight - (100 / Math.Pow(2, GridHeight)); //161; 
                         }
                     }
-                    if (_engine.screensaverExpired())
+                    if (Engine.screensaverExpired())
                     {
                         showMsg(
-                            DateTime.Now.ToShortTimeString()+ 
+                            DateTime.Now.ToShortTimeString() +
                             ": Slide show is stopped until " +
-                            (_engine.settings.startTime/100).ToString() + 
-                            ":"+
-                            (_engine.settings.startTime % 100).ToString("00") + 
+                            (Engine.settings.startTime / 100).ToString() +
+                            ":" +
+                            (Engine.settings.startTime % 100).ToString("00") +
                             " - press <left> or <right> arrow to wake up."
                             );
                     }
                 }));
             var run = false;
-            ImageSet image =null;
-            
+            ImageSet image = null;
+
             var counter = 0;
             var blackImagePlaced = false;
 
             while (image == null && counter < 1)
             {//if image isn't ready, wait for it.
-                image = _engine.getImage();
+                image = Engine.getImage();
                 counter++;//allow it to die.
                 if (image == null)
                 {
@@ -302,12 +304,13 @@ namespace andyScreenSaver
                         hideSetup();
                     }
                 }
-                else {
-                    
+                else
+                {
+
                     //Thread.Sleep(100);
                 }
             }
-            if (_engine.getLogin().login == "")
+            if (Engine.getLogin().login == "")
             {
                 SetupRequired.Dispatcher.BeginInvoke(new Action(delegate ()
                 {
@@ -326,11 +329,11 @@ namespace andyScreenSaver
                         SetupRequired.Content = "No data presently available, trying again...";
                         shuffleImages();
 
-                        if (_engine.warm())
+                        if (Engine.warm())
                         {
                             if (image != null)
                             {
-                                image.b = _engine.getBlackImagePixel();
+                                image.B = Engine.getBlackImagePixel();
                                 blackImagePlaced = true;
                             }
                         }
@@ -340,11 +343,11 @@ namespace andyScreenSaver
                 else
                 {//putting this in the else, because the blackImagePlaced is set in another thread and creates a race condition.
                     //  the red text disappears after resetting network connection, when really i want it to show up.
-                    if (!blackImagePlaced && !_engine.screensaverExpired())
+                    if (!blackImagePlaced && !Engine.screensaverExpired())
                     {
                         //todo: add switch here controlled by hotkey
-                        if (statsEnabled)
-                        { showMsg(_engine.getRuntimeStatsInfo()); }
+                        if (StatsEnabled)
+                        { showMsg(Engine.getRuntimeStatsInfo()); }
                         else
                         { showMsg(""); }
                     }
@@ -354,7 +357,7 @@ namespace andyScreenSaver
                     setImage(ref run, ref image);
                 }));
             }
-            if (run && !_engine.settings.showInfo && !blackImagePlaced)
+            if (run && !Engine.settings.showInfo && !blackImagePlaced)
             {
                 SetupRequired.Dispatcher.BeginInvoke(new Action(delegate ()
                 {
@@ -370,23 +373,23 @@ namespace andyScreenSaver
                 if (s != null)
                 {
                     run = true;
-                    var maxTotalCells = Convert.ToInt32(gridWidth) * Convert.ToInt32(gridHeight);
+                    var maxTotalCells = Convert.ToInt32(GridWidth) * Convert.ToInt32(GridHeight);
                     var beginIndex = 0;
                     var rIndex = new Random().Next(beginIndex, maxTotalCells);
-                    var randWidth = rIndex % gridWidth;
-                    var randHeight = rIndex / gridWidth;
-                    while (lm.isInList(new Tuple<int, int>(randWidth, randHeight)))
+                    var randWidth = rIndex % GridWidth;
+                    var randHeight = rIndex / GridWidth;
+                    while (Lm.isInList(new Tuple<int, int>(randWidth, randHeight)))
                     {
                         rIndex = new Random().Next(beginIndex, maxTotalCells);
-                        randWidth = rIndex % gridWidth;
-                        randHeight = rIndex / gridWidth;
+                        randWidth = rIndex % GridWidth;
+                        randHeight = rIndex / GridWidth;
 
                     }
                     Bitmap bmyImage2;
-                    if (s != null && s.b != null)
+                    if (s != null && s.B != null)
                     {
-                        bmyImage2 = s.b;
-                        if (_engine.settings.showInfo)
+                        bmyImage2 = s.B;
+                        if (Engine.settings.showInfo)
                         {
                             if (bmyImage2.Height == 0)
                             {
@@ -406,15 +409,13 @@ namespace andyScreenSaver
         {
             try
             {
-                var d = DateTime.Now;
-                var caption = //s.MyDate.ToShortDateString() 
-                    s.CAtegory 
-                    + ": "+ s.albumTitle;
-                if (s.caption != "" && !s.caption.Contains("OLYMPUS"))
+                var sb = new StringBuilder();
+                sb.Append(s.CAtegory + ": " + s.AlbumTitle);
+                if (!string.IsNullOrEmpty(s.Caption) && !s.Caption.Contains("OLYMPUS"))
                 {
-                    caption += ": " + s.caption;
+                    sb.Append(": " + s.Caption);
                 }
-                imageAddCaption(caption, ref bmyImage2); 
+                imageAddCaption(sb.ToString(), ref bmyImage2);
             }
             catch (Exception ex)
             {
@@ -422,51 +423,58 @@ namespace andyScreenSaver
             }
             var image = ((hStack1.Children[randWidth] as StackPanel).Children[randHeight] as Border).Child as rotatableImage;
 
-            image.Height = /*this.Height*/ myHeight / gridHeight - (borderWidth / gridHeight); //161; 
+            image.Height = /*this.Height*/ MyHeight / GridHeight - (BorderWidth / GridHeight); //161; 
 
-            (image as System.Windows.Controls.Image).Source = Bitmap2BitmapImage(s.b);
+            (image as System.Windows.Controls.Image).Source = Bitmap2BitmapImage(s.B);
 
-            lm.addToList(new Tuple<int, int>(randWidth, randHeight));
-            var imageIndex = (int)(randWidth + (randHeight * (gridWidth)));
-            if (imageCounterArray[imageIndex] == 0)
+            Lm.addToList(new Tuple<int, int>(randWidth, randHeight));
+            var imageIndex = (int)(randWidth + (randHeight * (GridWidth)));
+            if (ImageCounterArray[imageIndex] == 0)
             {
                 try
                 {
                     var tmp = new Bitmap(bmyImage2);
                     var fileName = getImageStorageLoc() + @"\" + imageIndex + @".jpg";
-                    if (File.Exists(fileName) && doSmartStart)
+                    if (File.Exists(fileName) && DoSmartStart)
                     {
                         File.Delete(fileName);
                     }
-                    if (doSmartStart)
+                    if (DoSmartStart)
                     { tmp.Save(fileName, ImageFormat.Jpeg); }
                 }
                 catch (Exception ex)
                 {
                     LogError($"Problem setting image {ex.Message}");
                 }
-                imageCounterArray[imageIndex]++;
+                ImageCounterArray[imageIndex]++;
             }
         }
 
         private void run()
         {
-            running = true;
-            while (running)
+            Running = true;
+            while (Running)
             {
-                var runDelta = DateTime.Now - lastUpdate;
-                updateImage();
-                    
-
-                var millisecondsSinceLastRun = DateTime.Now.Subtract(lastUpdate).TotalMilliseconds;
-                var timeToSleep = _engine.settings.speed_s * 1000 - millisecondsSinceLastRun;
-                if (timeToSleep > 0)
+                var runDelta = DateTime.Now - LastUpdate;
+                try
                 {
-                    logMsg("sleeping for " + timeToSleep + " milliseconds");
-                    Thread.Sleep((Int32)timeToSleep);
+                    updateImage();
                 }
-                lastUpdate = DateTime.Now;
-
+                catch (Exception ex)
+                {
+                    LogError("updateImage failed: " + ex.Message);
+                }
+                finally
+                {
+                    var millisecondsSinceLastRun = DateTime.Now.Subtract(LastUpdate).TotalMilliseconds;
+                    var timeToSleep = Engine.settings.speed_s * 1000 - millisecondsSinceLastRun;
+                    if (timeToSleep > 0)
+                    {
+                        logMsg("sleeping for " + timeToSleep + " milliseconds");
+                        Thread.Sleep((Int32)timeToSleep);
+                    }
+                    LastUpdate = DateTime.Now;
+                }
             }
         }
 
@@ -476,18 +484,20 @@ namespace andyScreenSaver
         {
             try
             {
-                _engine.login(_engine.getCode());
+                Engine.login(Engine.getCode());
             }
             catch (Exception e)
             {
                 MessageBox.Show("Invalid login, shutting down!");
-                
+
                 return;
             }
-            ts = new ThreadStart(run);
-            t = new Thread(ts);
-            t.IsBackground = true;
-            t.Start();
+            Ts = new ThreadStart(run);
+            T = new Thread(Ts)
+            {
+                IsBackground = true
+            };
+            T.Start();
 
         }
         Task task = null;
@@ -496,21 +506,21 @@ namespace andyScreenSaver
             //get dimensions
             var w = System.Windows.SystemParameters.WorkArea.Width;
             var h = System.Windows.SystemParameters.WorkArea.Height;
-            
-            if (_engine == null || forceStart == true)
-            {
-                
-                _engine = new SMEngine.CSMEngine();
-                _engine.setScreenDimensions(w, h);
-                {
-                    gridHeight = _engine.settings.gridHeight;
-                    gridWidth = _engine.settings.gridWidth;
 
-                    _engine.fireException += showException;
+            if (Engine == null || forceStart == true)
+            {
+
+                Engine = new SMEngine.CSMEngine();
+                Engine.setScreenDimensions(w, h);
+                {
+                    GridHeight = Engine.settings.gridHeight;
+                    GridWidth = Engine.settings.gridWidth;
+
+                    Engine.fireException += showException;
                     try
                     {
-                        task = new Task(() => { loginSmugmug(); });
-                        task.Start();
+                        Task = new Task(() => { loginSmugmug(); });
+                        Task.Start();
                     }
                     catch (Exception ex)
                     {
@@ -521,12 +531,14 @@ namespace andyScreenSaver
                 }
             }
         }
+
         //Application myParent;
+        [Obsolete]
         public Window1()
         {
-           // myParent = parent;
+            // myParent = parent;
             InitializeComponent();
-            int borderWidth = 0;
+            var borderWidth = 0;
             int.TryParse(ConfigurationSettings.AppSettings["BorderWidth"], out borderWidth);
         }
         int[] imageCounterArray;
@@ -538,29 +550,33 @@ namespace andyScreenSaver
 
 
 
-        
+
         public void init()
 
         {
-           // setupJob(); //todo: this is broken, reloading causes multiple images to show.
+            // setupJob(); //todo: this is broken, reloading causes multiple images to show.
 
             //   LogError($"Starting up: {DateTime.Now}");
             var tmp = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
-            var file = tmp + @"\andyScr.trace.log";
+            // var file = tmp + @"\andyScr.trace.log";
 
             initEngine();
 
-            lm = new listManager(gridWidth * gridHeight);
-            imageCounterArray = new int[gridHeight * gridWidth];
+            Lm = new listManager(GridWidth * GridHeight);
+            ImageCounterArray = new int[GridHeight * GridWidth];
 
-            for (int i = 0; i < gridHeight * gridWidth - 1; i++)
-                imageCounterArray[i] = 0;
-
-            for (int idx = 0; idx < gridWidth; idx++)
+            for (var i = 0; i < GridHeight * GridWidth - 1; i++)
             {
-                var sp = new StackPanel();
-                sp.HorizontalAlignment = System.Windows.HorizontalAlignment.Center;
-                sp.Orientation = Orientation.Vertical;
+                ImageCounterArray[i] = 0;
+            }
+
+            for (var idx = 0; idx < GridWidth; idx++)
+            {
+                var sp = new StackPanel
+                {
+                    HorizontalAlignment = System.Windows.HorizontalAlignment.Center,
+                    Orientation = Orientation.Vertical
+                };
 
 
                 hStack1.Children.Add(sp);//add vertical stack panel.
@@ -570,8 +586,10 @@ namespace andyScreenSaver
 
             try
             {
-                if (!Directory.Exists(storageDirectory) && doSmartStart)
+                if (!Directory.Exists(storageDirectory) && DoSmartStart)
+                {
                     Directory.CreateDirectory(storageDirectory);
+                }
             }
             catch (Exception ex)
             {
@@ -579,17 +597,17 @@ namespace andyScreenSaver
             }
             foreach (StackPanel stackPanel in hStack1.Children)
             {
-                for (var idx = 0; idx < gridHeight; idx++)
+                for (var idx = 0; idx < GridHeight; idx++)
                 {
 
                     var myBorder = new Border();
-                    myBorder.BorderThickness = new Thickness(_engine.settings.borderThickness);
+                    myBorder.BorderThickness = new Thickness(Engine.settings.borderThickness);
 
-                    rotatableImage i = new rotatableImage(_engine);
+                    var i = new rotatableImage(Engine);
                     myBorder.Child = i;
 
                     var bi3 = new BitmapImage();
-                    if (!File.Exists(storageDirectory + @"\" + imageIndex + @".jpg") || !doSmartStart)
+                    if (!File.Exists(storageDirectory + @"\" + imageIndex + @".jpg") || !DoSmartStart)
                     {
                         bi3.BeginInit();
                         bi3.UriSource = new Uri("/andyScrSaver;component/2011072016-03-00IMG7066-L.jpg", UriKind.Relative);
@@ -617,7 +635,7 @@ namespace andyScreenSaver
                     }
                     i.Source = bi3;
                     i.ImageIndex = imageIndex++;
-                    i.Height = /*this.Height*/ myHeight / gridHeight - (borderWidth / gridHeight); //161; 
+                    i.Height = /*this.Height*/ MyHeight / GridHeight - (BorderWidth / GridHeight); //161; 
                     i.HorizontalAlignment = System.Windows.HorizontalAlignment.Center;
                     stackPanel.Children.Add(myBorder);
                 }
@@ -633,18 +651,18 @@ namespace andyScreenSaver
             this.Cursor = Cursors.Wait;
 
 
-            actionsDisabled = false;
-            myCursor = Cursor;
+            ActionsDisabled = false;
+            MyCursor = Cursor;
 
             //initEngine();
 
-            lastMouseMove = DateTime.Now;
-            totalMouseMoves = 0;
+            LastMouseMove = DateTime.Now;
+            TotalMouseMoves = 0;
 
 
             // On each WheelMouse change, we zoom in/out a particular % of the original distance
             const double ZoomPctEachWheelChange = 0.02;
-            zoomDelta = Vector3D.Multiply(ZoomPctEachWheelChange, camMain.LookDirection);
+            ZoomDelta = Vector3D.Multiply(ZoomPctEachWheelChange, camMain.LookDirection);
             this.Cursor = tc;
         }
 
@@ -652,16 +670,16 @@ namespace andyScreenSaver
         {
             if (e.Delta > 0)
                 // Zoom in
-                camMain.Position = Point3D.Add(camMain.Position, zoomDelta);
+                camMain.Position = Point3D.Add(camMain.Position, ZoomDelta);
             else
                 // Zoom out
-                camMain.Position = Point3D.Subtract(camMain.Position, zoomDelta);
+                camMain.Position = Point3D.Subtract(camMain.Position, ZoomDelta);
         }
         private void doshutdown()
         {
-            if (!actionsDisabled)
+            if (!ActionsDisabled)
             {
-                myCursor = Cursor;
+                MyCursor = Cursor;
                 Application.Current.Shutdown();
             }
         }
@@ -674,27 +692,27 @@ namespace andyScreenSaver
             if (e.Key == Key.Left || e.Key == Key.Right)
             {
                 //todo: What happens when service is stopped, can I safely resrtart?     
-                _engine.resetExpiredImageCollection();
+                Engine.resetExpiredImageCollection();
                 updateImage();
             }
             else if (e.Key == Key.S)
             {
-                statsEnabled = !statsEnabled;
-                if (statsEnabled)
+                StatsEnabled = !StatsEnabled;
+                if (StatsEnabled)
                 {
-                    showMsg(_engine.getRuntimeStatsInfo());
+                    showMsg(Engine.getRuntimeStatsInfo());
                 }
                 else showMsg("");
             }
-            else if (e.Key == Key.Escape || e.Key== Key.Q)
+            else if (e.Key == Key.Escape || e.Key == Key.Q)
             {
                 Application.Current.Shutdown();
-              //  Close();
+                //  Close();
             }
             else if (e.Key == Key.W)
             {
-                 WindowStyle = WindowStyle.SingleBorderWindow;
-                 ResizeMode = ResizeMode.CanResizeWithGrip;
+                WindowStyle = WindowStyle.SingleBorderWindow;
+                ResizeMode = ResizeMode.CanResizeWithGrip;
             }
             else if (e.Key == Key.B)
             {
@@ -712,14 +730,14 @@ namespace andyScreenSaver
             }
         }
 
-        private void showMsg(String msg)
+        private void showMsg(string msg)
         {
 
             SetupRequired.Dispatcher.BeginInvoke(new Action(delegate ()
             {
-                if (!actionsDisabled)
+                if (!ActionsDisabled)
                 {
-                    Random r = new Random();
+                    var r = new Random();
                     VerticalAlignment vAlign = System.Windows.VerticalAlignment.Bottom;
                     HorizontalAlignment hAlign = System.Windows.HorizontalAlignment.Center;
                     do
@@ -746,13 +764,38 @@ namespace andyScreenSaver
         private DateTime lastMouseMove;
         private long totalMouseMoves;
         private long maxMouseMoves = 2;
+
+        public Vector3D ZoomDelta { get => zoomDelta; set => zoomDelta = value; }
+        public int MyHeight { get => myHeight; set => myHeight = value; }
+        public int MyWidth { get => myWidth; set => myWidth = value; }
+
+        public static bool DoSmartStart => doSmartStart;
+
+        public CSMEngine Engine { get => _engine; set => _engine = value; }
+        public ThreadStart Ts { get => ts; set => ts = value; }
+        public Thread T { get => t; set => t = value; }
+        public static bool Running { get => running; set => running = value; }
+        public bool ActionsDisabled { get => actionsDisabled; set => actionsDisabled = value; }
+        public int GridWidth { get => gridWidth; set => gridWidth = value; }
+        public int GridHeight { get => gridHeight; set => gridHeight = value; }
+        public int BorderWidth { get => borderWidth; set => borderWidth = value; }
+        public DateTime LastUpdate { get => lastUpdate; set => lastUpdate = value; }
+        public listManager Lm { get => lm; set => lm = value; }
+        public bool StatsEnabled { get => statsEnabled; set => statsEnabled = value; }
+        public Cursor MyCursor { get => myCursor; set => myCursor = value; }
+        public Task Task { get => task; set => task = value; }
+        public int[] ImageCounterArray { get => imageCounterArray; set => imageCounterArray = value; }
+        public DateTime LastMouseMove { get => lastMouseMove; set => lastMouseMove = value; }
+        public long TotalMouseMoves { get => totalMouseMoves; set => totalMouseMoves = value; }
+        public long MaxMouseMoves { get => maxMouseMoves; set => maxMouseMoves = value; }
+
         private void Window_MouseMove(object sender, MouseEventArgs e)
         {//author: ASH
-            var ts = DateTime.Now - lastMouseMove;
+            var ts = DateTime.Now - LastMouseMove;
             if (ts.TotalMilliseconds < 100)
             {
-                totalMouseMoves++;
-                if (totalMouseMoves > maxMouseMoves)//a little bit of slack before closing.
+                TotalMouseMoves++;
+                if (TotalMouseMoves > MaxMouseMoves)//a little bit of slack before closing.
                 {
                     doshutdown();
                 }
@@ -760,9 +803,9 @@ namespace andyScreenSaver
             }
             else
             {
-                totalMouseMoves = 0;
+                TotalMouseMoves = 0;
             }
-            lastMouseMove = DateTime.Now;
+            LastMouseMove = DateTime.Now;
         }
 
         private void Window_Closed(object sender, EventArgs e)
@@ -772,15 +815,15 @@ namespace andyScreenSaver
 
         private void image1_MouseUp(object sender, MouseButtonEventArgs e)
         {
-            if (actionsDisabled)
+            if (ActionsDisabled)
             {
                 updateImage();// automatic way totalMouseMoves 
             }
         }
         private void Window_SizeChanged_1(object sender, SizeChangedEventArgs e)
         {
-            myWidth = Convert.ToInt32(e.NewSize.Width);
-            myHeight = Convert.ToInt32(e.NewSize.Height);
+            MyWidth = Convert.ToInt32(e.NewSize.Width);
+            MyHeight = Convert.ToInt32(e.NewSize.Height);
             updateImage();
         }
         private void Window_MouseRightButtonUp(object sender, MouseButtonEventArgs e)
