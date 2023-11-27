@@ -1,6 +1,0 @@
-11/13/2013: to protect constants, I set:
- git update-index --assume-unchanged SMEngine\Constants.cs
-
-
-to undo:
-git update-index --no-assume-unchanged [<file> ...]
