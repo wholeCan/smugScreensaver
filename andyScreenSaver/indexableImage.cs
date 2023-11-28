@@ -9,6 +9,7 @@ using System.Windows.Media.Imaging;
 
 namespace andyScreenSaver
 {
+    //this used to be a rotatableImage, but refactored for simplicity after I stopped being silly.
     public class indexableImage : System.Windows.Controls.Image
     {
         private int _imageIndex = 0;
