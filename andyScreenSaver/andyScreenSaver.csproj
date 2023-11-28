@@ -244,7 +244,7 @@
       <DesignTimeSharedInput>True</DesignTimeSharedInput>
     </Compile>
     <Compile Include="QueryPerfCounter.cs" />
-    <Compile Include="rotatableImage.cs" />
+    <Compile Include="indexableImage.cs" />
     <Compile Include="windows\PaymentWindow.xaml.cs">
       <DependentUpon>PaymentWindow.xaml</DependentUpon>
     </Compile>

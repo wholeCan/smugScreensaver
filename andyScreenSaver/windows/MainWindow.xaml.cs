@@ -271,7 +271,7 @@ namespace andyScreenSaver
                     {
                         foreach (Border borderImage in (v as StackPanel).Children)
                         {
-                            var image = borderImage.Child as rotatableImage;
+                            var image = borderImage.Child as indexableImage;
                             image.Height = MyHeight / GridHeight - (100 / Math.Pow(2, GridHeight)); //161; 
                         }
                     }
@@ -421,7 +421,7 @@ namespace andyScreenSaver
             {
                 LogError($"Problem setting caption {ex.Message}");
             }
-            rotatableImage image = ((hStack1.Children[randWidth] as StackPanel).Children[randHeight] as Border).Child as rotatableImage;
+            indexableImage image = ((hStack1.Children[randWidth] as StackPanel).Children[randHeight] as Border).Child as indexableImage;
 
             //whether you set MaxHeight, or MaxWidth will determine how the images end up centered on screen.
             image.MaxHeight = /*this.Height*/ MyHeight / GridHeight - (BorderWidth / GridHeight); 
@@ -606,7 +606,7 @@ namespace andyScreenSaver
                     var myBorder = new Border();
                     myBorder.BorderThickness = new Thickness(Engine.settings.borderThickness);
 
-                    var i = new rotatableImage(Engine);
+                    var i = new indexableImage();
                     myBorder.Child = i;
 
                     var bi3 = new BitmapImage();
