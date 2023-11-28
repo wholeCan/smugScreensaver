@@ -405,7 +405,7 @@ namespace andyScreenSaver
                 LogError(e.Message);
             }
         }
-        private void setImageCaption(ref SMEngine.CSMEngine.ImageSet s, ref Bitmap bmyImage2, int randWidth, int randHeight)
+        private void setImageCaption(ref SMEngine.CSMEngine.ImageSet s, ref Bitmap targetBitmapImage, int randWidth, int randHeight)
         {
             try
             {
@@ -415,17 +415,18 @@ namespace andyScreenSaver
                 {
                     sb.Append(": " + s.Caption);
                 }
-                imageAddCaption(sb.ToString(), ref bmyImage2);
+                imageAddCaption(sb.ToString(), ref targetBitmapImage);
             }
             catch (Exception ex)
             {
                 LogError($"Problem setting caption {ex.Message}");
             }
-            var image = ((hStack1.Children[randWidth] as StackPanel).Children[randHeight] as Border).Child as rotatableImage;
+            rotatableImage image = ((hStack1.Children[randWidth] as StackPanel).Children[randHeight] as Border).Child as rotatableImage;
 
-            image.Height = /*this.Height*/ MyHeight / GridHeight - (BorderWidth / GridHeight); //161; 
-
-            (image as System.Windows.Controls.Image).Source = Bitmap2BitmapImage(s.B);
+            //whether you set MaxHeight, or MaxWidth will determine how the images end up centered on screen.
+            image.MaxHeight = /*this.Height*/ MyHeight / GridHeight - (BorderWidth / GridHeight); 
+            image.Width = MyWidth / GridWidth - (BorderWidth / GridWidth);
+            image.Source = Bitmap2BitmapImage(s.B);
 
             Lm.addToList(new Tuple<int, int>(randWidth, randHeight));
             var imageIndex = (int)(randWidth + (randHeight * (GridWidth)));
@@ -433,14 +434,16 @@ namespace andyScreenSaver
             {
                 try
                 {
-                    var tmp = new Bitmap(bmyImage2);
+                    var tmp = new Bitmap(targetBitmapImage);
                     var fileName = getImageStorageLoc() + @"\" + imageIndex + @".jpg";
                     if (File.Exists(fileName) && DoSmartStart)
                     {
                         File.Delete(fileName);
                     }
                     if (DoSmartStart)
-                    { tmp.Save(fileName, ImageFormat.Jpeg); }
+                    { 
+                        tmp.Save(fileName, ImageFormat.Jpeg); 
+                    }
                 }
                 catch (Exception ex)
                 {
