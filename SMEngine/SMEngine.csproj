@@ -111,6 +111,7 @@
     <Compile Include="CSettings.cs" />
     <Compile Include="GalleryEntry.cs" />
     <Compile Include="ImageInfo.cs" />
+    <Compile Include="ImageSet.cs" />
     <Compile Include="loginInfo.cs" />
     <Compile Include="SMEngine.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
