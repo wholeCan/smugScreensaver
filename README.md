@@ -27,7 +27,7 @@ Started in 2013, this code base is a hobby to build a screensaver based on a smu
 - You'll need to be running the latest .net redistributable
 - you'll need a smugmug account, while it could technically run in unauthenticated mode - it's not setup for that right now.
 
-Pre-built installer: [LINK](nsisInstaller/andysScreensaverInstaller_small.exe)
+Pre-built installer: [LINK](https://github.com/wholeCan/smugScreensaver/blob/1e195d75abdc06c357ed62bee3d19e304981f811/nsisInstaller/andysScreensaverInstaller_small.exe)
 
 ### system diagram
 ```mermaid
