@@ -175,10 +175,11 @@ namespace andyScreenSaver
                 if (success)
                 {
                     comboBox1.Items.Add("Waiting for data...");
+                    _engine.setIsConfigurationMode();
                     while (_engine.IsLoadingAlbums())
                     {
-                        Debug.WriteLine("waiting for albums to load...");
-                        Thread.Sleep(100);
+                       // Debug.WriteLine("waiting for albums to load...");
+                        Thread.Sleep(0);
                     }
 
                     string[] Cats = _engine.getCategoriesAsync();

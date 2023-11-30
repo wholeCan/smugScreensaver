@@ -1534,6 +1534,12 @@ namespace SMEngine
         {
             return IsLoadingAlbums1;
         }
+        bool isConfigurationMode = false;
+
+        public void setIsConfigurationMode()
+        {
+            isConfigurationMode = true;
+        }
         private void loadAllImages()
         {
             IsLoadingAlbums1 = true;
@@ -1587,7 +1593,10 @@ namespace SMEngine
                                   {
                                       try
                                       {
-                                          loadImages(a, false);
+                                          if (!isConfigurationMode)
+                                          {
+                                              loadImages(a, false);
+                                          }
                                       }
                                       catch (Exception ex)
                                       {
