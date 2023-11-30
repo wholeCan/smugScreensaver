@@ -30,7 +30,7 @@ namespace ScreensaverStarter
                 if (e.Args.Length >= 1)
                 {
               
-                    if (e.Args[0].ToLower().StartsWith("/p") || e.Args[0].ToLower().StartsWith("/s"))
+                    if (e.Args[0].ToLower().StartsWith("/p") || e.Args[0].ToLower().StartsWith("/s") || e.Args[0].ToLower().StartsWith("/c"))
                     {
                         string programFilesX86Path = Environment.GetFolderPath(Environment.SpecialFolder.ProgramFilesX86);
                         Console.WriteLine("Program Files (x86) Path: " + programFilesX86Path);
