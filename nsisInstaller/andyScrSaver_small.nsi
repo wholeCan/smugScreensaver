@@ -91,9 +91,9 @@ FileOpen $0 "$TEMP\smugmug.dat" w
 FileWrite $0 "This file indicates that andys screensaver has been installed, delete the file to trigger configuration on next install"
 FileClose $0
 ;MessageBox MB_OK "If this is your first install, please run configuration before starting."
-MessageBox MB_YESNO "Do you wish to run configuration?" IDYES somelabel       
+MessageBox MB_YESNO "Do you wish to run configuration?" IDYES runConfiguration       
    Goto restofstuff
-somelabel:
+runConfiguration:
    ExecWait '$INSTDIR\andyscrSaver /c'
 restofstuff:
 file_found:
