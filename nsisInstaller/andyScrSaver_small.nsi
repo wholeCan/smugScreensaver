@@ -5,6 +5,8 @@
 ; prompts the user asking them where to install, and drops a copy of example1.nsi
 ; there. 
 
+; 2023, cleaning up some extra stuff.
+
 ;--------------------------------
 
 ; The name of the installer
@@ -16,6 +18,7 @@ OutFile "andysScreensaverInstaller_small.exe"
 ; The default installation directory
 InstallDir $PROGRAMFILES32\andyScrSaver
 
+
 ; Request application privileges for Windows Vista
 RequestExecutionLevel admin
 
@@ -25,13 +28,10 @@ RequestExecutionLevel admin
 
 Page directory
 Page instfiles
-;Var /Global BLA
 ;--------------------------------
 ; The stuff to install
 Section "Install Application" ;No components page, name is not important
 
- ;   StrCpy $BLA "HELLO WORLD";"C:\Users\aholk\dev\smugScreensaver\andyScreenSaver\bin\Release"
-	;DetailPrint "${BLA}"
   ; Set output path to the installation directory.
   SetOutPath $INSTDIR
 
@@ -39,28 +39,10 @@ Section "Install Application" ;No components page, name is not important
 	 ;remove from system directory (Screen saver location)
   	Delete c:\Windows\System32\andyScrSaver.scr
 	Delete c:\Windows\System32\andyScrSaver.scr.config
-	Delete c:\Windows\System32\JSONDotNET.dll
-	Delete c:\Windows\System32\Newtonsoft.Json.dll
-	Delete c:\Windows\System32\Newtonsoft.Json.xml
-	Delete c:\Windows\System32\setupApp.exe
-	Delete c:\Windows\System32\setupApp.exe.config
-	Delete c:\Windows\System32\SMEngine.dll
-	Delete c:\Windows\System32\SMEngine.dll.config
-	Delete c:\Windows\System32\SmugMugModel.dll
-	Delete c:\Windows\System32\smUtility.dll
 
 	 ;remove from system directory (Screen saver location)
   	Delete c:\Windows\Syswow64\andyScrSaver.scr
 	Delete c:\Windows\Syswow64\andyScrSaver.scr.config
-	Delete c:\Windows\Syswow64\JSONDotNET.dll
-	Delete c:\Windows\Syswow64\Newtonsoft.Json.dll
-	Delete c:\Windows\Syswow64\Newtonsoft.Json.xml
-	Delete c:\Windows\Syswow64\setupApp.exe
-	Delete c:\Windows\Syswow64\setupApp.exe.config
-	Delete c:\Windows\Syswow64\SMEngine.dll
-	Delete c:\Windows\Syswow64\SMEngine.dll.config
-	Delete c:\Windows\Syswow64\SmugMugModel.dll
-	Delete c:\Windows\Syswow64\smUtility.dll
 
   
 
@@ -70,16 +52,14 @@ Section "Install Application" ;No components page, name is not important
 	File /r "C:\Users\aholk\dev\smugScreensaver\andyScreenSaver\bin\Release\*.config"
 	File /r "C:\Users\aholk\dev\smugScreensaver\andyScreenSaver\bin\Release\*.xml"
 
+	; include Screensaver starter files
+	File /r "C:\Users\aholk\dev\smugScreensaver\ScreensaverStarter\bin\Release\net8.0-windows\*.dll"
+	File /r "C:\Users\aholk\dev\smugScreensaver\ScreensaverStarter\bin\Release\net8.0-windows\*.json"
+	File /r "C:\Users\aholk\dev\smugScreensaver\ScreensaverStarter\bin\Release\net8.0-windows\*.exe"
   
   CreateDirectory "$SMPROGRAMS\andySlideShow"
   CreateShortCut "$SMPROGRAMS\andySlideShow\slideshow.lnk" "$INSTDIR\andyScrSaver.exe" "" "$INSTDIR\andyScrSaver.exe" 0
   CreateShortCut "$SMPROGRAMS\andySlideShow\config.lnk" "$INSTDIR\andyScrSaver.exe" "/c" "$INSTDIR\andyScrSaver.exe" 0
- ; CreateShortCut "$SMPROGRAMS\andySlideShow\Borderless slideshow.lnk" "$INSTDIR\andyScrSaver.exe" "/s" "$INSTDIR\andyScrSaver.exe" 0
-
-
-
-
-  
 
 WriteUninstaller "bt-uninst.exe"
 
@@ -92,8 +72,8 @@ SetOutPath $INSTDIR
 
 File .\manual_screensaver_install.bat
 
-; no longer run screen saver stuff.
-; execwait $INSTDIR\manual_screensaver_install.bat
+; remove next line if you no longer run screen saver stuff.
+execwait $INSTDIR\manual_screensaver_install.bat
 delete .\manual_screensaver_install.bat
 
 
@@ -107,7 +87,6 @@ file_not_found:
 
 ;ExecWait '$INSTDIR\andyscrSaver /c'
 file_found:
-;MessageBox MB_OK "File found"
 
 SectionEnd
 
@@ -121,20 +100,6 @@ Section "Uninstall"
 	; remove all files from program Files directory
     Delete "$PROGRAMFILES32\andyScrSaver\*"
 
-	 ;remove from system directory (Screen saver location)
-  	Delete c:\Windows\System32\andyScrSaver.scr
-	Delete c:\Windows\System32\andyScrSaver.scr.config
-	Delete c:\Windows\System32\JSONDotNET.dll
-	Delete c:\Windows\System32\Newtonsoft.Json.dll
-	Delete c:\Windows\System32\Newtonsoft.Json.xml
-	Delete c:\Windows\System32\setupApp.exe
-	Delete c:\Windows\System32\setupApp.exe.config
-	Delete c:\Windows\System32\SMEngine.dll
-	Delete c:\Windows\System32\SMEngine.dll.config
-	Delete c:\Windows\System32\SmugMugModel.dll
-	Delete c:\Windows\System32\smUtility.dll
-	;Delete "%TEMP%\smugmug.dat"
-
   ;remove installation directory
     RMDir "$PROGRAMFILES32\andyScrSaver"
   
@@ -144,7 +109,5 @@ Section "Uninstall"
 	
     Delete "$SMPROGRAMS\andySlideShow\Borderless slideshow.lnk" 
     RMDir "$SMPROGRAMS\andySlideShow"
-
-  
 
 SectionEnd

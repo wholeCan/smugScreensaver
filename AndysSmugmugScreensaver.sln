@@ -27,6 +27,8 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "nsis-build-stuff", "nsis-bu
 		nsisInstaller\manual_screensaver_install.bat = nsisInstaller\manual_screensaver_install.bat
 	EndProjectSection
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ScreensaverStarter", "ScreensaverStarter\ScreensaverStarter.csproj", "{39E61E88-09F1-4AA0-9501-1A69C28FDB7A}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Config debug|Any CPU = Config debug|Any CPU
@@ -75,6 +77,14 @@ Global
 		{0565CF15-0A5F-4E5F-BE7C-854B6F77F14A}.Release|Any CPU.Build.0 = Release|Any CPU
 		{0565CF15-0A5F-4E5F-BE7C-854B6F77F14A}.Show debug|Any CPU.ActiveCfg = Show debug|Any CPU
 		{0565CF15-0A5F-4E5F-BE7C-854B6F77F14A}.Show debug|Any CPU.Build.0 = Show debug|Any CPU
+		{39E61E88-09F1-4AA0-9501-1A69C28FDB7A}.Config debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{39E61E88-09F1-4AA0-9501-1A69C28FDB7A}.Config debug|Any CPU.Build.0 = Debug|Any CPU
+		{39E61E88-09F1-4AA0-9501-1A69C28FDB7A}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{39E61E88-09F1-4AA0-9501-1A69C28FDB7A}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{39E61E88-09F1-4AA0-9501-1A69C28FDB7A}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{39E61E88-09F1-4AA0-9501-1A69C28FDB7A}.Release|Any CPU.Build.0 = Release|Any CPU
+		{39E61E88-09F1-4AA0-9501-1A69C28FDB7A}.Show debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{39E61E88-09F1-4AA0-9501-1A69C28FDB7A}.Show debug|Any CPU.Build.0 = Debug|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

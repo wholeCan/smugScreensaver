@@ -738,21 +738,6 @@ namespace andyScreenSaver
 
             SetupRequired.Dispatcher.BeginInvoke(new Action(delegate ()
             {
-                if (!ActionsDisabled)
-                {
-                    var r = new Random();
-                    VerticalAlignment vAlign = System.Windows.VerticalAlignment.Bottom;
-                    HorizontalAlignment hAlign = System.Windows.HorizontalAlignment.Center;
-                    do
-                    {
-                        vAlign = (System.Windows.VerticalAlignment)r.Next(3);
-                        hAlign = (System.Windows.HorizontalAlignment)r.Next(3);
-                    } while (vAlign != System.Windows.VerticalAlignment.Center &&
-                        hAlign != System.Windows.HorizontalAlignment.Center);
-                    SetupRequired.VerticalAlignment = vAlign;
-                    SetupRequired.HorizontalAlignment = hAlign;
-                }
-
                 SetupRequired.Visibility = System.Windows.Visibility.Visible;
                 SetupRequired.Content = msg;
             }));

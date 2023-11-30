@@ -1,0 +1,8 @@
+{
+  "profiles": {
+    "ScreensaverStarter": {
+      "commandName": "Project",
+      "commandLineArgs": "/s"
+    }
+  }
+}

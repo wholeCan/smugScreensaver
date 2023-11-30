@@ -5,6 +5,8 @@
 ; prompts the user asking them where to install, and drops a copy of example1.nsi
 ; there. 
 
+; NOTE: as of 2023, this file is no longer supported. with Windows 10+, the required libs are already installed.
+
 ;--------------------------------
 
 ; The name of the installer
@@ -90,7 +92,7 @@ Section "install screensaver"
 	File .\manual_screensaver_install.bat
 
 	; no longer install screen saver stuff
-	; execwait $INSTDIR\manual_screensaver_install.bat
+    execwait $INSTDIR\manual_screensaver_install.bat
 	delete .\manual_screensaver_install.bat
 
 SectionEnd
