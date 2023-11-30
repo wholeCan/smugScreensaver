@@ -5,7 +5,7 @@ echo ***************************************************************************
 copy "C:\Program Files (x86)\andyScrSaver\screenSaverStarter.dll"  C:\windows\SysWow64\
 copy "C:\Program Files (x86)\andyScrSaver\screenSaverStarter.deps.json"  "C:\windows\SysWow64\"
 copy "C:\Program Files (x86)\andyScrSaver\screenSaverStarter.runtimeconfig.json"  "C:\windows\SysWow64\"
-copy "C:\Program Files (x86)\andyScrSaver\screenSaverStarter.exe"  "C:\windows\SysWow64\screenSaverStarter.scr"
+copy "C:\Program Files (x86)\andyScrSaver\screenSaverStarter.exe"  "C:\windows\SysWow64\SmugAndy-slideshow.scr"
 
 
 

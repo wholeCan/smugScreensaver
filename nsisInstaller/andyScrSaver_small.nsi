@@ -43,6 +43,8 @@ Section "Install Application" ;No components page, name is not important
 	 ;remove from system directory (Screen saver location)
   	Delete c:\Windows\Syswow64\andyScrSaver.scr
 	Delete c:\Windows\Syswow64\andyScrSaver.scr.config
+	Delete c:\Windows\SysWow64\screenSaverStarter.scr
+	Delete c:\Windows\Syswow64\screenSaverStarter.dll
 
   
 
@@ -85,9 +87,17 @@ IfFileExists $TEMP\smugmug.dat file_found file_not_found
 
 file_not_found:
 
-;ExecWait '$INSTDIR\andyscrSaver /c'
+FileOpen $0 "$TEMP\smugmug.dat" w
+FileWrite $0 "This file indicates that andys screensaver has been installed, delete the file to trigger configuration on next install"
+FileClose $0
+;MessageBox MB_OK "If this is your first install, please run configuration before starting."
+MessageBox MB_YESNO "Do you wish to run configuration?" IDYES somelabel       
+   Goto restofstuff
+somelabel:
+   ExecWait '$INSTDIR\andyscrSaver /c'
+restofstuff:
 file_found:
-
+;do-nothing
 SectionEnd
 
 
@@ -105,6 +115,7 @@ Section "Uninstall"
   
   ;remove links from start menu
     Delete "$SMPROGRAMS\andySlideShow\slideshow.lnk" 
+	Delete "$TEMP\smugmug.dat" 
     Delete "$SMPROGRAMS\andySlideShow\config.lnk"
 	
     Delete "$SMPROGRAMS\andySlideShow\Borderless slideshow.lnk" 
