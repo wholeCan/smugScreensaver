@@ -9,11 +9,11 @@ namespace andyScreenSaver
 {
     internal class DisableScreensaverClassSingleton
     {
-            const int SPI_SETSCREENSAVEACTIVE = 0x0011;
+        const int SPI_SETSCREENSAVEACTIVE = 0x0011;
         bool screensaverDisabled = false;
 
-            [DllImport("user32.dll", SetLastError = true)]
-            static extern bool SystemParametersInfo(int uiAction, int uiParam, ref int pvParam, int fWinIni);
+        [DllImport("user32.dll", SetLastError = true)]
+        static extern bool SystemParametersInfo(int uiAction, int uiParam, ref int pvParam, int fWinIni);
 
         private static DisableScreensaverClassSingleton instance;
         private DisableScreensaverClassSingleton()
@@ -43,7 +43,7 @@ namespace andyScreenSaver
 
             public void EnableScreenSaver()
             {
-                if (instance != null && screensaverDisabled)
+                if (instance != null)
                 {
                     int restoreValue = 1; // You can set it to 1 to enable the screen saver back
                     SystemParametersInfo(SPI_SETSCREENSAVEACTIVE, 0, ref restoreValue, 0);
