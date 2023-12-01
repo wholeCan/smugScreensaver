@@ -8,6 +8,7 @@
     <Nullable>enable</Nullable>
     <UseWPF>True</UseWPF>
     <UserSecretsId>154dead4-15d1-4a61-bfa3-f24699bee71e</UserSecretsId>
+    <Configurations>Debug;Release;Debug screensaver</Configurations>
   </PropertyGroup>
 
   <ItemGroup>

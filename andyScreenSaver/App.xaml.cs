@@ -22,6 +22,8 @@ namespace andyScreenSaver
         private HwndSource winWPFContent;
         private Window1 winSaver;
 
+        DisableScreensaverClassSingleton disableScreensaverSingleton = DisableScreensaverClassSingleton.Instance;
+
         private void Application_Startup(object sender, StartupEventArgs e)
         {
 
@@ -133,6 +135,7 @@ namespace andyScreenSaver
                 {//no parameters
                  //var win = new Window1();
 
+                    disableScreensaverSingleton.DisableScreenSaver();
                     var wins = new List<Window1>();
                     var iter = 0;
                     foreach (var s in System.Windows.Forms.Screen.AllScreens)
