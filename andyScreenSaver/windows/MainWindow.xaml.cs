@@ -21,12 +21,14 @@ using System.Diagnostics;
 using System.Drawing;
 using System.Drawing.Imaging;
 using System.IO;
+using System.Runtime.CompilerServices;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
+using System.Windows.Interop;
 using System.Windows.Media.Imaging;
 using System.Windows.Media.Media3D;
 using static SMEngine.CSMEngine;
@@ -553,17 +555,43 @@ namespace andyScreenSaver
 
 
 
+        static void MouseCursorResetMethod(object state)
+        {
+            Debug.WriteLine($"Thread execution to hide mouse run at: {DateTime.Now}");
+            {
+
+                for (; ; )
+                {
+                    try
+                    {
+                        (state as Window1).Dispatcher.BeginInvoke(new Action(delegate ()
+                        {
+                            DateTime laterTime = (state as Window1).getLastMouseMove().AddSeconds(5); //wait 5 seconds before turning off cursor.
+                            if (DateTime.Now > laterTime)
+                            {
+
+                                Mouse.SetCursor(Cursors.None);
+                            }
+                        }));
+                    }catch (Exception ex)
+                    {
+                        Debug.WriteLine("thread err 239d");
+                    }
+                    Thread.Sleep(1000);// wait a bit between runs.
+                }
+            }
+        }
 
         public void init()
 
         {
-            // setupJob(); //todo: this is broken, reloading causes multiple images to show.
-
-            //   LogError($"Starting up: {DateTime.Now}");
             var tmp = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
-            // var file = tmp + @"\andyScr.trace.log";
 
             initEngine();
+
+            Thread mouseThreadWithParameters = new Thread(new ParameterizedThreadStart(MouseCursorResetMethod));
+            mouseThreadWithParameters.IsBackground = true;
+            mouseThreadWithParameters.Start(this);
 
             Lm = new listManager(GridWidth * GridHeight);
             ImageCounterArray = new int[GridHeight * GridWidth];
@@ -667,8 +695,14 @@ namespace andyScreenSaver
             const double ZoomPctEachWheelChange = 0.02;
             ZoomDelta = Vector3D.Multiply(ZoomPctEachWheelChange, camMain.LookDirection);
             this.Cursor = tc;
-        }
 
+           
+
+        }
+        public DateTime getLastMouseMove()
+        {
+            return lastMouseMove;
+        }
         private void Window_MouseWheel(object sender, MouseWheelEventArgs e)
         {
             if (e.Delta > 0)
@@ -780,18 +814,27 @@ namespace andyScreenSaver
         private void Window_MouseMove(object sender, MouseEventArgs e)
         {//author: ASH
             var ts = DateTime.Now - LastMouseMove;
-            if (ts.TotalMilliseconds < 100)
+            if (actionsDisabled)
             {
-                TotalMouseMoves++;
-                if (TotalMouseMoves > MaxMouseMoves)//a little bit of slack before closing.
+                if (ts.TotalMilliseconds < 100)
                 {
-                    doshutdown();
-                }
+                    TotalMouseMoves++;
+                    if (TotalMouseMoves > MaxMouseMoves)//a little bit of slack before closing.
+                    {
+                        doshutdown();
+                    }
 
+                }
+                else
+                {
+                    TotalMouseMoves = 0;
+                }
             }
             else
             {
-                TotalMouseMoves = 0;
+                //todo: show mouse cursor
+                this.Cursor = MyCursor;
+//                Mouse.SetCursor(MyCursor);
             }
             LastMouseMove = DateTime.Now;
         }
