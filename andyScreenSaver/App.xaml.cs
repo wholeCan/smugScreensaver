@@ -44,7 +44,7 @@ namespace andyScreenSaver
                         win.init();
                         win.setDimensions(333, 200);
                         win.disableActions();//ensures that moving mouse doesn't kill the app.
-
+                        
                         win.WindowState = WindowState.Maximized;
                         win.WindowStyle = WindowStyle.None;
                         win.Show();

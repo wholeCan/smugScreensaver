@@ -8,6 +8,12 @@ namespace SMEngine
 
     public partial class CSMEngine
     {
+        bool isScreensaver = false;
+        public void IsScreensaver(bool screensaverModeDisabled)
+        {
+            isScreensaver = !screensaverModeDisabled;
+        }
+
         public class ImageSet
         {
             private System.Drawing.Bitmap b;

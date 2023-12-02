@@ -51,13 +51,16 @@ namespace andyScreenSaver
         ThreadStart ts = null;
         Thread t = null;
         static bool running = true;
-        bool actionsDisabled = false;
+        bool screensaverModeDisabled = false;
+        
         int gridWidth = 5;  //these are replaced by setting menu.
         int gridHeight = 4;
         int borderWidth = 5;//see config file for setting.
         public void disableActions()
         {
-            ActionsDisabled = true;
+            ScreensaverModeDisabled = true;
+            Engine.IsScreensaver(ScreensaverModeDisabled);
+
             Topmost = false;
             Cursor = Cursors.Arrow;
         }
@@ -559,17 +562,16 @@ namespace andyScreenSaver
         {
             Debug.WriteLine($"Thread execution to hide mouse run at: {DateTime.Now}");
             {
-
                 for (; ; )
                 {
                     try
                     {
                         (state as Window1).Dispatcher.BeginInvoke(new Action(delegate ()
                         {
-                            DateTime laterTime = (state as Window1).getLastMouseMove().AddSeconds(5); //wait 5 seconds before turning off cursor.
+                            var secondsToHideCursor = 3;
+                            DateTime laterTime = (state as Window1).getLastMouseMove().AddSeconds(secondsToHideCursor); 
                             if (DateTime.Now > laterTime)
                             {
-
                                 Mouse.SetCursor(Cursors.None);
                             }
                         }));
@@ -577,7 +579,7 @@ namespace andyScreenSaver
                     {
                         Debug.WriteLine("thread err 239d");
                     }
-                    Thread.Sleep(1000);// wait a bit between runs.
+                    Thread.Sleep(100);// wait a bit between runs.
                 }
             }
         }
@@ -589,6 +591,7 @@ namespace andyScreenSaver
             var tmp = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
 
             initEngine();
+            Engine.IsScreensaver(false);
 
             Thread mouseThreadWithParameters = new Thread(new ParameterizedThreadStart(MouseCursorResetMethod));
             mouseThreadWithParameters.IsBackground = true;
@@ -679,23 +682,26 @@ namespace andyScreenSaver
             }
             Cursor = Cursors.None;
 
-            var tc = this.Cursor;
-            this.Cursor = Cursors.Wait;
+            var temporaryCursor = this.Cursor;
+            this.Cursor = Cursors.Arrow;
 
 
-            ActionsDisabled = false;
+            ScreensaverModeDisabled = false;
             MyCursor = Cursor;
 
             //initEngine();
 
+            
+
             LastMouseMove = DateTime.Now;
             TotalMouseMoves = 0;
 
-
+            /*
             // On each WheelMouse change, we zoom in/out a particular % of the original distance
             const double ZoomPctEachWheelChange = 0.02;
             ZoomDelta = Vector3D.Multiply(ZoomPctEachWheelChange, camMain.LookDirection);
-            this.Cursor = tc;
+            */
+            this.Cursor = temporaryCursor;
 
            
 
@@ -704,7 +710,7 @@ namespace andyScreenSaver
         {
             return lastMouseMove;
         }
-        private void Window_MouseWheel(object sender, MouseWheelEventArgs e)
+/*        private void Window_MouseWheel(object sender, MouseWheelEventArgs e)
         {
             if (e.Delta > 0)
                 // Zoom in
@@ -713,9 +719,10 @@ namespace andyScreenSaver
                 // Zoom out
                 camMain.Position = Point3D.Subtract(camMain.Position, ZoomDelta);
         }
+*/
         private void doshutdown()
         {
-            if (!ActionsDisabled)
+            if (!ScreensaverModeDisabled)
             {
                 MyCursor = Cursor;
                 Application.Current.Shutdown();
@@ -723,7 +730,10 @@ namespace andyScreenSaver
         }
         private void Window_MouseDown(object sender, MouseButtonEventArgs e)
         {
-            doshutdown();
+            if (!screensaverModeDisabled)
+            {
+            //    doshutdown();
+            }
         }
         private void Window_KeyDown(object sender, KeyEventArgs e)
         {
@@ -761,6 +771,7 @@ namespace andyScreenSaver
             else if (e.Key == Key.R)
             {
                 initEngine(true);
+                
             }
             else
             {
@@ -784,9 +795,7 @@ namespace andyScreenSaver
             LogError(msg);
         }
 
-        private DateTime lastMouseMove;
-        private long totalMouseMoves;
-        private long maxMouseMoves = 2;
+        
 
         public Vector3D ZoomDelta { get => zoomDelta; set => zoomDelta = value; }
         public int MyHeight { get => myHeight; set => myHeight = value; }
@@ -798,7 +807,7 @@ namespace andyScreenSaver
         public ThreadStart Ts { get => ts; set => ts = value; }
         public Thread T { get => t; set => t = value; }
         public static bool Running { get => running; set => running = value; }
-        public bool ActionsDisabled { get => actionsDisabled; set => actionsDisabled = value; }
+        public bool ScreensaverModeDisabled { get => screensaverModeDisabled; set => screensaverModeDisabled = value; }
         public int GridWidth { get => gridWidth; set => gridWidth = value; }
         public int GridHeight { get => gridHeight; set => gridHeight = value; }
         public int BorderWidth { get => borderWidth; set => borderWidth = value; }
@@ -812,32 +821,36 @@ namespace andyScreenSaver
         public long TotalMouseMoves { get => totalMouseMoves; set => totalMouseMoves = value; }
         public long MaxMouseMoves { get => maxMouseMoves; set => maxMouseMoves = value; }
 
+
+        private DateTime lastMouseMove;
+        private long totalMouseMoves;
+        private long maxMouseMoves = 100;
+
         private void Window_MouseMove(object sender, MouseEventArgs e)
         {//author: ASH
-            var ts = DateTime.Now - LastMouseMove;
-            if (actionsDisabled)
+            //modified 2023, logic all wrong
+            var resetTime = LastMouseMove.AddMilliseconds(500);
+            if (!screensaverModeDisabled)
             {
-                if (ts.TotalMilliseconds < 100)
+                if (DateTime.Now < resetTime)
                 {
                     TotalMouseMoves++;
                     if (TotalMouseMoves > MaxMouseMoves)//a little bit of slack before closing.
                     {
-                        doshutdown();
+                        doshutdown(); //shut down screensaver
                     }
-
                 }
                 else
                 {
-                    TotalMouseMoves = 0;
+                    TotalMouseMoves = 0; // reset wiggle counter if it's been a little while.
                 }
             }
             else
             {
-                //todo: show mouse cursor
                 this.Cursor = MyCursor;
-//                Mouse.SetCursor(MyCursor);
             }
             LastMouseMove = DateTime.Now;
+            //Thread.Sleep(0);
         }
 
         private void Window_Closed(object sender, EventArgs e)
@@ -847,7 +860,7 @@ namespace andyScreenSaver
 
         private void image1_MouseUp(object sender, MouseButtonEventArgs e)
         {
-            if (ActionsDisabled)
+         //   if (ScreensaverModeDisabled)
             {
                 updateImage();// automatic way totalMouseMoves 
             }

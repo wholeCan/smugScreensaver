@@ -91,6 +91,11 @@ namespace SMEngine
 
         public string getRuntimeStatsInfo()
         {
+#if (DEBUG)
+    var debugOn = true;
+#else
+            var debugOn = false;
+#endif
             var msg = new StringBuilder();
             msg.AppendLine("running since " +
                 TimeBooted.ToShortDateString()
@@ -112,6 +117,8 @@ namespace SMEngine
             msg.AppendLine("images deduped: " + PlayedImages.Count);
             msg.AppendLine("queue depth: " + ImageQueue.Count);
             msg.AppendLine("image size: " + Settings.quality + " / " + fetchImageUrlSize());
+            msg.AppendLine("Screensaver mode: " + isScreensaver.ToString());
+            msg.AppendLine("Debug mode: " +  debugOn.ToString());
             msg.AppendLine("time between images: " + getTimeSinceLast());
             msg.AppendLine("exceptions raised: " + ExceptionsRaised);
             msg.AppendLine("reloaded albums: " + RestartCounter + " times.");
@@ -485,7 +492,7 @@ namespace SMEngine
                 envelope.tokenSecret
                 );
         }
-        #endregion
+#endregion
 
         private loginInfo _login;
         static Random r = new Random();
