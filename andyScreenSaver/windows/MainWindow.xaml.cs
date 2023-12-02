@@ -759,14 +759,17 @@ namespace andyScreenSaver
             }
             else if (e.Key == Key.W)
             {
-                WindowStyle = WindowStyle.SingleBorderWindow;
-                ResizeMode = ResizeMode.CanResizeWithGrip;
-            }
-            else if (e.Key == Key.B)
-            {
-                WindowStyle = WindowStyle.None;
-                ResizeMode = ResizeMode.NoResize;
-                WindowState = WindowState.Maximized;
+                if (WindowStyle == WindowStyle.SingleBorderWindow)
+                {
+                    WindowStyle = WindowStyle.None;
+                    ResizeMode = ResizeMode.NoResize;
+                    WindowState = WindowState.Maximized;
+                }
+                else
+                {
+                    WindowStyle = WindowStyle.SingleBorderWindow;
+                    ResizeMode = ResizeMode.CanResizeWithGrip;
+                }
             }
             else if (e.Key == Key.R)
             {

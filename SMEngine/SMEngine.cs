@@ -128,8 +128,7 @@ namespace SMEngine
             msg.AppendLine("Schedule: " + Settings.startTime.ToString() + " - " + Settings.stopTime.ToString() +
                 "Menu:");
             msg.AppendLine("\ts: show or hide stats");
-            msg.AppendLine("\tw: show window controls");
-            msg.AppendLine("\tb: go back to borderless mode");
+            msg.AppendLine("\tw: toggle window controls");
             msg.AppendLine("\tr: reload library");
             msg.AppendLine("\t<- or ->: show next photo");
             msg.AppendLine("\tESC or Q: exit program");
