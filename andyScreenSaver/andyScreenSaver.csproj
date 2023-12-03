@@ -205,6 +205,7 @@
       <Generator>MSBuild:Compile</Generator>
       <SubType>Designer</SubType>
     </ApplicationDefinition>
+    <Compile Include="AppOpenCloseLogger.cs" />
     <Compile Include="DisableScreensaverClassSingleton.cs" />
     <Compile Include="windows\AuthenticationCodeWindow.xaml.cs">
       <DependentUpon>AuthenticationCodeWindow.xaml</DependentUpon>

@@ -548,6 +548,7 @@ namespace andyScreenSaver
             InitializeComponent();
             var borderWidth = 0;
             int.TryParse(ConfigurationSettings.AppSettings["BorderWidth"], out borderWidth);
+            AppOpenCloseLogger.logOpened();
         }
         int[] imageCounterArray;
         private string getImageStorageLoc()
@@ -725,6 +726,7 @@ namespace andyScreenSaver
             if (!ScreensaverModeDisabled)
             {
                 MyCursor = Cursor;
+                AppOpenCloseLogger.logClosed("Screensaver: "+ Engine.getUptime());
                 Application.Current.Shutdown();
             }
         }
@@ -859,6 +861,8 @@ namespace andyScreenSaver
         private void Window_Closed(object sender, EventArgs e)
         {
             logMsg("Closing");
+            
+            AppOpenCloseLogger.logClosed(Engine.getUptime());
         }
 
         private void image1_MouseUp(object sender, MouseButtonEventArgs e)

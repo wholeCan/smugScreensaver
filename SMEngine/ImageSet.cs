@@ -9,6 +9,12 @@ namespace SMEngine
     public partial class CSMEngine
     {
         bool isScreensaver = false;
+
+        public string getUptime()
+        {
+            return (DateTime.Now - timeStarted).TotalHours.ToString("0.00");
+        }
+
         public void IsScreensaver(bool screensaverModeDisabled)
         {
             isScreensaver = !screensaverModeDisabled;
