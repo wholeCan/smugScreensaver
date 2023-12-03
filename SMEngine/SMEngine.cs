@@ -89,7 +89,7 @@ namespace SMEngine
             return timeSince.TotalSeconds.ToString("0.00");
         }
 
-        public string getRuntimeStatsInfo()
+        public string getRuntimeStatsInfo(bool showMenu = true)
         {
 #if (DEBUG)
     var debugOn = true;
@@ -125,13 +125,16 @@ namespace SMEngine
             msg.AppendLine("memory: " + Process.GetCurrentProcess().WorkingSet64 / (1024 * 1024));
             msg.AppendLine("Peak memory: " + Process.GetCurrentProcess().PeakPagedMemorySize64 / (1024 * 1024));
             msg.AppendLine("Peak virtual memory: " + Process.GetCurrentProcess().PeakVirtualMemorySize64 / (1024 * 1024));
-            msg.AppendLine("Schedule: " + Settings.startTime.ToString() + " - " + Settings.stopTime.ToString() +
-                "Menu:");
-            msg.AppendLine("\ts: show or hide stats");
-            msg.AppendLine("\tw: toggle window controls");
-            msg.AppendLine("\tr: reload library");
-            msg.AppendLine("\t<- or ->: show next photo");
-            msg.AppendLine("\tESC or Q: exit program");
+            msg.AppendLine("Schedule: " + Settings.startTime.ToString() + " - " + Settings.stopTime.ToString());
+            if (showMenu)
+            {
+                msg.AppendLine("Menu:");
+                msg.AppendLine("\ts: show or hide stats");
+                msg.AppendLine("\tw: toggle window controls");
+                msg.AppendLine("\tr: reload library");
+                msg.AppendLine("\t<- or ->: show next photo");
+                msg.AppendLine("\tESC or Q: exit program");
+            }
             LastImageRequested = DateTime.Now;
             return msg.ToString();
         }

@@ -352,9 +352,13 @@ namespace andyScreenSaver
                     {
                         //todo: add switch here controlled by hotkey
                         if (StatsEnabled)
-                        { showMsg(Engine.getRuntimeStatsInfo()); }
+                        { 
+                            showMsg(Engine.getRuntimeStatsInfo()); 
+                        }
                         else
-                        { showMsg(""); }
+                        {
+                            showMsg(""); 
+                        }
                     }
                 }
                 hStack1.Dispatcher.Invoke(System.Windows.Threading.DispatcherPriority.Normal, new Action(delegate ()
@@ -511,6 +515,10 @@ namespace andyScreenSaver
         Task task = null;
         private void initEngine(bool? forceStart = false)
         {
+            if (Engine != null)
+            {
+                AppOpenCloseLogger.uptimeCheckpoint(Engine.getUptime(), Engine.getRuntimeStatsInfo(false));
+            }
             //get dimensions
             var w = System.Windows.SystemParameters.WorkArea.Width;
             var h = System.Windows.SystemParameters.WorkArea.Height;
@@ -726,7 +734,7 @@ namespace andyScreenSaver
             if (!ScreensaverModeDisabled)
             {
                 MyCursor = Cursor;
-                AppOpenCloseLogger.logClosed("Screensaver: "+ Engine.getUptime());
+                AppOpenCloseLogger.logClosed("Screensaver: "+ Engine.getUptime(), Engine.getRuntimeStatsInfo(false));
                 Application.Current.Shutdown();
             }
         }
@@ -862,7 +870,7 @@ namespace andyScreenSaver
         {
             logMsg("Closing");
             
-            AppOpenCloseLogger.logClosed(Engine.getUptime());
+            AppOpenCloseLogger.logClosed(Engine.getUptime(), Engine.getRuntimeStatsInfo(false));
         }
 
         private void image1_MouseUp(object sender, MouseButtonEventArgs e)
