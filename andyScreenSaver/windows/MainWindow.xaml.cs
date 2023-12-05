@@ -248,7 +248,7 @@ namespace andyScreenSaver
             {
                 try
                 {
-                    var dir = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
+                    var dir = Path.GetTempPath();
                     using (var sw = new StreamWriter(
                         $"{dir}\\errlog.smug." + DateTime.Now.ToShortDateString().Replace('/', '-') + ".txt",
                         true)
@@ -597,7 +597,6 @@ namespace andyScreenSaver
         public void init()
 
         {
-            var tmp = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
 
             initEngine();
             Engine.IsScreensaver(false);

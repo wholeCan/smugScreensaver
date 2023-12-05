@@ -95,7 +95,7 @@ namespace andyScreenSaver
                             if (doWriteLogs)
                             {
 
-                                var env = Environment.SpecialFolder.LocalApplicationData;
+                                var env = Path.GetTempPath();
                                 sw1 = new StreamWriter(env + @"\smugmug.startup.log");
                             }
                             var wins = new List<Window1>();
@@ -161,7 +161,7 @@ namespace andyScreenSaver
             catch (Exception ex)
             {
                 //var ln=ex.StackTrace.GetFrame(0).GetFileLineNumber();
-                var loc = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData); //.GetEnvironmentVariable("TEMP");
+                var loc = Path.GetTempPath();
                 var exceptionLog = loc + @"\errlog.startup.smug." + DateTime.Now.ToShortDateString().Replace('/', '-') + ".txt";
                 if (File.Exists(exceptionLog))
                     File.Delete(exceptionLog);
