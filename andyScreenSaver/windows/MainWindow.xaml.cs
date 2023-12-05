@@ -730,12 +730,9 @@ namespace andyScreenSaver
 */
         private void doshutdown()
         {
-            if (!ScreensaverModeDisabled)
-            {
-                MyCursor = Cursor;
-                AppOpenCloseLogger.logClosed("Screensaver: "+ Engine.getUptime(), Engine.getRuntimeStatsInfo(false));
-                Application.Current.Shutdown();
-            }
+            MyCursor = Cursor;
+           // AppOpenCloseLogger.logClosed("Screensaver: "+ Engine.getUptime(), Engine.getRuntimeStatsInfo(false));
+            Application.Current.Shutdown();
         }
         private void Window_MouseDown(object sender, MouseButtonEventArgs e)
         {
@@ -763,8 +760,7 @@ namespace andyScreenSaver
             }
             else if (e.Key == Key.Escape || e.Key == Key.Q)
             {
-                Application.Current.Shutdown();
-                //  Close();
+                doshutdown();
             }
             else if (e.Key == Key.W)
             {
@@ -787,7 +783,10 @@ namespace andyScreenSaver
             }
             else
             {
-                doshutdown();
+                if (!screensaverModeDisabled)
+                {
+                    doshutdown();
+                }
             }
         }
 

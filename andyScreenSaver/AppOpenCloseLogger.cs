@@ -15,6 +15,9 @@ namespace andyScreenSaver
 
         private static void cleanupFile()
         {
+            /// todo: right now we just delete the file when over threshold.
+            /// in future it might be cool to make it a rolling log file so we don't lose history.
+            
             try
             {
                 if (File.Exists(LogFilename))
