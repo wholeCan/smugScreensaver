@@ -38,7 +38,7 @@ namespace SMEngine
 
 
 #if (DEBUG)
-        private readonly int debug_limit = 50;
+        private readonly int debug_limit = 500;
 #else
         private int debug_limit = 5000000;
 #endif
@@ -1206,12 +1206,14 @@ namespace SMEngine
             W = _w;
             H = _h;
         }
-        private System.Drawing.Bitmap cropAtRect(System.Drawing.Bitmap b, System.Drawing.Rectangle r)
+        private System.Drawing.Bitmap cropAtRect(System.Drawing.Bitmap sourceBitmap, System.Drawing.Rectangle r)
         {
-            var nb = new System.Drawing.Bitmap(r.Width, r.Height);
-            var g = System.Drawing.Graphics.FromImage(nb);
-            g.DrawImage(b, -r.X, -r.Y);
-            return nb;
+            var newBitmap = new System.Drawing.Bitmap(r.Width, r.Height);
+            using (var g = System.Drawing.Graphics.FromImage(newBitmap))
+            {
+                g.DrawImage(sourceBitmap, -r.X, -r.Y); //todo, experiment - does it help to mamke this (sourceBitmap, 0, 0) Unclear it's even used.
+            }
+            return newBitmap;
         }
 
         private System.Drawing.Bitmap cropImage(BitmapImage i)
@@ -1351,7 +1353,7 @@ namespace SMEngine
                         image.EndInit();
                     }
                     catch (Exception ex)
-                    {
+                    {//possible http 404 response known, just skip and move on.
                         return null;
                     }
                 }

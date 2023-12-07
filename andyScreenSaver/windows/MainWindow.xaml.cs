@@ -84,7 +84,7 @@ namespace andyScreenSaver
             }
             catch (Exception ex)
             {
-                LogError(ex.Message);
+                LogError(ex, ex.Message);
             }
             return bitmapImage;
         }
@@ -166,7 +166,7 @@ namespace andyScreenSaver
             }
             catch (Exception ex)
             {
-                LogError(ex.Message);
+                LogError(ex, ex.Message);
                 return Color.Black;
             }
         }
@@ -180,10 +180,9 @@ namespace andyScreenSaver
                 return bmpImage.Clone(cropArea, bmpImage.PixelFormat);
             }
             catch (Exception ex)
-            {
+            {   //known out of memory exception, just pass over it.
                 return null;
             }
-            //tmp = croppedImage;//remove this!
 
         }
         private void imageAddCaption(string text, ref Bitmap tmp)
@@ -192,6 +191,7 @@ namespace andyScreenSaver
             var firstLocation = new PointF(10f, 10f);
             try
             {
+                //exception when tmp.rawData and tmp.userData is null.
                 using (var graphics = Graphics.FromImage(tmp))
                 {
                     var configPenSize = 8;
@@ -222,7 +222,12 @@ namespace andyScreenSaver
             }
             catch (Exception ex)
             {
-                LogError(ex.Message);
+                //ignore known issue
+                if (ex.Message != "A Graphics object cannot be created from an image that has an indexed pixel format.")
+                {
+                    LogError(ex, ex.Message);
+                }
+                
             }
         }
 
@@ -240,7 +245,7 @@ namespace andyScreenSaver
             Debug.WriteLine("Window: " + DateTime.Now.ToLongTimeString() + ": " + msg);
         }
 
-        private void LogError(string msg)
+        private void LogError(Exception ex, string msg)
         {
             // Console.WriteLine(msg);
             logMsg($"{DateTime.Now}: {msg}");
@@ -255,10 +260,15 @@ namespace andyScreenSaver
                         )
                     {
                         sw.WriteLine($"{DateTime.Now}: exception: {msg}");
+                        if (ex.StackTrace != null)
+                        {
+                            sw.WriteLine($"{DateTime.Now}: stack trace: {ex.StackTrace}");
+                        }
+                        
                         sw.Close();
                     }
                 }
-                catch (Exception ex)
+                catch (Exception ex2)
                 {
                     Debug.WriteLine("Uh Oh! Error writing error file!");
                 }
@@ -268,110 +278,117 @@ namespace andyScreenSaver
 
         private void updateImage()
         {
-
-            hStack1.Dispatcher.BeginInvoke(new Action(delegate ()
-                {
-                    //resuze each of the images to fit screen.
-                    foreach (var v in hStack1.Children)
+            //todo: add try-catch block here?
+            try
+            {
+                hStack1.Dispatcher.BeginInvoke(new Action(delegate ()
                     {
-                        foreach (Border borderImage in (v as StackPanel).Children)
+                        //resuze each of the images to fit screen.
+                        foreach (var v in hStack1.Children)
                         {
-                            var image = borderImage.Child as indexableImage;
-                            image.Height = MyHeight / GridHeight - (100 / Math.Pow(2, GridHeight)); //161; 
+                            foreach (Border borderImage in (v as StackPanel).Children)
+                            {
+                                var image = borderImage.Child as indexableImage;
+                                image.Height = MyHeight / GridHeight - (100 / Math.Pow(2, GridHeight)); //161; 
+                            }
+                        }
+                        if (Engine.screensaverExpired())
+                        {
+                            showMsg(
+                                DateTime.Now.ToShortTimeString() +
+                                ": Slide show is stopped until " +
+                                (Engine.settings.startTime / 100).ToString() +
+                                ":" +
+                                (Engine.settings.startTime % 100).ToString("00") +
+                                " - press <left> or <right> arrow to wake up."
+                                );
+                        }
+                    }));
+                var run = false;
+                ImageSet image = null;
+
+                var counter = 0;
+                var blackImagePlaced = false;
+
+                while (image == null && counter < 1)
+                {//if image isn't ready, wait for it.
+                    image = Engine.getImage();
+                    counter++;//allow it to die.
+                    if (image == null)
+                    {
+                        if (counter % 100 == 0)
+                        {
+                            hideSetup();
                         }
                     }
-                    if (Engine.screensaverExpired())
+                    else
                     {
-                        showMsg(
-                            DateTime.Now.ToShortTimeString() +
-                            ": Slide show is stopped until " +
-                            (Engine.settings.startTime / 100).ToString() +
-                            ":" +
-                            (Engine.settings.startTime % 100).ToString("00") +
-                            " - press <left> or <right> arrow to wake up."
-                            );
-                    }
-                }));
-            var run = false;
-            ImageSet image = null;
 
-            var counter = 0;
-            var blackImagePlaced = false;
-
-            while (image == null && counter < 1)
-            {//if image isn't ready, wait for it.
-                image = Engine.getImage();
-                counter++;//allow it to die.
-                if (image == null)
-                {
-                    if (counter % 100 == 0)
-                    {
-                        hideSetup();
+                        //Thread.Sleep(100);
                     }
                 }
-                else
-                {
-
-                    //Thread.Sleep(100);
-                }
-            }
-            if (Engine.getLogin().login == "")
-            {
-                SetupRequired.Dispatcher.BeginInvoke(new Action(delegate ()
-                {
-                    SetupRequired.Visibility = System.Windows.Visibility.Visible;
-                    SetupRequired.Content = "Setup required!  Go to the screensaver menu.";
-                }));
-            }
-            else
-            {
-
-                if (image == null)//image has failed for some reason.
+                if (Engine.getLogin().login == "")
                 {
                     SetupRequired.Dispatcher.BeginInvoke(new Action(delegate ()
                     {
                         SetupRequired.Visibility = System.Windows.Visibility.Visible;
-                        SetupRequired.Content = "No data presently available, trying again...";
-                        shuffleImages();
-
-                        if (Engine.warm())
-                        {
-                            if (image != null)
-                            {
-                                image.B = Engine.getBlackImagePixel();
-                                blackImagePlaced = true;
-                            }
-                        }
-
+                        SetupRequired.Content = "Setup required!  Go to the screensaver menu.";
                     }));
                 }
                 else
-                {//putting this in the else, because the blackImagePlaced is set in another thread and creates a race condition.
-                    //  the red text disappears after resetting network connection, when really i want it to show up.
-                    if (!blackImagePlaced && !Engine.screensaverExpired())
+                {
+
+                    if (image == null)//image has failed for some reason.
                     {
-                        //todo: add switch here controlled by hotkey
-                        if (StatsEnabled)
-                        { 
-                            showMsg(Engine.getRuntimeStatsInfo()); 
-                        }
-                        else
+                        SetupRequired.Dispatcher.BeginInvoke(new Action(delegate ()
                         {
-                            showMsg(""); 
+                            SetupRequired.Visibility = System.Windows.Visibility.Visible;
+                            SetupRequired.Content = "No data presently available, trying again...";
+                            shuffleImages();
+
+                            if (Engine.warm())
+                            {
+                                if (image != null)
+                                {
+                                    image.B = Engine.getBlackImagePixel();
+                                    blackImagePlaced = true;
+                                }
+                            }
+
+                        }));
+                    }
+                    else
+                    {//putting this in the else, because the blackImagePlaced is set in another thread and creates a race condition.
+                     //  the red text disappears after resetting network connection, when really i want it to show up.
+                        if (!blackImagePlaced && !Engine.screensaverExpired())
+                        {
+                            //todo: add switch here controlled by hotkey
+                            if (StatsEnabled)
+                            {
+                                showMsg(Engine.getRuntimeStatsInfo());
+                            }
+                            else
+                            {
+                                showMsg("");
+                            }
                         }
                     }
+                    hStack1.Dispatcher.Invoke(System.Windows.Threading.DispatcherPriority.Normal, new Action(delegate ()
+                    {
+                        setImage(ref run, ref image);
+                    }));
                 }
-                hStack1.Dispatcher.Invoke(System.Windows.Threading.DispatcherPriority.Normal, new Action(delegate ()
+                if (run && !Engine.settings.showInfo && !blackImagePlaced)
                 {
-                    setImage(ref run, ref image);
-                }));
+                    SetupRequired.Dispatcher.BeginInvoke(new Action(delegate ()
+                    {
+                        SetupRequired.Visibility = System.Windows.Visibility.Collapsed;
+                    }));
+                }
             }
-            if (run && !Engine.settings.showInfo && !blackImagePlaced)
+            catch (Exception ex)
             {
-                SetupRequired.Dispatcher.BeginInvoke(new Action(delegate ()
-                {
-                    SetupRequired.Visibility = System.Windows.Visibility.Collapsed;
-                }));
+                LogError(ex, ex.Message);
             }
         }
 
@@ -402,7 +419,7 @@ namespace andyScreenSaver
                         {
                             if (bmyImage2.Height == 0)
                             {
-                                LogError("empty bmp");
+                                LogError(new Exception("empty bmp"), "empty bmp");
                             }
                             setImageCaption(ref s, ref bmyImage2, randWidth, randHeight);
                         }
@@ -411,7 +428,7 @@ namespace andyScreenSaver
             }
             catch (Exception e)
             {
-                LogError(e.Message);
+                LogError(e,e.Message);
             }
         }
         private void setImageCaption(ref SMEngine.CSMEngine.ImageSet s, ref Bitmap targetBitmapImage, int randWidth, int randHeight)
@@ -428,7 +445,7 @@ namespace andyScreenSaver
             }
             catch (Exception ex)
             {
-                LogError($"Problem setting caption {ex.Message}");
+                LogError(ex, $"Problem setting caption {ex.Message}");
             }
             indexableImage image = ((hStack1.Children[randWidth] as StackPanel).Children[randHeight] as Border).Child as indexableImage;
 
@@ -456,7 +473,7 @@ namespace andyScreenSaver
                 }
                 catch (Exception ex)
                 {
-                    LogError($"Problem setting image {ex.Message}");
+                    LogError(ex, $"Problem setting image {ex.Message}");
                 }
                 ImageCounterArray[imageIndex]++;
             }
@@ -467,14 +484,13 @@ namespace andyScreenSaver
             Running = true;
             while (Running)
             {
-                var runDelta = DateTime.Now - LastUpdate;
                 try
                 {
                     updateImage();
                 }
                 catch (Exception ex)
                 {
-                    LogError("updateImage failed: " + ex.Message);
+                    LogError(ex, "updateImage failed: " + ex.Message);
                 }
                 finally
                 {
@@ -504,6 +520,8 @@ namespace andyScreenSaver
 
                 return;
             }
+            //todo: why is this outside the try block?  is there a reason to start the thread?
+            //would it hurt to not do so?  Would need to test.
             Ts = new ThreadStart(run);
             T = new Thread(Ts)
             {
@@ -540,7 +558,7 @@ namespace andyScreenSaver
                     }
                     catch (Exception ex)
                     {
-                        LogError($"Invalid connection {ex.Message}");
+                        LogError(ex, $"Invalid connection {ex.Message}");
                     }
 
                     //todo how to shut down if failed?
@@ -584,7 +602,7 @@ namespace andyScreenSaver
                                 Mouse.SetCursor(Cursors.None);
                             }
                         }));
-                    }catch (Exception ex)
+                    }catch (Exception)
                     {
                         Debug.WriteLine("thread err 239d");
                     }
@@ -636,7 +654,7 @@ namespace andyScreenSaver
             }
             catch (Exception ex)
             {
-                LogError(ex.Message);
+                LogError(ex, ex.Message);
             }
             foreach (StackPanel stackPanel in hStack1.Children)
             {
@@ -667,7 +685,7 @@ namespace andyScreenSaver
                         }
                         catch (Exception ex)
                         {
-                            LogError(ex.Message);
+                            LogError(ex, ex.Message);
                             bi3.UriSource = new Uri("/andyScrSaver;component/2011072016-03-00IMG7066-L.jpg", UriKind.Relative);
                         }
                         finally
@@ -803,7 +821,7 @@ namespace andyScreenSaver
         public void showException(String msg)
         {
             //log exceptions fired from smEngine
-            LogError(msg);
+            LogError(new Exception("showException raised"), msg);
         }
 
         
