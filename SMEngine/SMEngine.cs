@@ -273,102 +273,6 @@ namespace SMEngine
             var a = new authEnvelope("", "", "", "");
             writeAuthTokens(a);
         }
-        //static OAuth.OAuthRequest gRequest;
-        private static OAuthCredentials GenerateOAuthAccessToken(string consumerKey, string secret)
-        {
-            throw new NotImplementedException("this is for console use only!");
-            string baseUrl = "http://api.smugmug.com";
-            string requestUrl = "/services/oauth/1.0a/getRequestToken";
-            string authorizeUrl = "/services/oauth/1.0a/authorize";
-            string accessUrl = "/services/oauth/1.0a/getAccessToken";
-
-
-            string requestToken = null;
-            string requestTokenSecret = null;
-            string accesstoken = null;
-            string accessTokenSecret = null;
-
-            #region Request Token
-            var oAuthRequest = OAuth.OAuthRequest.ForRequestToken(consumerKey, secret, "oob");
-
-            oAuthRequest.RequestUrl = baseUrl + requestUrl;
-            string auth = oAuthRequest.GetAuthorizationHeader();
-
-            HttpWebRequest request = (HttpWebRequest)WebRequest.Create(oAuthRequest.RequestUrl);
-            request.Headers.Add("Authorization", auth);
-            HttpWebResponse response = (HttpWebResponse)request.GetResponse();
-            Stream responseStream = response.GetResponseStream();
-            StreamReader readStream = new StreamReader(responseStream, System.Text.Encoding.UTF8);
-            string result = readStream.ReadToEnd();
-            foreach (string token in result.Split('&'))
-            {
-                string[] splitToken = token.Split('=');
-
-                switch (splitToken[0])
-                {
-                    case "oauth_token":
-                        requestToken = splitToken[1];
-                        break;
-                    case "oauth_token_secret":
-                        requestTokenSecret = splitToken[1];
-                        break;
-                    default:
-                        break;
-                }
-            }
-            response.Close();
-            #endregion
-
-            #region Authorization
-            string authorizationUrl = String.Format("{0}{1}?mode=auth_req_token&oauth_token={2}&Access=Full&Permissions=Modify", baseUrl, authorizeUrl, requestToken);
-            var ps = new ProcessStartInfo(authorizationUrl)
-            {
-                UseShellExecute = true,
-                Verb = "open"
-            };
-            System.Diagnostics.Process.Start(ps);
-
-            //todo: once we fire off the web request, we should get the code from the wpf form.
-            // then we can continue the rest of the code.
-
-            Console.WriteLine("Enter the six-digit code: ");
-            string verifier = Console.ReadLine();
-            #endregion
-
-            #region Access Token
-            oAuthRequest = OAuth.OAuthRequest.ForAccessToken(consumerKey, secret, requestToken, requestTokenSecret, verifier);
-            oAuthRequest.RequestUrl = baseUrl + accessUrl;
-            auth = oAuthRequest.GetAuthorizationHeader();
-            request = (HttpWebRequest)WebRequest.Create(oAuthRequest.RequestUrl);
-
-
-            request.Headers.Add("Authorization", auth);
-            response = (HttpWebResponse)request.GetResponse();
-            responseStream = response.GetResponseStream();
-            readStream = new StreamReader(responseStream, System.Text.Encoding.UTF8);
-            result = readStream.ReadToEnd();
-            foreach (string token in result.Split('&'))
-            {
-                string[] splitToken = token.Split('=');
-
-                switch (splitToken[0])
-                {
-                    case "oauth_token":
-                        accesstoken = splitToken[1];
-                        break;
-                    case "oauth_token_secret":
-                        accessTokenSecret = splitToken[1];
-                        break;
-                    default:
-                        break;
-                }
-            }
-            response.Close();
-            #endregion
-
-            return new OAuthCredentials(consumerKey, secret, accesstoken, accessTokenSecret);
-        }
-
 
         //fire off the web request to authenticate
         private static authEnvelope GenerateOAuthAccessToken_UI_PART1(string consumerKey, string secret)
@@ -521,11 +425,6 @@ namespace SMEngine
 
         }
 
-
-        public void saveConfiguration(loginInfo l)
-        {
-            Login = l;
-        }
         CSettings _settings;
         public void setSettings(CSettings set)
         {
@@ -549,14 +448,7 @@ namespace SMEngine
             saveGalleries();
             saveSettings();
         }
-        private void saveConfiguration(loginInfo _login, List<GalleryEntry> _galleries)
-        {
-            saveGalleries();
-            saveSettings();
-            //save login, password, and selected galleries.
-        }
-
-
+        
         public static bool WriteRegistryValue(string KeyName, object Value)
         {
             if (Value == null)
@@ -734,20 +626,6 @@ namespace SMEngine
             GalleryTable.Rows.Add(cat, gal);
         }
 
-        public Collection<string> gteAllCategories()
-        {
-            var catList = new Collection<string>();
-            foreach (var a in AllAlbums)
-            {
-                var folderName = getFolder(a);
-                if (!catList.Contains(folderName))
-                {
-                    catList.Add(folderName);
-                }
-            }
-            return catList;
-        }
-
         public string[] getCategoriesAsync()
         {
             var categories = new List<String>();
@@ -830,45 +708,12 @@ namespace SMEngine
             }
         }
 
-
-        private bool checkConnection(authEnvelope e)
-        {
-            Envelope = e;
-            bool Success = false;
-            if (Api != null)
-            {
-                try
-                {
-                    Success = true;
-                }
-                catch (Exception ex)
-                {
-                    doException(ex.Message);
-                    logMsg(ex.Message);
-                }
-            }
-            else
-            {
-                Success = login(e);
-            }
-            return Success;
-
-        }
         private bool _loggedin = false;
         public bool checkLogin(authEnvelope e)
         {
             return Loggedin;
         }
 
-        public void disableStuff()
-        {
-            Running = false;
-        }
-
-        public bool isConnected()
-        {
-            return Loggedin;
-        }
         public bool login(authEnvelope envelope)
         {
             Envelope = envelope;
@@ -1144,8 +989,6 @@ namespace SMEngine
         }
 
         //todo: delete this
-        private bool isExpired()
-        { return Expired; }
         public void resetExpiredImageCollection()
         {
             if (Expired)
@@ -1156,10 +999,6 @@ namespace SMEngine
             }
         }
         private bool expired = false;
-        private void setScreensaverToExpired()
-        { //todo: delete this
-            Expired = true;
-        }
         public ImageSet getImage()
         {
             var b = new ImageSet();
@@ -1216,101 +1055,7 @@ namespace SMEngine
             return newBitmap;
         }
 
-        private System.Drawing.Bitmap cropImage(BitmapImage i)
-        {
-            var img = BitmapImage2Bitmap(i);
-            if (i != null)
-            {
 
-                var newWidth = 0;
-                newWidth = img.Width;
-                var oldWidth = img.Width;
-                if (W != 0 && H != 0)
-                {
-                    ///use w and h to determine the size to crop to.
-                    var aRatioScreen = H / W;
-                    var aRatioImage = (double)img.Height / (double)img.Width;
-                    if (aRatioImage < aRatioScreen)
-                        newWidth = (int)(Convert.ToDouble(img.Height) / aRatioScreen);
-                }
-
-                var CropArea = new System.Drawing.Rectangle((img.Width / 2 - newWidth / 2), 0, (int)newWidth, (int)img.Height);
-
-                var ABORT = true;
-                if (img.Width != newWidth && !ABORT)
-                {
-                    img = cropAtRect(img, CropArea);
-                    var targetHeight = 300;//todo; calculate this.
-
-                    logMsg("#################### CROPPING IMAGE: w " + oldWidth + " to " + newWidth);
-                    img = scaleImage(img, targetHeight);
-                }
-
-            }
-            return img;
-        }
-
-        private System.Drawing.Bitmap scaleImage(System.Drawing.Bitmap img, int targetHeight)
-        {
-            var original = img;
-            var curHeight = img.Height;
-            var scale = (double)curHeight / (double)targetHeight;
-
-            var resized = new System.Drawing.Bitmap(
-                img,
-                new System.Drawing.Size(
-                    Convert.ToInt32((double)original.Width / scale),
-                    Convert.ToInt32((double)original.Height / scale)
-                    )
-                );
-            logMsg("Scaling by " + scale.ToString());
-            return resized;
-        }
-
-        private BitmapImage showImage(ImageSizes myimage, int quality)
-        {
-            var image = new BitmapImage();
-            try
-            {
-                if (myimage != null)
-                {
-                    if (myimage != null)
-                    {
-                        var URL = myimage.SmallImageUrl;
-                        switch (quality)
-                        {
-                            case 0:
-                                URL = myimage.TinyImageUrl; break;
-                            case 1:
-                                URL = myimage.MediumImageUrl; break;
-                            case 2:
-                                URL = myimage.SmallImageUrl; break;
-                            case 3:
-                                URL = myimage.LargeImageUrl; break;
-                            case 4:
-                                URL = myimage.X3LargeImageUrl; break;
-                            case 5:
-                                URL = myimage.OriginalImageUrl; break;
-                            default: break;
-                        }
-                        return showImage(URL);
-                    }
-                }
-            }
-            catch (System.Net.WebException ex)
-            {//no connection, wait longer.
-                doException(ex.Message);
-                logMsg(ex.Message);
-            }
-            catch (Exception ex)
-            {
-                doException(ex.Message);
-                logMsg(ex.Message);
-                logMsg(ex.StackTrace);
-            }
-            return image;
-
-        }
 
         private BitmapImage showImage(string URL)
         {
@@ -1375,17 +1120,6 @@ namespace SMEngine
             }
             return image;
 
-        }
-
-
-
-
-        public async Task<ICollection<AlbumImage>> GetImageList(string cat, string albumName)
-        {
-            var a = AllAlbums.Find(x => x.Name == albumName);
-            Debug.Assert(!string.IsNullOrEmpty(a.Name));
-            var _imageList = await Api.GetAlbumImages(a);
-            return _imageList;
         }
 
         private string fetchImageUrl(ImageSizes imageSize)
@@ -1720,7 +1454,9 @@ namespace SMEngine
         {
             ExceptionsRaised++;
             if (fireException != null)
+            {
                 fireException(msg);
+            }
         }
     }
 
