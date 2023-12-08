@@ -22,21 +22,21 @@ namespace SMEngine
 
         public class ImageSet
         {
-            private System.Drawing.Bitmap b;
-            private BitmapImage bm;
+            private System.Drawing.Bitmap bitmap;
+            private BitmapImage bitmapImage;
             private string caption;
             private string albumTitle;
-            private string cAtegory;
+            private string category;
             private string exif;
             private DateTime myDate;
             private string name;
             private string imageURL;
 
-            public Bitmap B { get => b; set => b = value; }
-            public BitmapImage Bm { get => bm; set => bm = value; }
+            public Bitmap Bitmap { get => bitmap; set => bitmap = value; }
+            public BitmapImage BitmapImage { get => bitmapImage; set => bitmapImage = value; }
             public string Caption { get => caption; set => caption = value; }
             public string AlbumTitle { get => albumTitle; set => albumTitle = value; }
-            public string CAtegory { get => cAtegory; set => cAtegory = value; }
+            public string Category { get => category; set => category = value; }
             public string Exif { get => exif; set => exif = value; }
             public DateTime MyDate { get => myDate; set => myDate = value; }
             public string Name { get => name; set => name = value; }
@@ -48,7 +48,7 @@ namespace SMEngine
                 this.Caption = Caption;
                 Name = name;
                 MyDate = mydate;
-                CAtegory = folder;
+                Category = folder;
                 AlbumTitle = albumname;
 
             }
@@ -56,6 +56,7 @@ namespace SMEngine
             {
                 Caption = "";
                 Exif = "";
+                BitmapImage = null;
             }
         }
     }

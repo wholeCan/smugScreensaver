@@ -175,7 +175,7 @@ namespace andyScreenSaver
                 if (success)
                 {
                     comboBox1.Items.Add("Waiting for data...");
-                    _engine.setIsConfigurationMode();
+                    _engine.IsConfigurationMode = true;
                     while (_engine.IsLoadingAlbums())
                     {
                        // Debug.WriteLine("waiting for albums to load...");

@@ -350,7 +350,7 @@ namespace andyScreenSaver
                             {
                                 if (image != null)
                                 {
-                                    image.B = Engine.getBlackImagePixel();
+                                    image.Bitmap = Engine.getBlackImagePixel();
                                     blackImagePlaced = true;
                                 }
                             }
@@ -412,9 +412,9 @@ namespace andyScreenSaver
 
                     }
                     Bitmap bmyImage2;
-                    if (s != null && s.B != null)
+                    if (s != null && s.Bitmap != null)
                     {
-                        bmyImage2 = s.B;
+                        bmyImage2 = s.Bitmap;
                         if (Engine.settings.showInfo)
                         {
                             if (bmyImage2.Height == 0)
@@ -436,7 +436,7 @@ namespace andyScreenSaver
             try
             {
                 var sb = new StringBuilder();
-                sb.Append(s.CAtegory + ": " + s.AlbumTitle);
+                sb.Append(s.Category + ": " + s.AlbumTitle);
                 if (!string.IsNullOrEmpty(s.Caption) && !s.Caption.Contains("OLYMPUS"))
                 {
                     sb.Append(": " + s.Caption);
@@ -452,7 +452,7 @@ namespace andyScreenSaver
             //whether you set MaxHeight, or MaxWidth will determine how the images end up centered on screen.
             image.MaxHeight = /*this.Height*/ MyHeight / GridHeight - (BorderWidth / GridHeight); 
             image.Width = MyWidth / GridWidth - (BorderWidth / GridWidth);
-            image.Source = Bitmap2BitmapImage(s.B);
+            image.Source = Bitmap2BitmapImage(s.Bitmap);
 
             Lm.addToList(new Tuple<int, int>(randWidth, randHeight));
             var imageIndex = (int)(randWidth + (randHeight * (GridWidth)));

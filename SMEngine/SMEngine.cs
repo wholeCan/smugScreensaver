@@ -1175,11 +1175,11 @@ namespace SMEngine
             }
             if (!screensaverExpired())
             {
-                b.B = BitmapImage2Bitmap(b.Bm);
+                b.Bitmap = BitmapImage2Bitmap(b.BitmapImage);
             }
             else
             {
-                b.B = getBlackImagePixel();
+                b.Bitmap = getBlackImagePixel();
             }
             return b;
         }
@@ -1528,28 +1528,23 @@ namespace SMEngine
 
         List<ImageSet> _allImages = new List<ImageSet>();
 
-        public static void FisherYatesShuffle<T>(ref T[] array)
-        {//using this to try to randomize a list.
-            var r = new Random();
-            for (var i = array.Length - 1; i > 0; i--)
-            {
-                var j = r.Next(0, i + 1);
-                var temp = array[j];
-                array[j] = array[i];
-                array[i] = temp;
-            }
-        }
-
         private bool isLoadingAlbums = true;
         public bool IsLoadingAlbums()
         {
             return IsLoadingAlbums1;
         }
-        bool isConfigurationMode = false;
+        private bool isConfigurationMode = false;
 
-        public void setIsConfigurationMode()
+        public bool IsConfigurationMode
         {
-            isConfigurationMode = true;
+            set
+            {
+                isConfigurationMode = value;
+            }
+            get
+            {
+                return isConfigurationMode;
+            }
         }
         private void loadAllImages()
         {
@@ -1604,7 +1599,7 @@ namespace SMEngine
                                   {
                                       try
                                       {
-                                          if (!isConfigurationMode)
+                                          if (!IsConfigurationMode)
                                           {
                                               loadImages(a, false);
                                           }
@@ -1659,14 +1654,14 @@ namespace SMEngine
 
         }
 
-        Dictionary<string, ImageSet> playedImages = new();// Dictionary<string, ImageSet>();
+        Dictionary<string, ImageSet> playedImages = new();
 
         private ImageSet getRandomImage()
         {
             checkLogin(Envelope);
             {
                 var imageSet = new ImageSet();
-                imageSet.Bm = null;
+                //imageSet.Bm = null; //moved to constructor.
 
                 lock (ImageDictionary)
                 {
@@ -1690,11 +1685,11 @@ namespace SMEngine
                             {
                                 throw new Exception("image returned is null: " + element.ImageURL);
                             }
-                            imageSet.Bm = image;
+                            imageSet.BitmapImage = image;
                             imageSet.Name = element.Name;
                             imageSet.AlbumTitle = element.AlbumTitle;
                             imageSet.ImageURL = element.ImageURL;
-                            imageSet.CAtegory = element.CAtegory;
+                            imageSet.Category = element.Category;
                             imageSet.MyDate = element.MyDate;
                             imageSet.AlbumTitle = element.AlbumTitle; //element.Album.Title;
                             imageSet.Caption = element.Caption;
