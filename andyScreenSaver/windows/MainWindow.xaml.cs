@@ -607,11 +607,12 @@ namespace andyScreenSaver
             }
         }
 
+      
+
         //Application myParent;
         [Obsolete]
         public Window1()
         {
-            // myParent = parent;
             InitializeComponent();
             var borderWidth = 0;
             int.TryParse(ConfigurationSettings.AppSettings["BorderWidth"], out borderWidth);

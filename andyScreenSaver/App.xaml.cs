@@ -6,6 +6,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Windows;
@@ -29,6 +30,11 @@ namespace andyScreenSaver
 
             try
             {
+                if (ApplicationMutexSingleton.Instance.AlreadyRunning)
+                {
+                    Debug.WriteLine("Application already running!");
+                    Shutdown();
+                }
                 if (e == null || e.Args == null)
                 {
                     throw new Exception("Andy sucks");

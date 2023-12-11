@@ -113,6 +113,7 @@ namespace SMEngine
             {
                 msg.AppendLine("albums: " + AllAlbums.Count);
             }
+            msg.AppendLine("UserNameList: " + userNameListSize + ", " + string.Join(",", fetchUsersToLoad().ToList()));
             msg.AppendLine("images shown: " + ImageCounter);
             msg.AppendLine("images deduped: " + PlayedImages.Count);
             msg.AppendLine("queue depth: " + ImageQueue.Count);
@@ -898,6 +899,7 @@ namespace SMEngine
         ThreadStart tsAlbumLoad = null;
         Thread tAlbumLoad = null;
 
+        private int userNameListSize = 0;
         private string[] fetchUsersToLoad()
         {
             var usernameList = fetchKey("UserNameList");
@@ -907,6 +909,7 @@ namespace SMEngine
                 usernameList = "MY_NAME";
             }
             var list = usernameList.Split(',');
+            userNameListSize = list.Count();
             return list;
         }
         private void start()
