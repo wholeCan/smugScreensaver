@@ -49,7 +49,7 @@ namespace andyScreenSaver
         }
         private SMEngine.CSMEngine _engine;
         ThreadStart ts = null;
-        Thread t = null;
+        Thread threadImageUpdate = null;
         static bool running = true;
         bool screensaverModeDisabled = false;
         
@@ -312,7 +312,19 @@ namespace andyScreenSaver
 
                 while (image == null && counter < 1)
                 {//if image isn't ready, wait for it.
-                    image = Engine.getImage();
+                    try
+                    {
+                        image = Engine.getImage();
+                    }
+                    catch (Exception ex)
+                    {
+                        if (ex.Message.Contains("Too many requests"))
+                        {
+                            // consider sleeping a bit, 429 received from server.
+                            Thread.Sleep(1000);
+                        }
+                        throw ex;
+                    }
                     counter++;//allow it to die.
                     if (image == null)
                     {
@@ -479,11 +491,12 @@ namespace andyScreenSaver
             }
         }
 
-        private void run()
+        private void runImageUpdateThread()
         {
             Running = true;
             while (Running)
             {
+                myManualResetEvent.WaitOne();
                 try
                 {
                     updateImage();
@@ -522,16 +535,44 @@ namespace andyScreenSaver
             }
             //todo: why is this outside the try block?  is there a reason to start the thread?
             //would it hurt to not do so?  Would need to test.
-            Ts = new ThreadStart(run);
-            T = new Thread(Ts)
+            ThreadStartImageUpdate = new ThreadStart(runImageUpdateThread);
+            ThreadImageUpdate = new Thread(ThreadStartImageUpdate)
             {
                 IsBackground = true
             };
-            T.Start();
+            ThreadImageUpdate.Start();
 
         }
         Task task = null;
-        private void initEngine(bool? forceStart = false)
+
+        private void toggleScreen()
+        {
+            if (WindowStyle == WindowStyle.SingleBorderWindow)
+            {
+                WindowStyle = WindowStyle.None;
+                ResizeMode = ResizeMode.NoResize;
+                WindowState = WindowState.Maximized;
+            }
+            else
+            {
+                WindowStyle = WindowStyle.SingleBorderWindow;
+                ResizeMode = ResizeMode.CanResizeWithGrip;
+            }
+        }
+        bool isPaused = false;
+        private void pauseSlideshow()
+        {
+            //            Engine.Pause();
+            if (isPaused)
+                myManualResetEvent.Set();// allow to run
+            else
+                myManualResetEvent.Reset();//.Suspend();
+            isPaused = !isPaused;
+        }
+
+        private static ManualResetEvent myManualResetEvent = new ManualResetEvent(true);
+
+       private void initEngine(bool? forceStart = false)
         {
             if (Engine != null)
             {
@@ -761,50 +802,40 @@ namespace andyScreenSaver
         }
         private void Window_KeyDown(object sender, KeyEventArgs e)
         {
-            if (e.Key == Key.Left || e.Key == Key.Right)
+            switch (e.Key)
             {
-                //todo: What happens when service is stopped, can I safely resrtart?     
-                Engine.resetExpiredImageCollection();
-                updateImage();
-            }
-            else if (e.Key == Key.S)
-            {
-                StatsEnabled = !StatsEnabled;
-                if (StatsEnabled)
-                {
-                    showMsg(Engine.getRuntimeStatsInfo());
-                }
-                else showMsg("");
-            }
-            else if (e.Key == Key.Escape || e.Key == Key.Q)
-            {
-                doshutdown();
-            }
-            else if (e.Key == Key.W)
-            {
-                if (WindowStyle == WindowStyle.SingleBorderWindow)
-                {
-                    WindowStyle = WindowStyle.None;
-                    ResizeMode = ResizeMode.NoResize;
-                    WindowState = WindowState.Maximized;
-                }
-                else
-                {
-                    WindowStyle = WindowStyle.SingleBorderWindow;
-                    ResizeMode = ResizeMode.CanResizeWithGrip;
-                }
-            }
-            else if (e.Key == Key.R)
-            {
-                initEngine(true);
-                
-            }
-            else
-            {
-                if (!screensaverModeDisabled)
-                {
+                case Key.Left:
+                case Key.Right:
+                    Engine.resetExpiredImageCollection();
+                    updateImage();
+                    break;
+                case Key.S:
+                    StatsEnabled = !StatsEnabled;
+                    if (StatsEnabled)
+                    {
+                        showMsg(Engine.getRuntimeStatsInfo());
+                    }
+                    else showMsg("");
+                    break;
+                case Key.Escape:
+                case Key.Q:
                     doshutdown();
-                }
+                    break;
+                case Key.W:
+                    toggleScreen();
+                    break;
+                case Key.R:
+                    initEngine(true);
+                    break;
+                case Key.P:
+                    pauseSlideshow();
+                    break;
+                default:
+                    if (!screensaverModeDisabled)
+                    {
+                        doshutdown();
+                    }
+                    break;
             }
         }
 
@@ -814,6 +845,7 @@ namespace andyScreenSaver
             SetupRequired.Dispatcher.BeginInvoke(new Action(delegate ()
             {
                 SetupRequired.Visibility = System.Windows.Visibility.Visible;
+                msg = "Paused: " + isPaused.ToString() + "\n" + msg;
                 SetupRequired.Content = msg;
             }));
 
@@ -833,8 +865,8 @@ namespace andyScreenSaver
         public static bool DoSmartStart => doSmartStart;
 
         public CSMEngine Engine { get => _engine; set => _engine = value; }
-        public ThreadStart Ts { get => ts; set => ts = value; }
-        public Thread T { get => t; set => t = value; }
+        public ThreadStart ThreadStartImageUpdate { get => ts; set => ts = value; }
+        public Thread ThreadImageUpdate { get => threadImageUpdate; set => threadImageUpdate = value; }
         public static bool Running { get => running; set => running = value; }
         public bool ScreensaverModeDisabled { get => screensaverModeDisabled; set => screensaverModeDisabled = value; }
         public int GridWidth { get => gridWidth; set => gridWidth = value; }

@@ -37,7 +37,7 @@ namespace SMEngine
         private volatile bool running = false;
 
 
-#if (DEBUG)
+#if (DEBUG) //max albums to pull
         private readonly int debug_limit = 500;
 #else
         private int debug_limit = 5000000;
@@ -63,7 +63,7 @@ namespace SMEngine
 
         private async void setupJob()
         {
-# if(DEBUG)
+# if(DEBUG) // time of day to reset.
             var frequencyHours = 24;/// 24; //24 = 1 per day.  1 = 1 per hour
             var startHour = 15;// DateTime.Now.Hour;
             var startMinute = 15;// DateTime.Now.Minute + 1;
@@ -91,7 +91,7 @@ namespace SMEngine
 
         public string getRuntimeStatsInfo(bool showMenu = true)
         {
-#if (DEBUG)
+#if (DEBUG) //debug on, used only for showing at runtime in case I forget which version is running.
     var debugOn = true;
 #else
             var debugOn = false;
@@ -132,6 +132,7 @@ namespace SMEngine
                 msg.AppendLine("\ts: show or hide stats");
                 msg.AppendLine("\tw: toggle window controls");
                 msg.AppendLine("\tr: reload library");
+                msg.AppendLine("\tp: pause slideshow");
                 msg.AppendLine("\t<- or ->: show next photo");
                 msg.AppendLine("\tESC or Q: exit program");
             }
@@ -425,6 +426,8 @@ namespace SMEngine
 
         }
 
+    
+
         CSettings _settings;
         public void setSettings(CSettings set)
         {
@@ -540,7 +543,11 @@ namespace SMEngine
             try
             {
                 Settings.quality = Int32.Parse(ReadRegistryValue("quality", "2"));
+#if (DEBUG) //use custom speed setting
+                Settings.speed_s = 3;
+#else
                 Settings.speed_s = Int32.Parse(ReadRegistryValue("Speed_S", "5"));
+#endif
                 var loadAll = Int32.Parse(ReadRegistryValue("LoadAll", "1"));
                 var showInfo = Int32.Parse(ReadRegistryValue("ShowInfo", "1"));
                 Settings.load_all = loadAll == 1 ? true : false;
@@ -814,7 +821,7 @@ namespace SMEngine
         public bool GettingCategories { get => gettingCategories; set => gettingCategories = value; }
         public bool Loggedin { get => _loggedin; set => _loggedin = value; }
         public ThreadStart Ts { get => ts; set => ts = value; }
-        public Thread T { get => t; set => t = value; }
+        public Thread imageCollectionThread { get => t; set => t = value; }
         public ThreadStart TsAlbumLoad { get => tsAlbumLoad; set => tsAlbumLoad = value; }
         public Thread TAlbumLoad { get => tAlbumLoad; set => tAlbumLoad = value; }
         public DateTime? TimeWentBlack { get => timeWentBlack; set => timeWentBlack = value; }
@@ -829,6 +836,7 @@ namespace SMEngine
         {
             Debug.WriteLine(DateTime.Now.ToLongTimeString() + ": " + msg);
         }
+       
 
         private void runImageCollection()
         {
@@ -838,6 +846,8 @@ namespace SMEngine
                 bool startIt = true;
                 while (Running)
                 {
+                
+
                     if (ImageQueue.Count < MinQ)
                     {
                         startIt = true;
@@ -919,14 +929,14 @@ namespace SMEngine
                 TAlbumLoad.Start();
             }
             //System.Threading.Thread.Sleep(50);//experimental.
-            if (T == null)
+            if (imageCollectionThread == null)
             {
                 Ts = new ThreadStart(runImageCollection);
-                T = new Thread(Ts)
+                imageCollectionThread = new Thread(Ts)
                 {
                     IsBackground = true
                 };
-                T.Start();
+                imageCollectionThread.Start();
             }
 
         }
@@ -967,7 +977,7 @@ namespace SMEngine
         public bool screensaverExpired()
         {
 
-#if (DEBUG)
+#if (DEBUG) //minutes to run when timing out
             var minutesToRun = 15;//put back to 30
 #else
             var minutesToRun = 30;
