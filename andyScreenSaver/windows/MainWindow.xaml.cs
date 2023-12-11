@@ -845,7 +845,10 @@ namespace andyScreenSaver
             SetupRequired.Dispatcher.BeginInvoke(new Action(delegate ()
             {
                 SetupRequired.Visibility = System.Windows.Visibility.Visible;
-                msg = "Paused: " + isPaused.ToString() + "\n" + msg;
+                if (!string.IsNullOrEmpty(msg))
+                {
+                    msg = "Paused: " + isPaused.ToString() + "\n" + msg;
+                }
                 SetupRequired.Content = msg;
             }));
 
