@@ -34,6 +34,7 @@ namespace andyScreenSaver
                 {
                     Debug.WriteLine("Application already running!");
                     Shutdown();
+                    return;
                 }
                 if (e == null || e.Args == null)
                 {
