@@ -23,9 +23,7 @@ namespace andyScreenSaver
                 else
                 {
                     Debug.WriteLine("Another instance of the application is already running.");
-#if (DEBUG)
-                    MessageBox.Show("Debug: Shutting down - already running!");
-#endif
+
                     alreadyRunning = true;
                 }
             }
