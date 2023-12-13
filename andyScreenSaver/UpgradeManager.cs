@@ -37,48 +37,34 @@ namespace andyScreenSaver
             readyForUpgrade();
             //checkAndPerformUpgrade();
         }
-        bool testRun = false;
+        bool checkRun = false;
         public bool ReadyForUpgrade
         {
             get
             {
-                return testRun;
-            }
-            set
-            {
-                testRun = value;
-            }
+                return readyForUpgrade();
+            }       
         }
 
         private bool readyForUpgrade()
         {
 
-            var lastFileDate = GetFileCreationDate(InstallerPath);
             var oldChecksum = CalculateSHA256Checksum(InstallerPath);
-#if(DEBUG) // upgrade test
+            var latestChecksum = downloadLatest();
+            checkRun = true;
 
-            var upgradeTest = lastFileDate?.AddSeconds(1);
-#else
-            var upgradeTest = lastFileDate?.AddDays(numberOfDaysBeforeChecking);
-#endif
-   //         if (lastFileDate == null || upgradeTest < DateTime.Now)
+            if (latestChecksum != oldChecksum)
             {
-                var latestChecksum = downloadLatest();
-                if (latestChecksum != oldChecksum)
-                {
-                    ReadyForUpgrade = true;
-                    return true;
-                }
+                return true;
             }
-            return false;
+        return false;
         }
 
         public void PerformUpgrade()
         {
-            if (ReadyForUpgrade)
+            if (checkRun)
             {
                 RunApplicationAsAdmin(InstallerPath);
-           
             }
         }
 
