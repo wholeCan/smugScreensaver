@@ -117,6 +117,7 @@ namespace andyScreenSaver
             try
             {
                 process.Start();
+                System.Threading.Thread.Sleep(500);
             }
             catch (System.ComponentModel.Win32Exception ex)
             {

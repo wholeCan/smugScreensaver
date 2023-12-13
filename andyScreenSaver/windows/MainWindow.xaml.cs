@@ -872,6 +872,7 @@ namespace andyScreenSaver
                     System.Windows.MessageBox.Show("After installation, please restart the application");
                     Debug.WriteLine("starting upgrade");
                     upgradeManager.PerformUpgrade();
+                    
                     Application.Current.Shutdown();
 
                 } 
