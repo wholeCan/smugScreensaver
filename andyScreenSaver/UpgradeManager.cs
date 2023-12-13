@@ -17,6 +17,14 @@ namespace andyScreenSaver
         //perform version check (create a checksum of file), and store it somewhere for review.
         //if different, then proceed with upgrade.
 
+        /// <summary>
+        ///  test cases:
+        ///  1. first time install
+        ///  2. open config, check install and decline
+        ///  3. open config, check install and accept
+        ///  4. open config, decline, then retry.
+        /// </summary>
+
         const int numberOfDaysBeforeChecking = 10;
 
         private static UpgradeManager instance;
@@ -33,9 +41,12 @@ namespace andyScreenSaver
             }
         }
 
+        ~UpgradeManager()
+        {
+            //deleteCurrentInstaller();
+        }
         private UpgradeManager() {
-            readyForUpgrade();
-            //checkAndPerformUpgrade();
+            //readyForUpgrade();
         }
         bool checkRun = false;
         public bool ReadyForUpgrade
@@ -46,26 +57,43 @@ namespace andyScreenSaver
             }       
         }
 
+        DateTime lastUpdate = DateTime.Now;
         private bool readyForUpgrade()
         {
-
-            var oldChecksum = CalculateSHA256Checksum(InstallerPath);
+            var timeCheck = lastUpdate.AddMilliseconds(1);
+            if (timeCheck > DateTime.Now)
+            {//silly throttle
+                return true;
+            }
+            var oldChecksum = readChecksumfromFile(InstalledVersionChecksumPath);
             var latestChecksum = downloadLatest();
             checkRun = true;
+            lastUpdate = DateTime.Now;
 
             if (latestChecksum != oldChecksum)
             {
+                installed = false;
                 return true;
             }
-        return false;
+            return false;
         }
 
+        bool installed = false;
         public void PerformUpgrade()
         {
             if (checkRun)
             {
-                RunApplicationAsAdmin(InstallerPath);
+                RunApplicationAsAdmin();
+                installed = true;
+                WriteStringToFile(CalculateSHA256Checksum(InstallerPath), InstalledVersionChecksumPath);
+                System.Threading.Thread.Sleep(500);
             }
+        }
+
+        private string? readChecksumfromFile(string filename)
+        {
+            if (!File.Exists(filename)) { return null; }
+            return File.ReadAllText(filename);//.Substring(0, 500);//include max length for safety.
         }
 
         public void deleteCurrentInstaller()
@@ -76,16 +104,16 @@ namespace andyScreenSaver
             }
         }
 
-        static void RunApplicationAsAdmin(string applicationPath)
+        void RunApplicationAsAdmin()
         {
-            if (!File.Exists(applicationPath))
+            if (!File.Exists(InstallerPath))
             {
                 Debug.WriteLine("Missing install file");
                 return;
             }
             ProcessStartInfo startInfo = new ProcessStartInfo
             {
-                FileName = applicationPath,
+                FileName = InstallerPath,
                 Verb = "runas", // "runas" indicates that the process should run with elevated privileges
                 //running silently doesn't work and is confusing.
                // UseShellExecute = true,
@@ -103,7 +131,7 @@ namespace andyScreenSaver
             try
             {
                 process.Start();
-                System.Threading.Thread.Sleep(500);
+            
             }
             catch (System.ComponentModel.Win32Exception ex)
             {
@@ -112,7 +140,6 @@ namespace andyScreenSaver
             }
         }
 
-
         String InstallerPath
         {
             get
@@ -120,19 +147,13 @@ namespace andyScreenSaver
                 return Path.GetTempPath() + @"\smugAndyLatest.exe";
             }
         }
-        static DateTime? GetFileCreationDate(string filePath)
+        String InstalledVersionChecksumPath
         {
-            if (!File.Exists(filePath))
+            get
             {
-                return null;
+                return Path.GetTempPath() + @"\smugAndyLatest.md5";
             }
-            // Create a FileInfo object for the specified file path
-            FileInfo fileInfo = new FileInfo(filePath);
-
-            // Retrieve the creation date
-            return fileInfo.CreationTime;
         }
-
         string InstallerURL
         {
             get
@@ -144,7 +165,7 @@ namespace andyScreenSaver
         private string downloadLatest()
         {
             
-            using (WebClient client = new WebClient())
+            using (var client = new WebClient())
             {
                 // Download the updated executable
                 client.DownloadFile(InstallerURL, InstallerPath);
