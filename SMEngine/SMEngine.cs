@@ -132,6 +132,7 @@ namespace SMEngine
                 msg.AppendLine("\ts: show or hide stats");
                 msg.AppendLine("\tw: toggle window controls");
                 msg.AppendLine("\tr: reload library");
+                msg.AppendLine("\tCtrl+U: upgrade app");
                 msg.AppendLine("\tp: pause slideshow");
                 msg.AppendLine("\t<- or ->: show next photo");
                 msg.AppendLine("\tESC or Q: exit program");

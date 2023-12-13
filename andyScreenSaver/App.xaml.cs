@@ -27,7 +27,6 @@ namespace andyScreenSaver
 
         private void Application_Startup(object sender, StartupEventArgs e)
         {
-
             try
             {
                 if (ApplicationMutexSingleton.Instance.AlreadyRunning)

@@ -8,7 +8,6 @@
 using andyScreenSaver.windows;
 using SMEngine;
 using System;
-using System.Diagnostics;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Windows;
@@ -55,12 +54,14 @@ namespace andyScreenSaver
 
 
         }
+
         public SettingsWindow()
         {
             InitializeComponent();
             groupBox1.Visibility = System.Windows.Visibility.Hidden;
             ThreadStart ts = new ThreadStart(initEngine);
             Thread t = new Thread(ts);
+            
             t.IsBackground = true;
             t.Start();
         }
@@ -361,6 +362,36 @@ namespace andyScreenSaver
             _engine.logout();
             MessageBox.Show("Please restart the application to login. sorry!");
             Application.Current.Shutdown();
+        }
+
+        private void Button_Click_4(object sender, RoutedEventArgs e)
+        {
+            var upgradeManager = UpgradeManager.Instance;          
+            if (!upgradeManager.ReadyForUpgrade)
+            {
+                MessageBox.Show("Latest is already installed.");
+            }
+            else
+            {
+                //MessageBox.Show("yes or no?");
+                MessageBoxResult result = System.Windows.MessageBox.Show(
+                    "Do you want to continue with installing a new version?", 
+                    "Upgrade confirmation", 
+                    MessageBoxButton.YesNo, 
+                    MessageBoxImage.Question
+                    );
+                if (result == MessageBoxResult.Yes)
+                {
+                    System.Windows.MessageBox.Show("After installation, please restart the application");
+                    upgradeManager.PerformUpgrade();
+                    Application.Current.Shutdown();
+
+                }
+                else
+                {
+                    upgradeManager.deleteCurrentInstaller();
+                }
+            }
         }
     }
     public class RoundingConverter : IValueConverter

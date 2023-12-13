@@ -827,6 +827,9 @@ namespace andyScreenSaver
                 case Key.W:
                     toggleScreen();
                     break;
+                case Key.U:
+                    if (Keyboard.IsKeyDown(Key.LeftCtrl)) { doUpgrade(); }
+                    break;
                 case Key.R:
                     initEngine(true);
                     break;
@@ -839,6 +842,42 @@ namespace andyScreenSaver
                         doshutdown();
                     }
                     break;
+            }
+        }
+
+        private void doUpgrade()
+        {
+            var upgradeManager = UpgradeManager.Instance;
+            
+            if (!upgradeManager.ReadyForUpgrade)
+            {
+                //do nothing.
+                Debug.WriteLine("already upgraded");
+             //   MessageBox.Show("Latest is already installed.");
+            }
+            else
+            {
+                Debug.WriteLine("upgrade query to user");
+                //MessageBox.Show("yes or no?");
+                MessageBoxResult result = System.Windows.MessageBox.Show(
+                    "Do you want to continue with installing a new version?",
+                    "Upgrade confirmation",
+                    MessageBoxButton.YesNo,
+                    MessageBoxImage.Question
+                    );
+                if (result == MessageBoxResult.Yes)
+                {
+                    System.Windows.MessageBox.Show("After installation, please restart the application");
+                    Debug.WriteLine("starting upgrade");
+                    upgradeManager.PerformUpgrade();
+                    Application.Current.Shutdown();
+
+                } 
+                else
+                {
+                    Debug.WriteLine("Deleting tmp installer");
+                    upgradeManager.deleteCurrentInstaller();
+                }
             }
         }
 

@@ -45,6 +45,7 @@
         <TextBox HorizontalAlignment="Left" Name="BorderThickness" Height="23" Margin="215,505,0,0" TextWrapping="Wrap" Text="0" VerticalAlignment="Top" Width="47"/>
         <Label Content="border thickness" HorizontalAlignment="Left" Margin="112,505,0,0" VerticalAlignment="Top"/>
         <Button Content="Apply" HorizontalAlignment="Left" Margin="352,483,0,0" VerticalAlignment="Top" Width="75" Click="Button_Click_2"/>
-        <Button Content="Logout" HorizontalAlignment="Left" Height="41" Margin="315,31,0,0" VerticalAlignment="Top" Width="112" AutomationProperties.Name="logoutButton" Click="Button_Click_3"/>
+        <Button Content="Logout" HorizontalAlignment="Left" Height="41" Margin="333,16,0,0" VerticalAlignment="Top" Width="112" AutomationProperties.Name="logoutButton" Click="Button_Click_3"/>
+        <Button Content="Upgrade" HorizontalAlignment="Left" Height="30" Margin="334,79,0,0" VerticalAlignment="Top" Width="112" Click="Button_Click_4" Name="UpgradeButon"/>
     </Grid>
 </Window>
