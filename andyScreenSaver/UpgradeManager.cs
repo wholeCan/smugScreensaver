@@ -105,7 +105,7 @@ namespace andyScreenSaver
                 CreateNoWindow = true,
                 RedirectStandardOutput = true,
                 RedirectStandardError = true,
-                Arguments = "/S" // 
+                Arguments = "/S" 
             };
 
             Process process = new Process
