@@ -83,9 +83,9 @@ namespace andyScreenSaver
         {
             if (checkRun)
             {
+                WriteStringToFile(CalculateSHA256Checksum(InstallerPath), InstalledVersionChecksumPath);
                 RunApplicationAsAdmin();
                 installed = true;
-                WriteStringToFile(CalculateSHA256Checksum(InstallerPath), InstalledVersionChecksumPath);
                 System.Threading.Thread.Sleep(500);
             }
         }
