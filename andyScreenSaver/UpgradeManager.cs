@@ -101,6 +101,11 @@ namespace andyScreenSaver
             {
                 FileName = applicationPath,
                 Verb = "runas", // "runas" indicates that the process should run with elevated privileges
+                UseShellExecute = false,
+                CreateNoWindow = true,
+                RedirectStandardOutput = true,
+                RedirectStandardError = true,
+                Arguments = "/S" // 
             };
 
             Process process = new Process
