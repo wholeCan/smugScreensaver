@@ -8,6 +8,7 @@ using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Net;
+using System.Reflection;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
@@ -126,6 +127,9 @@ namespace SMEngine
             msg.AppendLine("Peak memory: " + Process.GetCurrentProcess().PeakPagedMemorySize64 / (1024 * 1024));
             msg.AppendLine("Peak virtual memory: " + Process.GetCurrentProcess().PeakVirtualMemorySize64 / (1024 * 1024));
             msg.AppendLine("Schedule: " + Settings.startTime.ToString() + " - " + Settings.stopTime.ToString());
+            Version version = Assembly.GetEntryAssembly()?.GetName().Version;
+
+            msg.AppendLine("Version: " + version.ToString());
             if (showMenu)
             {
                 msg.AppendLine("Menu:");
