@@ -6,7 +6,11 @@ namespace andyScreenSaver
   
     internal class ApplicationMutexSingleton
     {
+#if (DEBUG)  //allow a debug mutex to run at same time as release version
+        string mutexName = "AndysScreensaverApplication-Debug";
+#else
         string mutexName = "AndysScreensaverApplication";
+#endif
         private Mutex mutex = null;
         bool alreadyRunning = false;
 

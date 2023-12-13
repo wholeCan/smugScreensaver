@@ -37,7 +37,7 @@ namespace SMEngine
 
 
 #if (DEBUG) //max albums to pull
-        private readonly int debug_limit = 500;
+        private readonly int debug_limit = 5000;
 #else
         private int debug_limit = 5000000;
 #endif
