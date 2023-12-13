@@ -31,6 +31,9 @@ using System.Windows.Media.Imaging;
 using System.Windows.Media.Media3D;
 using static SMEngine.CSMEngine;
 
+
+#nullable enable
+
 namespace andyScreenSaver
 {
 
@@ -292,13 +295,14 @@ namespace andyScreenSaver
                         }
                         if (Engine.screensaverExpired())
                         {
-                            showMsg(
+                            ShowMsg(
                                 DateTime.Now.ToShortTimeString() +
                                 ": Slide show is stopped until " +
                                 (Engine.settings.startTime / 100).ToString() +
                                 ":" +
                                 (Engine.settings.startTime % 100).ToString("00") +
-                                " - press <left> or <right> arrow to wake up."
+                                " - press <left> or <right> arrow to wake up.",
+                                false
                                 );
                         }
                     }));
@@ -375,11 +379,11 @@ namespace andyScreenSaver
                             //todo: add switch here controlled by hotkey
                             if (StatsEnabled)
                             {
-                                showMsg(Engine.getRuntimeStatsInfo());
+                                ShowMsg(Engine.getRuntimeStatsInfo(), true);
                             }
                             else
                             {
-                                showMsg("");
+                                ShowMsg(null, false);
                             }
                         }
                     }
@@ -812,9 +816,9 @@ namespace andyScreenSaver
                     StatsEnabled = !StatsEnabled;
                     if (StatsEnabled)
                     {
-                        showMsg(Engine.getRuntimeStatsInfo());
+                        ShowMsg(Engine.getRuntimeStatsInfo(), true);
                     }
-                    else showMsg("");
+                    else ShowMsg(null, false);
                     break;
                 case Key.Escape:
                 case Key.Q:
@@ -838,17 +842,24 @@ namespace andyScreenSaver
             }
         }
 
-        private void showMsg(string msg)
+        private void ShowMsg(string? msg, bool showStatsIsSet)
         {
 
             SetupRequired.Dispatcher.BeginInvoke(new Action(delegate ()
             {
-                SetupRequired.Visibility = System.Windows.Visibility.Visible;
-                if (!string.IsNullOrEmpty(msg))
+
+                if (string.IsNullOrEmpty(msg))
                 {
+                    SetupRequired.Visibility = Visibility.Hidden;
+                    return;
+                }
+                SetupRequired.Visibility = Visibility.Visible;
+                if (showStatsIsSet)
+                {//hack: there are a couple cases where we have text, but don't want to show paused - like when sleeping.
                     msg = "Paused: " + isPaused.ToString() + "\n" + msg;
                 }
                 SetupRequired.Content = msg;
+                
             }));
 
         }
@@ -890,7 +901,8 @@ namespace andyScreenSaver
         private long maxMouseMoves = 100;
 
         private void Window_MouseMove(object sender, MouseEventArgs e)
-        {//author: ASH
+        {
+            //author: ASH
             //modified 2023, logic all wrong
             var resetTime = LastMouseMove.AddMilliseconds(500);
             if (!screensaverModeDisabled)
