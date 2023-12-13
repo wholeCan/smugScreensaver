@@ -140,18 +140,32 @@ namespace andyScreenSaver
             }
         }
 
+        string GetDownloadsFolderPath
+        {
+            get
+            {
+                // Get the Downloads folder path
+                string downloadsFolderPath = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
+
+                // Append "Downloads" to the path
+                downloadsFolderPath = System.IO.Path.Combine(downloadsFolderPath, "Downloads");
+
+                return downloadsFolderPath;
+            }
+        }
+
         String InstallerPath
         {
             get
             {
-                return Path.GetTempPath() + @"\smugAndyLatest.exe";
+                return GetDownloadsFolderPath + @"\smugAndyLatest.exe";
             }
         }
         String InstalledVersionChecksumPath
         {
             get
             {
-                return Path.GetTempPath() + @"\smugAndyLatest.md5";
+                return GetDownloadsFolderPath + @"\smugAndyLatest.md5";
             }
         }
         string InstallerURL
