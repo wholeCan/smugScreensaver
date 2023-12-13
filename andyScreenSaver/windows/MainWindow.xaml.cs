@@ -807,6 +807,8 @@ namespace andyScreenSaver
         {
             switch (e.Key)
             {
+                case Key.LeftCtrl:
+                    break;
                 case Key.Left:
                 case Key.Right:
                     Engine.resetExpiredImageCollection();
