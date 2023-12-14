@@ -46,8 +46,6 @@ namespace andyScreenSaver
             //deleteCurrentInstaller();
         }
         private UpgradeManager() {
-            lastUpdate = DateTime.Now;
-            //readyForUpgrade();
         }
         bool checkRun = false;
         public bool ReadyForUpgrade
@@ -58,18 +56,11 @@ namespace andyScreenSaver
             }       
         }
 
-        DateTime lastUpdate = DateTime.Now;
         private bool readyForUpgrade()
         {
-            var timeCheck = lastUpdate.AddMilliseconds(1);
-            if (timeCheck > DateTime.Now)
-            {//silly throttle
-             //   return true;
-            }
-            var oldChecksum = readChecksumfromFile(InstalledVersionChecksumPath);
+           var oldChecksum = readChecksumfromFile(InstalledVersionChecksumPath);
             var latestChecksum = downloadLatest();
             checkRun = true;
-            lastUpdate = DateTime.Now;
 
             if (latestChecksum != oldChecksum)
             {
