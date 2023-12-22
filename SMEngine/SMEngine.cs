@@ -38,7 +38,7 @@ namespace SMEngine
 
 
 #if (DEBUG) //max albums to pull
-        private readonly int debug_limit = 5000;
+        private readonly int debug_limit = 50;
 #else
         private int debug_limit = 5000000;
 #endif
@@ -64,22 +64,25 @@ namespace SMEngine
         private async void setupJob()
         {
 # if(DEBUG) // time of day to reset.
-            var frequencyHours = 24;/// 24; //24 = 1 per day.  1 = 1 per hour
-            var startHour = 15;// DateTime.Now.Hour;
+            var frequencyMinutes = 24.0 * 60.0;/// 24; //24 = 1 per day.  1 = 1 per hour
+            var startHour = 2;// DateTime.Now.Hour;
             var startMinute = 15;// DateTime.Now.Minute + 1;
 #else
-            var frequencyHours = 24;// run once per day
+            var frequencyMinutes = 24.0 * 60;// run once per day
             var startHour = 2;
             var startMinute = 15;
 #endif
 
-            TaskScheduler.Instance.ScheduleTask(startHour, startMinute, frequencyHours,  //run at 2:15a daily
+          /**
+           TaskScheduler.Instance.ScheduleTask(startHour, startMinute, frequencyMinutes,  //run at 2:15a daily
                () =>
                {
+                  // AppOpenCloseLogger.Log("scheduled task execution");
                    logMsg("reloading library!!!");
                    rePullAlbums();
                    //do the thing!
                });
+          */
 
         }
 
@@ -97,6 +100,7 @@ namespace SMEngine
             var debugOn = false;
 #endif
             var msg = new StringBuilder();
+            msg.AppendLine("Time: " + DateTime.Now.ToShortDateString() + ", " + DateTime.Now.ToLongTimeString());
             msg.AppendLine("running since " +
                 TimeBooted.ToShortDateString()
                 + " : "
@@ -910,7 +914,7 @@ namespace SMEngine
             Debug.Assert(!string.IsNullOrEmpty(usernameList));
             if (usernameList == null)
             {
-                usernameList = "MY_NAME";
+                usernameList = @"MY_NAME";
             }
             var list = usernameList.Split(',');
             userNameListSize = list.Count();
@@ -985,7 +989,7 @@ namespace SMEngine
         {
 
 #if (DEBUG) //minutes to run when timing out
-            var minutesToRun = 15;//put back to 30
+            var minutesToRun = 1;//put back to 30
 #else
             var minutesToRun = 30;
 #endif
@@ -1000,7 +1004,7 @@ namespace SMEngine
             var goToBedTime = Settings.stopTime;  //10PM,  2200=10pm)  
 
             Expired = (totalRuntimeSeconds > maxRuntimeSeconds) &&
-                !(timeOfDay >= wakeupTime && timeOfDay < goToBedTime);  //for testing, let it run a couple hours. then see if it wakes back up at 2p.
+                (timeOfDay <= wakeupTime || timeOfDay > goToBedTime);  //for testing, let it run a couple hours. then see if it wakes back up at 2p.
 
             return Expired;
         }
@@ -1313,7 +1317,7 @@ namespace SMEngine
 
                     foreach (var username in fetchUsersToLoad())
                     {
-                        if (username == "MY_NAME")
+                        if (username == @"MY_NAME")
                         {
                             loadAlbums();
                         }

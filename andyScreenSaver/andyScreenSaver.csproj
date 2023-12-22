@@ -203,6 +203,7 @@
     <Compile Include="ApplicationMutexSingleton.cs" />
     <Compile Include="AppOpenCloseLogger.cs" />
     <Compile Include="DisableScreensaverClassSingleton.cs" />
+    <Compile Include="TaskScheduler.cs" />
     <Compile Include="UpgradeManager.cs" />
     <Compile Include="windows\AuthenticationCodeWindow.xaml.cs">
       <DependentUpon>AuthenticationCodeWindow.xaml</DependentUpon>

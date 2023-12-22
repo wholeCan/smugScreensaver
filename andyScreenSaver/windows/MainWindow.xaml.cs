@@ -773,8 +773,21 @@ namespace andyScreenSaver
             */
             this.Cursor = temporaryCursor;
 
-           
+            TaskScheduler.Instance.ScheduleTask(2, 15, 24.0 * 60.0,  //run at 2:15a daily
+               () =>
+               {
+                   logMsg("Scheduled task execution");
+                   repullAlbums();
+               });
 
+        }
+
+        int restartCounter = 0;
+        private void repullAlbums()
+        {
+            logMsg("reloading library!!!");
+            initEngine(true);
+            Engine.RestartCounter = ++restartCounter;
         }
         public DateTime getLastMouseMove()
         {
@@ -833,7 +846,7 @@ namespace andyScreenSaver
                     if (Keyboard.IsKeyDown(Key.LeftCtrl)) { doUpgrade(); }
                     break;
                 case Key.R:
-                    initEngine(true);
+                    repullAlbums();
                     break;
                 case Key.P:
                     pauseSlideshow();

@@ -2,24 +2,21 @@
 using System.Collections.Generic;
 using System.Threading;
 
-
-namespace SMEngine
+namespace andyScreenSaver
 {
-    /// <summary>
-    /// Interaction logic for Window1.xaml
-    /// </summary>
-    /// 
+    //replicating task scheduler from engine.
+    //12/22/2023
     public class TaskScheduler
     {
 
         private List<Timer> timers = new List<Timer>();
-        public TaskScheduler() { }
+        private TaskScheduler() { }
         private static TaskScheduler _instance;
         public static TaskScheduler Instance => _instance ?? (_instance = new TaskScheduler());
 
 
 
-        public void ScheduleTask(int hour, int min, double intervalInHour, Action task)
+        public void ScheduleTask(int hour, int min, double intervalInMinutes, Action task)
         {
             DateTime now = DateTime.Now;
             DateTime firstRun = new DateTime(now.Year, now.Month, now.Day, hour, min, 0, 0);
@@ -37,10 +34,9 @@ namespace SMEngine
             var timer = new Timer(x =>
             {
                 task.Invoke();
-            }, null, timeToGo, TimeSpan.FromHours(intervalInHour));
+            }, null, timeToGo, TimeSpan.FromMinutes(intervalInMinutes));
 
             timers.Add(timer);
         }
     }
-
 }
