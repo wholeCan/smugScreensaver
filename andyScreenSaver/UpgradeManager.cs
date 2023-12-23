@@ -128,7 +128,13 @@ namespace andyScreenSaver
             catch (System.ComponentModel.Win32Exception ex)
             {
                 // The exception is thrown if the user clicks "No" on the UAC dialog
-                Console.WriteLine($"User declined elevation: {ex.Message}");
+                Debug.WriteLine("User declined elevation: {ex.Message}");
+                MessageBox.Show("User declined elevation: {ex.Message}");
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine("ex: {ex.Message}");
+                MessageBox.Show("exception: {ex.Message}");
             }
         }
 
