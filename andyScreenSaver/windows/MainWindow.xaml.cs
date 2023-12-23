@@ -376,15 +376,7 @@ namespace andyScreenSaver
                      //  the red text disappears after resetting network connection, when really i want it to show up.
                         if (!blackImagePlaced && !Engine.screensaverExpired())
                         {
-                            //todo: add switch here controlled by hotkey
-                            if (StatsEnabled)
-                            {
-                                ShowMsg(Engine.getRuntimeStatsInfo(), true);
-                            }
-                            else
-                            {
-                                ShowMsg(null, false);
-                            }
+                            showStats();
                         }
                     }
                     hStack1.Dispatcher.Invoke(System.Windows.Threading.DispatcherPriority.Normal, new Action(delegate ()
@@ -404,6 +396,22 @@ namespace andyScreenSaver
             {
                 LogError(ex, ex.Message);
             }
+        }
+
+        private void showStats()
+        {
+           
+                        {
+                            //todo: add switch here controlled by hotkey
+                            if (StatsEnabled)
+                            {
+                                ShowMsg(Engine.getRuntimeStatsInfo(), true);
+                            }
+                            else
+                            {
+                                ShowMsg(null, false);
+                            }
+                        }
         }
 
         private void setImage(ref bool run, ref ImageSet s)
@@ -570,6 +578,7 @@ namespace andyScreenSaver
             else
                 myManualResetEvent.Reset();//.Suspend();
             isPaused = !isPaused;
+            showStats();
         }
 
         private static ManualResetEvent myManualResetEvent = new ManualResetEvent(true);
