@@ -134,7 +134,7 @@ namespace andyScreenSaver
             catch (Exception ex)
             {
                 Debug.WriteLine("ex: {ex.Message}");
-                MessageBox.Show("exception: {ex.Message}");
+                MessageBox.Show("Problem occurred: Most likely antivirus configuration issue, and you may need to manually upgrade.\n Exception code: {ex.Message}");
             }
         }
 
