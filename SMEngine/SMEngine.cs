@@ -32,7 +32,7 @@ namespace SMEngine
         private static List<Album> _allAlbums;
         private readonly Queue<ImageSet> _imageQueue;
 
-        private const int maximumQ = 10;   //window, only download if q is less than max and greater than min.
+        private const int maximumQ = 20;   //window, only download if q is less than max and greater than min.
         private const int minQ = 2;
         private volatile bool running = false;
 
