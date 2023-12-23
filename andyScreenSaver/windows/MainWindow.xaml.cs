@@ -857,6 +857,9 @@ namespace andyScreenSaver
                 case Key.R:
                     repullAlbums();
                     break;
+                case Key.Enter:
+                    reloadScreen();
+                    break;
                 case Key.P:
                     pauseSlideshow();
                     break;
@@ -867,6 +870,14 @@ namespace andyScreenSaver
                     }
                     break;
             }
+        }
+
+        private void reloadScreen()
+        {
+            //todo: w's idea to reload all images on screen.
+            var totalImages = gridHeight * gridWidth;
+            for (int i = 0; i < totalImages*1.5; i++)
+                updateImage();
         }
 
         private void doUpgrade()
