@@ -133,7 +133,7 @@ namespace SMEngine
             msg.AppendLine("Schedule: " + Settings.startTime.ToString() + " - " + Settings.stopTime.ToString());
             Version version = Assembly.GetEntryAssembly()?.GetName().Version;
 
-            msg.AppendLine("Version: " + version.ToString());
+            msg.AppendLine("Version: " + version.ToString() + ", " + RetrieveLinkerTimestamp());
             if (showMenu)
             {
                 msg.AppendLine("Menu:");
@@ -147,6 +147,31 @@ namespace SMEngine
             }
             LastImageRequested = DateTime.Now;
             return msg.ToString();
+        }
+
+        private static DateTime RetrieveLinkerTimestamp()
+        {
+
+            Assembly assembly = Assembly.GetExecutingAssembly();
+            AssemblyName assemblyName = assembly.GetName();
+
+
+            const int PeHeaderOffset = 60;
+            const int LinkerTimestampOffset = 8;
+
+            byte[] buffer = new byte[2048];
+
+            using (System.IO.FileStream fileStream = new System.IO.FileStream(assembly.Location, System.IO.FileMode.Open, System.IO.FileAccess.Read))
+            {
+                fileStream.Read(buffer, 0, 2048);
+            }
+
+            int offset = BitConverter.ToInt32(buffer, PeHeaderOffset);
+            int secondsSince1970 = BitConverter.ToInt32(buffer, offset + LinkerTimestampOffset);
+            DateTime epochTime = new DateTime(1970, 1, 1, 0, 0, 0, DateTimeKind.Utc);
+            DateTime buildDate = epochTime.AddSeconds(secondsSince1970);
+
+            return buildDate.ToLocalTime();
         }
 
         public authEnvelope getCode()
@@ -1003,8 +1028,12 @@ namespace SMEngine
             var wakeupTime = Settings.startTime;  // 8am,  (800 = 8am
             var goToBedTime = Settings.stopTime;  //10PM,  2200=10pm)  
 
+            //debug test values, manually set these as a really dumb unit test.
+            //timeOfDay = 2400;
+            //totalRuntimeSeconds = 70;
+
             Expired = (totalRuntimeSeconds > maxRuntimeSeconds) &&
-                !(timeOfDay <= wakeupTime && timeOfDay > goToBedTime);  //for testing, let it run a couple hours. then see if it wakes back up at 2p.
+                !(timeOfDay >= wakeupTime && timeOfDay < goToBedTime);  //for testing, let it run a couple hours. then see if it wakes back up at 2p.
 
             return Expired;
         }
