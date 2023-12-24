@@ -1004,7 +1004,7 @@ namespace SMEngine
             var goToBedTime = Settings.stopTime;  //10PM,  2200=10pm)  
 
             Expired = (totalRuntimeSeconds > maxRuntimeSeconds) &&
-                !(timeOfDay >= wakeupTime && timeOfDay < goToBedTime);  //for testing, let it run a couple hours. then see if it wakes back up at 2p.
+                !(timeOfDay <= wakeupTime && timeOfDay > goToBedTime);  //for testing, let it run a couple hours. then see if it wakes back up at 2p.
 
             return Expired;
         }
