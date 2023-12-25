@@ -101,7 +101,7 @@ namespace SMEngine
 #endif
             var msg = new StringBuilder();
             msg.AppendLine("Time: " + DateTime.Now.ToShortDateString() + ", " + DateTime.Now.ToLongTimeString());
-            msg.AppendLine("running since " +
+            msg.AppendLine("Running since " +
                 TimeBooted.ToShortDateString()
                 + " : "
                 + TimeBooted.ToShortTimeString()
@@ -111,42 +111,42 @@ namespace SMEngine
 
             lock (ImageDictionary)
             {
-                msg.AppendLine("images: " + ImageDictionary.Count);
+                msg.AppendLine("Images: " + ImageDictionary.Count);
             }
             lock (AllAlbums)
             {
-                msg.AppendLine("albums: " + AllAlbums.Count);
+                msg.AppendLine("Albums: " + AllAlbums.Count);
             }
             msg.AppendLine("UserNameList: " + userNameListSize + ", " + string.Join(",", fetchUsersToLoad().ToList()));
-            msg.AppendLine("images shown: " + ImageCounter);
-            msg.AppendLine("images deduped: " + PlayedImages.Count);
-            msg.AppendLine("queue depth: " + ImageQueue.Count);
-            msg.AppendLine("image size: " + Settings.quality + " / " + fetchImageUrlSize());
+            msg.AppendLine("Images shown: " + ImageCounter);
+            msg.AppendLine("Images deduped: " + PlayedImages.Count);
+            msg.AppendLine("Queue depth: " + ImageQueue.Count);
+            msg.AppendLine("Image size: " + Settings.quality + " / " + fetchImageUrlSize());
             msg.AppendLine("Screensaver mode: " + isScreensaver.ToString());
             msg.AppendLine("Debug mode: " +  debugOn.ToString());
-            msg.AppendLine("time between images: " + getTimeSinceLast());
-            msg.AppendLine("exceptions raised: " + ExceptionsRaised);
-            msg.AppendLine("reloaded albums: " + RestartCounter + " times.");
-            msg.AppendLine("memory: " + Process.GetCurrentProcess().WorkingSet64 / (1024 * 1024));
+            msg.AppendLine("Time between images: " + getTimeSinceLast());
+            msg.AppendLine("Exceptions raised: " + ExceptionsRaised);
+            msg.AppendLine("Reloaded albums: " + RestartCounter + " times.");
+            msg.AppendLine("Memory: " + Process.GetCurrentProcess().WorkingSet64 / (1024 * 1024));
             msg.AppendLine("Peak memory: " + Process.GetCurrentProcess().PeakPagedMemorySize64 / (1024 * 1024));
             msg.AppendLine("Peak virtual memory: " + Process.GetCurrentProcess().PeakVirtualMemorySize64 / (1024 * 1024));
             msg.AppendLine("Schedule: " + Settings.startTime.ToString() + " - " + Settings.stopTime.ToString());
-            Version version = Assembly.GetEntryAssembly()?.GetName().Version;
-
-            msg.AppendLine("Version: " + version.ToString() + ", " + RetrieveLinkerTimestamp());
+            msg.AppendLine("Version: " + (Assembly.GetEntryAssembly()?.GetName().Version).ToString());
+            msg.AppendLine("Built: " + RetrieveLinkerTimestamp());
             if (showMenu)
-            {
+            {//menu
                 msg.AppendLine("Menu:");
                 msg.AppendLine("\ts: show or hide stats");
                 msg.AppendLine("\tw: toggle window controls");
                 msg.AppendLine("\tr: reload library");
                 msg.AppendLine("\tCtrl+U: upgrade app");
+                msg.AppendLine("\tEnter: refresh all images");
                 msg.AppendLine("\tp: pause slideshow");
                 msg.AppendLine("\t<- or ->: show next photo");
                 msg.AppendLine("\tESC or Q: exit program");
             }
             LastImageRequested = DateTime.Now;
-            return msg.ToString();
+            return msg.ToString().TrimEnd();
         }
 
         private static DateTime RetrieveLinkerTimestamp()
@@ -1379,7 +1379,7 @@ namespace SMEngine
                               }
                               else
                               {
-                                  if (!screensaverExpired())
+                                 // if (!screensaverExpired())
                                   {
                                       try
                                       {
@@ -1393,10 +1393,11 @@ namespace SMEngine
                                           doException(ex.Message);
                                       }
                                   }
-                                  else
+                                  /*else
                                   {
                                       logMsg("Skipping loadImages - expired");
                                   }
+                                  */
                               }
                           });
 

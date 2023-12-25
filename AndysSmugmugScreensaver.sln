@@ -29,6 +29,8 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "nsis-build-stuff", "nsis-bu
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "ScreensaverStarter", "ScreensaverStarter\ScreensaverStarter.csproj", "{39E61E88-09F1-4AA0-9501-1A69C28FDB7A}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SMEngineUnitTest", "SMEngineUnitTest\SMEngineUnitTest.csproj", "{55AA01C7-95C4-4C3D-97A0-D9595E3AB220}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Config debug|Any CPU = Config debug|Any CPU
@@ -98,6 +100,16 @@ Global
 		{39E61E88-09F1-4AA0-9501-1A69C28FDB7A}.Release|Any CPU.Build.0 = Release|Any CPU
 		{39E61E88-09F1-4AA0-9501-1A69C28FDB7A}.Show debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{39E61E88-09F1-4AA0-9501-1A69C28FDB7A}.Show debug|Any CPU.Build.0 = Debug|Any CPU
+		{55AA01C7-95C4-4C3D-97A0-D9595E3AB220}.Config debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{55AA01C7-95C4-4C3D-97A0-D9595E3AB220}.Config debug|Any CPU.Build.0 = Debug|Any CPU
+		{55AA01C7-95C4-4C3D-97A0-D9595E3AB220}.Debug screensaver|Any CPU.ActiveCfg = Debug|Any CPU
+		{55AA01C7-95C4-4C3D-97A0-D9595E3AB220}.Debug screensaver|Any CPU.Build.0 = Debug|Any CPU
+		{55AA01C7-95C4-4C3D-97A0-D9595E3AB220}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{55AA01C7-95C4-4C3D-97A0-D9595E3AB220}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{55AA01C7-95C4-4C3D-97A0-D9595E3AB220}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{55AA01C7-95C4-4C3D-97A0-D9595E3AB220}.Release|Any CPU.Build.0 = Release|Any CPU
+		{55AA01C7-95C4-4C3D-97A0-D9595E3AB220}.Show debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{55AA01C7-95C4-4C3D-97A0-D9595E3AB220}.Show debug|Any CPU.Build.0 = Debug|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

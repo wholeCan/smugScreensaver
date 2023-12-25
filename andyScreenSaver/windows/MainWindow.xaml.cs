@@ -922,17 +922,30 @@ namespace andyScreenSaver
 
             SetupRequired.Dispatcher.BeginInvoke(new Action(delegate ()
             {
-
+             //   if (showStatsIsSet)
+             if (isPaused)
+                {//hack: there are a couple cases where we have text, but don't want to show paused - like when sleeping.
+                    if (string.IsNullOrEmpty(msg))
+                        {
+                        msg = "Paused";// + isPaused.ToString();
+                    }
+                    else { msg = "Paused" +"\n" + msg;
+                    }
+                }
                 if (string.IsNullOrEmpty(msg))
                 {
                     SetupRequired.Visibility = Visibility.Hidden;
                     return;
                 }
-                SetupRequired.Visibility = Visibility.Visible;
                 if (showStatsIsSet)
-                {//hack: there are a couple cases where we have text, but don't want to show paused - like when sleeping.
-                    msg = "Paused: " + isPaused.ToString() + "\n" + msg;
-                }
+                    {//hack: there are a couple cases where we have text, but don't want to show paused - like when sleeping.
+                    if (!isPaused)
+                    {
+                        msg = "Paused: " + isPaused.ToString() + "\n" + msg;
+                    }
+                    }
+                SetupRequired.Visibility = Visibility.Visible;
+                
                 SetupRequired.Content = msg;
                 
             }));
