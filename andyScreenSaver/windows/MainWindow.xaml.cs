@@ -107,7 +107,64 @@ namespace andyScreenSaver
               RGBMAX - ColourToInvert.G, RGBMAX - ColourToInvert.B);
         }
 
+        static Color GetAverageColor(Bitmap bitmap, Rectangle region)
+        {
+
+            int totalRed = 0;
+            int totalGreen = 0;
+            int totalBlue = 0;
+
+            int totalPixels = 0;
+
+            for (int y = region.Top; y < region.Bottom; y++)
+            {
+                for (int x = region.Left; x < region.Right; x++)
+                {
+                    Color pixelColor = bitmap.GetPixel(x, y);
+
+                    totalRed += pixelColor.R;
+                    totalGreen += pixelColor.G;
+                    totalBlue += pixelColor.B;
+
+                    totalPixels++;
+                }
+            }
+
+            // Calculate average color components
+            int averageRed = totalRed / totalPixels;
+            int averageGreen = totalGreen / totalPixels;
+            int averageBlue = totalBlue / totalPixels;
+
+            return Color.FromArgb(averageRed, averageGreen, averageBlue);
+        }
+
         private Color getAverageColor(Bitmap tmp)
+        {
+            Rectangle topLeftQuadrant = new Rectangle(0, 0, tmp.Width / 2, tmp.Height / 6);  //upper 6th
+            Color averageColor = GetAverageColor(tmp, topLeftQuadrant);
+            if (IsColorDark(averageColor))
+            {
+                return Color.White;
+            }
+            else
+            {
+                return Color.Black;
+            }
+
+        }
+
+        static bool IsColorDark(Color color)
+        {
+            // Calculate perceived brightness using Y component in YUV color space
+            double brightness = (0.299 * color.R + 0.587 * color.G + 0.114 * color.B) / 255;
+
+            // You can adjust this threshold as needed
+           double brightnessThreshold = 0.7;  //ANDY, higher number means more white.
+
+            // Check if the brightness is below the threshold to determine if it's dark
+            return brightness < brightnessThreshold;
+        }
+        private Color getAverageColorOld(Bitmap tmp)
         {
             try
             {
@@ -186,35 +243,92 @@ namespace andyScreenSaver
             }
 
         }
-        private void imageAddCaption(string text, ref Bitmap tmp)
+
+        private int CalculateFontSize(int imageHeight, double xPercentage)
+        {
+            // Formula: FontSize = ImageHeight * (X / 100)
+            double fontSize = imageHeight * (xPercentage / 100);
+
+            // Round to the nearest integer
+            return (int)Math.Round(fontSize);
+        }
+        private int getFontSize(Bitmap image, int configSize)
+        {
+            var minimumFontSize = configSize+7;
+            var maxFontSize = configSize+19;
+            var percentOfHeight = 3;
+            var imageHeight = calculateImageHeight(); //image.Height;
+            var calculatedFont = CalculateFontSize(Convert.ToInt32(imageHeight), percentOfHeight);
+            var baseValue = Math.Max(minimumFontSize, calculatedFont);
+            var midValue = Math.Min(baseValue, maxFontSize);
+            Debug.WriteLine("*** font size: " + midValue);
+            return midValue;
+        }
+        private int getFontSizeOld(Bitmap image, int configSize)
+        {
+            int fontSize = configSize;
+            if (image.HorizontalResolution < 150)
+            {
+                fontSize = fontSize + 7;
+            }
+            if (image.HorizontalResolution < 80)
+            {
+                fontSize = fontSize + 19;
+            }
+            return fontSize;
+
+        }
+
+        static Bitmap ScaleImage(Bitmap originalImage, int desiredHeight)
+        {
+            // Calculate the scaling factor
+            float scaleFactor = (float)desiredHeight / originalImage.Height;
+
+            // Calculate the new width based on the scaling factor
+            int newWidth = (int)(originalImage.Width * scaleFactor);
+
+            // Create a new Bitmap with the desired height and width
+            Bitmap scaledImage = new Bitmap(newWidth, desiredHeight);
+
+            using (Graphics g = Graphics.FromImage(scaledImage))
+            {
+                // Set the interpolation mode for better quality
+                g.InterpolationMode = System.Drawing.Drawing2D.InterpolationMode.HighQualityBicubic;
+
+                // Draw the original image onto the new bitmap with the calculated size
+                g.DrawImage(originalImage, 0, 0, newWidth, desiredHeight);
+            }
+            
+
+            return scaledImage;
+        }
+        private void imageAddCaption(string text, ref Bitmap referenceImage)
         {
             //let's see if we can a caption on the bitmap.
             var firstLocation = new PointF(10f, 10f);
             try
             {
+               // referenceImage = (Bitmap)ScaleImage(referenceImage, Convert.ToInt32(calculateImageHeight())).Clone();
                 //exception when tmp.rawData and tmp.userData is null.
-                using (var graphics = Graphics.FromImage(tmp))
+                using (var graphics = Graphics.FromImage(referenceImage))
                 {
+                    
                     var configPenSize = 8;
                     int.TryParse(ConfigurationSettings.AppSettings["captionPenSize"], out configPenSize);
 
-                    var fontSize = configPenSize;
-                    var croppedImage = getupperLeftCornerImage(tmp);
-                    if (croppedImage == null)
-                    {
-                        //throw new Exception("could not find corner");
-                        return;
-                    }
+                //    var fontSize = configPenSize;
+                   // var croppedImage = getupperLeftCornerImage(tmp);//can probably skip this.
+                   // if (croppedImage == null)
+                   /// {
+                   //     //throw new Exception("could not find corner");
+                   //     return;
+                   // }
 
-                    var penColor = new SolidBrush(getAverageColor(croppedImage));// System.Drawing.Brushes.White;
-                    if (tmp.HorizontalResolution < 150)
-                    {
-                        fontSize = fontSize + 7;
-                    }
-                    if (tmp.HorizontalResolution < 80)
-                    {
-                        fontSize = fontSize + 19;
-                    }
+                    var penColor = new SolidBrush(getAverageColor(referenceImage));// System.Drawing.Brushes.White;
+
+
+
+                    var fontSize = getFontSize(referenceImage, configPenSize);
                     using (var arialFont = new Font("Arial", fontSize))
                     {
                         graphics.DrawString(text, arialFont, penColor, firstLocation);
@@ -276,6 +390,12 @@ namespace andyScreenSaver
             }
         }
 
+        private Double calculateImageHeight()
+        {
+            return MyHeight / GridHeight - (100 / Math.Pow(2, GridHeight));
+
+        }
+
 
         private void updateImage()
         {
@@ -290,7 +410,7 @@ namespace andyScreenSaver
                             foreach (Border borderImage in (v as StackPanel).Children)
                             {
                                 var image = borderImage.Child as indexableImage;
-                                image.Height = MyHeight / GridHeight - (100 / Math.Pow(2, GridHeight)); //161; 
+                                image.Height = calculateImageHeight() ; //161; lculateImageHeight
                             }
                         }
                         if (Engine.screensaverExpired())
@@ -436,13 +556,17 @@ namespace andyScreenSaver
                     Bitmap bmyImage2;
                     if (s != null && s.Bitmap != null)
                     {
+                        //do this so we can try to guarantee the size prior to writing captions.
+                        s.Bitmap = (Bitmap)ScaleImage(s.Bitmap, Convert.ToInt32(calculateImageHeight()));
                         bmyImage2 = s.Bitmap;
+                        
                         if (Engine.settings.showInfo)
                         {
                             if (bmyImage2.Height == 0)
                             {
                                 LogError(new Exception("empty bmp"), "empty bmp");
                             }
+                            
                             setImageCaption(ref s, ref bmyImage2, randWidth, randHeight);
                         }
                     }
