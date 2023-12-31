@@ -19,7 +19,6 @@ using System;
 using System.Configuration;
 using System.Diagnostics;
 using System.Drawing;
-using System.Drawing.Drawing2D;
 using System.Drawing.Imaging;
 using System.IO;
 using System.Text;
@@ -50,8 +49,8 @@ namespace andyScreenSaver
             MyWidth = _myWidth;
         }
         private SMEngine.CSMEngine _engine;
-        ThreadStart ts = null;
-        Thread threadImageUpdate = null;
+        ThreadStart? ts = null;
+        Thread? threadImageUpdate = null;
         static bool running = true;
         bool screensaverModeDisabled = false;
         
@@ -67,9 +66,9 @@ namespace andyScreenSaver
             Cursor = Cursors.Arrow;
         }
 
-        private BitmapImage Bitmap2BitmapImage(System.Drawing.Bitmap bitmap)
+        private BitmapImage? Bitmap2BitmapImage(System.Drawing.Bitmap bitmap)
         {
-            BitmapImage bitmapImage = null;
+            BitmapImage? bitmapImage = null;
             try
             {
                 var memory = new MemoryStream();
@@ -91,7 +90,7 @@ namespace andyScreenSaver
             return bitmapImage;
         }
 
-        private void hideSetup()
+        private void HideSetup()
         {
             SetupRequired.Dispatcher.BeginInvoke(new Action(delegate ()
                 {
@@ -139,7 +138,7 @@ namespace andyScreenSaver
             return Color.FromArgb(averageRed, averageGreen, averageBlue);
         }
 
-        private Color getAverageColor(Bitmap tmp)
+        private Color GetAverageColor(Bitmap tmp)
         {
             var numberOfRows = 12;
             var numberColumns = 3;
@@ -167,7 +166,7 @@ namespace andyScreenSaver
             // Check if the brightness is below the threshold to determine if it's dark
             return brightness < brightnessThreshold;
         }
-        private Color getAverageColorOld(Bitmap tmp)
+        private Color GetAverageColorOld(Bitmap tmp)
         {
             try
             {
@@ -232,7 +231,7 @@ namespace andyScreenSaver
             }
         }
 
-        private Bitmap getupperLeftCornerImage(Bitmap original)
+        private Bitmap? GetupperLeftCornerImage(Bitmap original)
         {
             try
             {
@@ -240,7 +239,7 @@ namespace andyScreenSaver
                 var cropArea = new Rectangle(0, 0, (int)original.Height / 3, (int)original.Width / 3);
                 return bmpImage.Clone(cropArea, bmpImage.PixelFormat);
             }
-            catch (Exception ex)
+            catch (Exception)
             {   //known out of memory exception, just pass over it.
                 return null;
             }
@@ -255,7 +254,7 @@ namespace andyScreenSaver
             // Round to the nearest integer
             return (int)Math.Round(fontSize);
         }
-        private int getFontSize(Bitmap image, int configSize)
+        private int GetFontSize(Bitmap image, int configSize)
         {
             var minimumFontSize = configSize+7;
             var maxFontSize = configSize+19;
@@ -267,16 +266,16 @@ namespace andyScreenSaver
             Debug.WriteLine("*** font size: " + midValue);
             return midValue;
         }
-        private int getFontSizeOld(Bitmap image, int configSize)
+        private int GetFontSizeOld(Bitmap image, int configSize)
         {
             int fontSize = configSize;
             if (image.HorizontalResolution < 150)
             {
-                fontSize = fontSize + 7;
+                fontSize += 7;
             }
             if (image.HorizontalResolution < 80)
             {
-                fontSize = fontSize + 19;
+                fontSize += 19;
             }
             return fontSize;
 
@@ -305,7 +304,9 @@ namespace andyScreenSaver
 
             return scaledImage;
         }
-        private void imageAddCaption(string text, ref Bitmap referenceImage)
+
+        [Obsolete]
+        private void ImageAddCaption(string text, ref Bitmap referenceImage)
         {
             //let's see if we can a caption on the bitmap.
             var firstLocation = new PointF(10f, 10f);
@@ -327,11 +328,11 @@ namespace andyScreenSaver
                    //     return;
                    // }
 
-                    var penColor = new SolidBrush(getAverageColor(referenceImage));// System.Drawing.Brushes.White;
+                    var penColor = new SolidBrush(GetAverageColor(referenceImage));// System.Drawing.Brushes.White;
 
 
 
-                    var fontSize = getFontSize(referenceImage, configPenSize);
+                    var fontSize = GetFontSize(referenceImage, configPenSize);
                     using (var arialFont = new Font("Arial", fontSize))
                     {
                         graphics.DrawString(text, arialFont, penColor, firstLocation);
@@ -351,7 +352,7 @@ namespace andyScreenSaver
         }
 
         private void shuffleImages()
-        {
+        {//12/30/23 - tbh, I don't know what this is really doing.
             var tmp1 = hStack1.Children[0];
             hStack1.Children.RemoveAt(0);
             hStack1.Children.Add(tmp1);
@@ -359,7 +360,7 @@ namespace andyScreenSaver
 
         bool statsEnabled = false;
 
-        private void logMsg(string msg)
+        private void LogMsg(string msg)
         {
             Debug.WriteLine("Window: " + DateTime.Now.ToLongTimeString() + ": " + msg);
         }
@@ -367,7 +368,7 @@ namespace andyScreenSaver
         private void LogError(Exception ex, string msg)
         {
             // Console.WriteLine(msg);
-            logMsg($"{DateTime.Now}: {msg}");
+            LogMsg($"{DateTime.Now}: {msg}");
             lock (this)
             {
                 try
@@ -401,7 +402,7 @@ namespace andyScreenSaver
         }
 
 
-        private void updateImage()
+        private void UpdateImage()
         {
             //todo: add try-catch block here?
             try
@@ -431,7 +432,7 @@ namespace andyScreenSaver
                         }
                     }));
                 var run = false;
-                ImageSet image = null;
+                ImageSet? image = null;
 
                 var counter = 0;
                 var blackImagePlaced = false;
@@ -456,7 +457,7 @@ namespace andyScreenSaver
                     {
                         if (counter % 100 == 0)
                         {
-                            hideSetup();
+                            HideSetup();
                         }
                     }
                     else
@@ -500,12 +501,12 @@ namespace andyScreenSaver
                      //  the red text disappears after resetting network connection, when really i want it to show up.
                         if (!blackImagePlaced && !Engine.screensaverExpired())
                         {
-                            showStats();
+                            ShowStats();
                         }
                     }
                     hStack1.Dispatcher.Invoke(System.Windows.Threading.DispatcherPriority.Normal, new Action(delegate ()
                     {
-                        setImage(ref run, ref image);
+                        SetImage(ref run, ref image);
                     }));
                 }
                 if (run && !Engine.settings.showInfo && !blackImagePlaced)
@@ -522,7 +523,7 @@ namespace andyScreenSaver
             }
         }
 
-        private void showStats()
+        private void ShowStats()
         {
            
                         {
@@ -538,7 +539,7 @@ namespace andyScreenSaver
                         }
         }
 
-        private void setImage(ref bool run, ref ImageSet s)
+        private void SetImage(ref bool run, ref ImageSet s)
         {
             try
             {
@@ -591,7 +592,7 @@ namespace andyScreenSaver
                 {
                     sb.Append(": " + s.Caption);
                 }
-                imageAddCaption(sb.ToString(), ref targetBitmapImage);
+                ImageAddCaption(sb.ToString(), ref targetBitmapImage);
             }
             catch (Exception ex)
             {
@@ -637,7 +638,7 @@ namespace andyScreenSaver
                 myManualResetEvent.WaitOne();
                 try
                 {
-                    updateImage();
+                    UpdateImage();
                 }
                 catch (Exception ex)
                 {
@@ -649,7 +650,7 @@ namespace andyScreenSaver
                     var timeToSleep = Engine.settings.speed_s * 1000 - millisecondsSinceLastRun;
                     if (timeToSleep > 0)
                     {
-                        logMsg("sleeping for " + timeToSleep + " milliseconds");
+                        LogMsg("sleeping for " + timeToSleep + " milliseconds");
                         Thread.Sleep((Int32)timeToSleep);
                     }
                     LastUpdate = DateTime.Now;
@@ -659,7 +660,7 @@ namespace andyScreenSaver
 
         Cursor myCursor;
 
-        private void loginSmugmug()
+        private void LoginSmugmug()
         {
             try
             {
@@ -681,9 +682,9 @@ namespace andyScreenSaver
             ThreadImageUpdate.Start();
 
         }
-        Task task = null;
+        Task? task = null;
 
-        private void toggleScreen()
+        private void ToggleScreen()
         {
             if (WindowStyle == WindowStyle.SingleBorderWindow)
             {
@@ -698,7 +699,7 @@ namespace andyScreenSaver
             }
         }
         bool isPaused = false;
-        private void pauseSlideshow()
+        private void PauseSlideshow()
         {
             //            Engine.Pause();
             if (isPaused)
@@ -706,12 +707,12 @@ namespace andyScreenSaver
             else
                 myManualResetEvent.Reset();//.Suspend();
             isPaused = !isPaused;
-            showStats();
+            ShowStats();
         }
 
-        private static ManualResetEvent myManualResetEvent = new ManualResetEvent(true);
+        private readonly static ManualResetEvent myManualResetEvent = new(true);
 
-       private void initEngine(bool? forceStart = false)
+       private void InitEngine(bool? forceStart = false)
         {
             if (Engine != null)
             {
@@ -730,10 +731,10 @@ namespace andyScreenSaver
                     GridHeight = Engine.settings.gridHeight;
                     GridWidth = Engine.settings.gridWidth;
 
-                    Engine.fireException += showException;
+                    Engine.fireException += ShowException;
                     try
                     {
-                        Task = new Task(() => { loginSmugmug(); });
+                        Task = new Task(() => { LoginSmugmug(); });
                         Task.Start();
                     }
                     catch (Exception ex)
@@ -793,11 +794,11 @@ namespace andyScreenSaver
         }
 
 
-        public void init()
+        public void Init()
 
         {
 
-            initEngine();
+            InitEngine();
             Engine.IsScreensaver(false);
 
             Thread mouseThreadWithParameters = new Thread(new ParameterizedThreadStart(MouseCursorResetMethod));
@@ -913,7 +914,7 @@ namespace andyScreenSaver
             TaskScheduler.Instance.ScheduleTask(2, 15, 24.0 * 60.0,  //run at 2:15a daily
                () =>
                {
-                   logMsg("Scheduled task execution");
+                   LogMsg("Scheduled task execution");
                    repullAlbums();
                });
 
@@ -922,8 +923,8 @@ namespace andyScreenSaver
         int restartCounter = 0;
         private void repullAlbums()
         {
-            logMsg("reloading library!!!");
-            initEngine(true);
+            LogMsg("reloading library!!!");
+            InitEngine(true);
             Engine.RestartCounter = ++restartCounter;
         }
         public DateTime getLastMouseMove()
@@ -940,7 +941,7 @@ namespace andyScreenSaver
                 camMain.Position = Point3D.Subtract(camMain.Position, ZoomDelta);
         }
 */
-        private void doshutdown()
+        private void Doshutdown()
         {
             MyCursor = Cursor;
            // AppOpenCloseLogger.logClosed("Screensaver: "+ Engine.getUptime(), Engine.getRuntimeStatsInfo(false));
@@ -962,7 +963,7 @@ namespace andyScreenSaver
                 case Key.Left:
                 case Key.Right:
                     Engine.resetExpiredImageCollection();
-                    updateImage();
+                    UpdateImage();
                     break;
                 case Key.S:
                     StatsEnabled = !StatsEnabled;
@@ -974,41 +975,41 @@ namespace andyScreenSaver
                     break;
                 case Key.Escape:
                 case Key.Q:
-                    doshutdown();
+                    Doshutdown();
                     break;
                 case Key.W:
-                    toggleScreen();
+                    ToggleScreen();
                     break;
                 case Key.U:
-                    if (Keyboard.IsKeyDown(Key.LeftCtrl)) { doUpgrade(); }
+                    if (Keyboard.IsKeyDown(Key.LeftCtrl)) { DoUpgrade(); }
                     break;
                 case Key.R:
                     repullAlbums();
                     break;
                 case Key.Enter:
-                    reloadScreen();
+                    ReloadScreen();
                     break;
                 case Key.P:
-                    pauseSlideshow();
+                    PauseSlideshow();
                     break;
                 default:
                     if (!screensaverModeDisabled)
                     {
-                        doshutdown();
+                        Doshutdown();
                     }
                     break;
             }
         }
 
-        private void reloadScreen()
+        private void ReloadScreen()
         {
             //todo: w's idea to reload all images on screen.
             var totalImages = gridHeight * gridWidth;
             for (int i = 0; i < totalImages*1.5; i++)
-                updateImage();
+                UpdateImage();
         }
 
-        private void doUpgrade()
+        private void DoUpgrade()
         {
             var upgradeManager = UpgradeManager.Instance;
             
@@ -1079,7 +1080,7 @@ namespace andyScreenSaver
             }));
 
         }
-        public void showException(String msg)
+        public void ShowException(String msg)
         {
             //log exceptions fired from smEngine
             LogError(new Exception("showException raised"), msg);
@@ -1128,7 +1129,7 @@ namespace andyScreenSaver
                     TotalMouseMoves++;
                     if (TotalMouseMoves > MaxMouseMoves)//a little bit of slack before closing.
                     {
-                        doshutdown(); //shut down screensaver
+                        Doshutdown(); //shut down screensaver
                     }
                 }
                 else
@@ -1146,23 +1147,23 @@ namespace andyScreenSaver
 
         private void Window_Closed(object sender, EventArgs e)
         {
-            logMsg("Closing");
+            LogMsg("Closing");
             
             AppOpenCloseLogger.logClosed(Engine.getUptime(), Engine.getRuntimeStatsInfo(false));
         }
 
-        private void image1_MouseUp(object sender, MouseButtonEventArgs e)
+        private void Image1_MouseUp(object sender, MouseButtonEventArgs e)
         {
          //   if (ScreensaverModeDisabled)
             {
-                updateImage();// automatic way totalMouseMoves 
+                UpdateImage();// automatic way totalMouseMoves 
             }
         }
         private void Window_SizeChanged_1(object sender, SizeChangedEventArgs e)
         {
             MyWidth = Convert.ToInt32(e.NewSize.Width);
             MyHeight = Convert.ToInt32(e.NewSize.Height);
-            updateImage();
+            UpdateImage();
         }
         private void Window_MouseRightButtonUp(object sender, MouseButtonEventArgs e)
         {

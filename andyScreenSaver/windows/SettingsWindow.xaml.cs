@@ -328,7 +328,7 @@ namespace andyScreenSaver
             Window1 win = new Window1();
 
             win.setDimensions(333, 200);
-            win.init();
+            win.Init();
             win.disableActions();
 
             win.WindowState = WindowState.Normal;

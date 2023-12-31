@@ -50,7 +50,7 @@ namespace andyScreenSaver
                     if (e.Args[0].ToLower().StartsWith("/f"))
                     {//full screen mode, added by andy.
                         var win = new Window1();
-                        win.init();
+                        win.Init();
                         win.setDimensions(333, 200);
                         win.disableActions();//ensures that moving mouse doesn't kill the app.
                         
@@ -76,7 +76,7 @@ namespace andyScreenSaver
                             sourceParams.Height = lpRect.Bottom - lpRect.Top;
 
                             winSaver.setDimensions(sourceParams.Height, sourceParams.Width);
-                            winSaver.init();//just added this.
+                            winSaver.Init();//just added this.
                             sourceParams.Width = lpRect.Right - lpRect.Left;
                             sourceParams.ParentWindow = pPreviewHnd;
                             sourceParams.WindowStyle = (int)(WindowStyles.WS_VISIBLE | WindowStyles.WS_CHILD | WindowStyles.WS_CLIPCHILDREN);
@@ -115,7 +115,7 @@ namespace andyScreenSaver
                                 var workingArea = s.Bounds;
                                 win1.WindowStyle = WindowStyle.None;
                                 win1.setDimensions(workingArea.Height, workingArea.Width); //don't account for border height.
-                                win1.init();
+                                win1.Init();
                                 wins.Add(win1);
                                 wins.ElementAt(iter).Left = workingArea.X;
                                 wins.ElementAt(iter).Width = workingArea.Width;
@@ -153,7 +153,7 @@ namespace andyScreenSaver
                         var workingArea = s.Bounds;
                         win1.WindowStyle = WindowStyle.None;
                         win1.setDimensions(workingArea.Height, workingArea.Width); //don't account for border height.
-                        win1.init();
+                        win1.Init();
                         win1.disableActions();
                         wins.Add(win1);
                         wins.ElementAt(iter).Left = workingArea.X;
