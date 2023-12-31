@@ -160,6 +160,7 @@ namespace andyScreenSaver
 
         static bool IsColorDark(Color color)
         {
+            Debug.WriteLine("Color {0} {1} {2}", color.R, color.G, color.B);
             // Calculate perceived brightness using Y component in YUV color space
             double brightness = (0.299 * color.R + 0.587 * color.G + 0.114 * color.B) / 255;
 
