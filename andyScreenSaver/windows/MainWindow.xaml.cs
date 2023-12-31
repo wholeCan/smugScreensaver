@@ -129,7 +129,10 @@ namespace andyScreenSaver
                     totalPixels++;
                 }
             }
-
+            if (totalPixels <= 0)
+            {// escape div-0
+                return Color.Black;
+            }
             // Calculate average color components
             int averageRed = totalRed / totalPixels;
             int averageGreen = totalGreen / totalPixels;
@@ -138,12 +141,12 @@ namespace andyScreenSaver
             return Color.FromArgb(averageRed, averageGreen, averageBlue);
         }
 
-        private Color GetAverageColor(Bitmap tmp)
+        private Color GetAverageColor(Bitmap bitmapImage)
         {
-            var numberOfRows = 12;
-            var numberColumns = 3;
-            Rectangle topLeftQuadrant = new Rectangle(0, 0, tmp.Width / numberColumns, tmp.Height / numberOfRows);  //upper 6th
-            Color averageColor = GetAverageColor(tmp, topLeftQuadrant);
+            var numberOfRows = 12;  //upper 12th
+            var numberColumns = 3;  //left 3rd
+            Rectangle topLeftQuadrant = new Rectangle(0, 0, bitmapImage.Width / numberColumns, bitmapImage.Height / numberOfRows);
+            Color averageColor = GetAverageColor(bitmapImage, topLeftQuadrant);
             if (IsColorDark(averageColor))
             {
                 return Color.White;
