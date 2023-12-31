@@ -19,6 +19,7 @@ using System;
 using System.Configuration;
 using System.Diagnostics;
 using System.Drawing;
+using System.Drawing.Drawing2D;
 using System.Drawing.Imaging;
 using System.IO;
 using System.Text;
@@ -140,7 +141,9 @@ namespace andyScreenSaver
 
         private Color getAverageColor(Bitmap tmp)
         {
-            Rectangle topLeftQuadrant = new Rectangle(0, 0, tmp.Width / 2, tmp.Height / 6);  //upper 6th
+            var numberOfRows = 12;
+            var numberColumns = 3;
+            Rectangle topLeftQuadrant = new Rectangle(0, 0, tmp.Width / numberColumns, tmp.Height / numberOfRows);  //upper 6th
             Color averageColor = GetAverageColor(tmp, topLeftQuadrant);
             if (IsColorDark(averageColor))
             {
@@ -333,6 +336,7 @@ namespace andyScreenSaver
                     {
                         graphics.DrawString(text, arialFont, penColor, firstLocation);
                     }
+                   
                 }
             }
             catch (Exception ex)
