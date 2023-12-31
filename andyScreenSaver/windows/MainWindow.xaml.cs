@@ -160,7 +160,7 @@ namespace andyScreenSaver
 
         static bool IsColorDark(Color color)
         {
-            Debug.WriteLine("Color {0} {1} {2}", color.R, color.G, color.B);
+            //Debug.WriteLine("Color {0} {1} {2}", color.R.ToString("X2"), color.G.ToString("X2"), color.B.ToString("X2"));
             // Calculate perceived brightness using Y component in YUV color space
             double brightness = (0.299 * color.R + 0.587 * color.G + 0.114 * color.B) / 255;
 
@@ -703,7 +703,7 @@ namespace andyScreenSaver
             }
         }
         bool isPaused = false;
-        private void PauseSlideshow()
+        private void TogglePauseSlideshow()
         {
             //            Engine.Pause();
             if (isPaused)
@@ -994,7 +994,8 @@ namespace andyScreenSaver
                     ReloadScreen();
                     break;
                 case Key.P:
-                    PauseSlideshow();
+                case Key.Space:
+                    TogglePauseSlideshow();
                     break;
                 default:
                     if (!screensaverModeDisabled)
