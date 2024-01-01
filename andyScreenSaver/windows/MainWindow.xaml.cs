@@ -591,7 +591,15 @@ namespace andyScreenSaver
             try
             {
                 var sb = new StringBuilder();
-                sb.Append(s.Category + ": " + s.AlbumTitle);
+                
+                if (!string.IsNullOrEmpty(s.AlbumTitle))
+                { // fix issue where just semicolons showing up when in sleeping mode.
+                    sb.Append(s.Category + ": " + s.AlbumTitle);
+                }
+                else
+                {
+                    sb.Append(s.Category); //if albumTitle empty, just show the category (expected to be rare).
+                }
                 if (!string.IsNullOrEmpty(s.Caption) && !s.Caption.Contains("OLYMPUS"))
                 {
                     sb.Append(": " + s.Caption);
