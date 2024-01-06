@@ -686,7 +686,15 @@ namespace andyScreenSaver
             }
             //todo: why is this outside the try block?  is there a reason to start the thread?
             //would it hurt to not do so?  Would need to test.
+            
             ThreadStartImageUpdate = new ThreadStart(runImageUpdateThread);
+            if (ThreadImageUpdate != null && ThreadImageUpdate.IsAlive && Running == true)
+            {// working on issue where after a few days, multiple images are starting simultaneously.
+                Running = false;
+                Thread.Sleep(10);
+                ThreadImageUpdate.Abort();
+                ThreadImageUpdate.Join();
+            }
             ThreadImageUpdate = new Thread(ThreadStartImageUpdate)
             {
                 IsBackground = true

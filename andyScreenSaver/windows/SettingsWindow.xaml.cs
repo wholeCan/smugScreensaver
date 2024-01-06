@@ -58,11 +58,12 @@ namespace andyScreenSaver
         public SettingsWindow()
         {
             InitializeComponent();
-            groupBox1.Visibility = System.Windows.Visibility.Hidden;
+            groupBox1.Visibility = Visibility.Hidden;
             ThreadStart ts = new ThreadStart(initEngine);
-            Thread t = new Thread(ts);
-            
-            t.IsBackground = true;
+            Thread t = new Thread(ts)
+            {
+                IsBackground = true
+            };
             t.Start();
         }
         private void saveSettings()
