@@ -32,7 +32,7 @@ namespace andyScreenSaver
                 if (ApplicationMutexSingleton.Instance.AlreadyRunning)
                 {
                     Debug.WriteLine("Application already running!");
-#if (DEBUG)
+#if (DEBUG)  // mutex
                     MessageBox.Show("Debug: Shutting down - already running!");
 #endif
                     Shutdown();

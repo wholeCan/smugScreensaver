@@ -1024,6 +1024,7 @@ namespace andyScreenSaver
 
         private void ReloadScreen()
         {
+            Engine.resetExpiredImageCollection();
             //todo: w's idea to reload all images on screen.
             var totalImages = gridHeight * gridWidth;
             for (int i = 0; i < totalImages*1.5; i++)

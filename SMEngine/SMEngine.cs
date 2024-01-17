@@ -1022,13 +1022,17 @@ namespace SMEngine
 
             var timeOfDay = DateTime.Now.Hour * 100 + DateTime.Now.Minute;
 
-            var totalRuntimeSeconds = manualInteruptExpiration!=null ? DateTime.Now.Subtract((DateTime)manualInteruptExpiration).TotalSeconds: 0;
+            var totalRuntimeSeconds = DateTime.Now.Subtract(manualInteruptExpiration).TotalSeconds;
             //logMsg("runtime is:" + totalRuntimeSeconds.ToString("0.00"));
             //we want to allow to run for a couple hours if manually woken up.
+#if (DEBUG)
+            var wakeupTime = 800;  // 8am,  (800 = 8am
+            var goToBedTime = 1300;  //10PM,  2200=10pm)  
 
+#else
             var wakeupTime = Settings.startTime;  // 8am,  (800 = 8am
             var goToBedTime = Settings.stopTime;  //10PM,  2200=10pm)  
-
+#endif
             //debug test values, manually set these as a really dumb unit test.
             //timeOfDay = 2400;
             //totalRuntimeSeconds = 70;
@@ -1040,7 +1044,7 @@ namespace SMEngine
         }
 
 
-        DateTime? manualInteruptExpiration = null;
+        DateTime manualInteruptExpiration = DateTime.Now;
         //todo: delete this
         public void resetExpiredImageCollection()
         {
