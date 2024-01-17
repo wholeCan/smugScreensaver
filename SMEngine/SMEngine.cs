@@ -815,7 +815,7 @@ namespace SMEngine
             }
         }
 
-        public static DateTime TimeStarted { get => timeStarted; set => timeStarted = value; }
+        //public static DateTime TimeStarted { get => timeStarted; set => timeStarted = value; }
 
         public static DateTime TimeBooted => timeBooted;
 
@@ -1006,7 +1006,7 @@ namespace SMEngine
         public bool warm()
         {
             var warmupTime = 60; //seconds, don't black out images until alive for a minute.
-            return DateTime.Now.Subtract(TimeStarted).TotalSeconds > warmupTime;
+            return DateTime.Now.Subtract(timeStarted).TotalSeconds > warmupTime;
         }
 
         //how is this used vs isExpired?
@@ -1021,7 +1021,8 @@ namespace SMEngine
             var maxRuntimeSeconds = minutesToRun * 60;  //only run for an hour to conserve smugmugs api.
 
             var timeOfDay = DateTime.Now.Hour * 100 + DateTime.Now.Minute;
-            var totalRuntimeSeconds = DateTime.Now.Subtract(TimeStarted).TotalSeconds;
+
+            var totalRuntimeSeconds = manualInteruptExpiration!=null ? DateTime.Now.Subtract((DateTime)manualInteruptExpiration).TotalSeconds: 0;
             //logMsg("runtime is:" + totalRuntimeSeconds.ToString("0.00"));
             //we want to allow to run for a couple hours if manually woken up.
 
@@ -1038,12 +1039,15 @@ namespace SMEngine
             return Expired;
         }
 
+
+        DateTime? manualInteruptExpiration = null;
         //todo: delete this
         public void resetExpiredImageCollection()
         {
             if (Expired)
             {// we only want to set this if expired, to avoid always resetting the time set.
-                TimeStarted = DateTime.Now;
+                //timeStarted = DateTime.Now;
+                manualInteruptExpiration = DateTime.Now;
                 TimeWentBlack = null;
                 Expired = false;
             }

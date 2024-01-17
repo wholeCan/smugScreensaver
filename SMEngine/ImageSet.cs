@@ -12,7 +12,7 @@ namespace SMEngine
 
         public string getUptime()
         {
-            return (DateTime.Now - timeStarted).TotalHours.ToString("0.00");
+            return DateTime.Now.Subtract(timeStarted).TotalHours.ToString("0.00");
         }
 
         public void IsScreensaver(bool screensaverModeDisabled)
