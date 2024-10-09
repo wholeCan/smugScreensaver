@@ -12,18 +12,16 @@ namespace andyScreenSaver
         {
             maxItems = _maxItems;
         }
-        public bool isInList(Tuple<int, int> x)
+        public bool isInList(Tuple<int, int> item)
         {
-            bool isFound = (myList.FindIndex(i => i.Equals(x)) >= 0);
+            bool isFound = (myList.FindIndex(i => i.Equals(item)) >= 0);
             return isFound;
-
-
         }
-        public void addToList(Tuple<int, int> x)
+        public void addToList(Tuple<int, int> item)
         {
-            if (!isInList(x))
+            if (!isInList(item))
             {
-                myList.Add(x);
+                myList.Add(item);
                 if (myList.Count >= maxItems)
                 {
                     myList.Clear();
