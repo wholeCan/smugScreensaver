@@ -642,16 +642,46 @@ namespace andyScreenSaver
 
             if (image.IsVideo && !string.IsNullOrEmpty(image.VideoSource))
             {
+                border.Dispatcher.Invoke(() =>
+                {
+                    var wil = "c:\\dev\\will.mp4";
+                    Debug.WriteLine($"video file: {image.VideoSource}");
+                    var mediaElement = new MediaElement
+                    {
+
+                        //Source = new Uri(image.VideoSource, UriKind.Absolute),
+                        Source = new Uri(wil, UriKind.Absolute),
+                        LoadedBehavior = MediaState.Play,
+                        Stretch = System.Windows.Media.Stretch.Uniform,
+                        Height = Math.Min(image.MaxHeight, image.ActualHeight),
+                        Width = Math.Min(image.Width, image.ActualWidth)
+                    };
+                    mediaElement.MediaFailed += MediaElement_MediaFailed;
+                    border.Child = mediaElement;
+                });
+                /*
                 var mediaElement = new MediaElement
                 {
                     Source = new Uri(image.VideoSource, UriKind.RelativeOrAbsolute),
-                    LoadedBehavior = MediaState.Play,
+                    
+                    LoadedBehavior = MediaState.Manual,
                     //UnloadedBehavior = MediaState.Stop, //throws exception!
                     Stretch = System.Windows.Media.Stretch.Uniform,
                     Height = Math.Min(image.MaxHeight, image.ActualHeight),
                     Width = Math.Min(image.Width, image.ActualWidth)
                 };
-                border.Child = mediaElement;
+                */
+
+                // Add MediaFailed event handler
+                /*mediaElement.Initialized += (s, e) =>
+                {
+                    mediaElement.Dispatcher.BeginInvoke(new Action(() => {
+                        mediaElement.Play();
+                    }));
+                };
+                mediaElement.MediaFailed += MediaElement_MediaFailed;
+
+                border.Child = mediaElement;*/
             }
             else
             {
@@ -659,6 +689,13 @@ namespace andyScreenSaver
                 image.Width = MyWidth / GridWidth - (BorderWidth / GridWidth);
                 image.Source = Bitmap2BitmapImage(s.Bitmap);
             }
+        }
+
+        // Handler method for MediaFailed
+        private void MediaElement_MediaFailed(object sender, ExceptionRoutedEventArgs e)
+        {
+            Debug.WriteLine($"MediaElement failed: {e.ErrorException?.Message}");
+            MessageBox.Show($"Video playback error: {e.ErrorException?.Message}", "Media Error", MessageBoxButton.OK, MessageBoxImage.Error);
         }
 
         private void CacheImageIfFirstTime(Bitmap targetBitmapImage, int randWidth, int randHeight)

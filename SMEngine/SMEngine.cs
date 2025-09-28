@@ -1295,7 +1295,7 @@ namespace SMEngine
                                 }
                                 else
                                 {
-                                    videoSource = imageUrl;
+                                    videoSource = imageUrl;//todo, in this case, we should probably default to just show an image.
                                 }
                             }
                         }
