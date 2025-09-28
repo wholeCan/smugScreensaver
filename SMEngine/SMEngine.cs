@@ -38,7 +38,7 @@ namespace SMEngine
 
 
 #if (DEBUG) //max albums to pull
-        private readonly int debug_limit = 500;
+        private readonly int debug_limit = 5000;
 #else
         private int debug_limit = 5000000;
 #endif
@@ -120,7 +120,7 @@ namespace SMEngine
             msg.AppendLine("UserNameList: " + userNameListSize + ", " + string.Join(",", fetchUsersToLoad().ToList()));
             msg.AppendLine("Images shown: " + ImageCounter);
             msg.AppendLine("Images deduped: " + PlayedImages.Count);
-            msg.AppendLine("Queue depth: " + ImageQueue.Count);
+            msg.AppendLine("Queue depth: " + qSize);
             msg.AppendLine("Image size: " + Settings.quality + " / " + fetchImageUrlSize());
             msg.AppendLine("Screensaver mode: " + isScreensaver.ToString());
             msg.AppendLine("Debug mode: " +  debugOn.ToString());
@@ -880,11 +880,11 @@ namespace SMEngine
                 while (Running)
                 
 
-                    if (ImageQueue.Count < MinQ)
+                    /*if (qSize < MinQ)
                     {
                         startIt = true;
-                    }
-                    if (ImageQueue.Count < MaximumQ && startIt)
+                    }*/
+                    if (qSize<MinQ && qSize < MaximumQ)
                     {
                         try
                         {
@@ -1496,7 +1496,7 @@ namespace SMEngine
                     {
                         try
                         {
-                            var myQuality = ImageQueue.Count > 0 ? settings.quality : 1;  //allow low res for first pics.
+                            var myQuality = qSize > 0 ? settings.quality : 1;  //allow low res for first pics.
 
                             var imageIndex = R.Next(ImageDictionary.Count);
                             var key = ImageDictionary.Keys.ElementAt(imageIndex);
@@ -1520,6 +1520,9 @@ namespace SMEngine
                             imageSet.AlbumTitle = element.AlbumTitle; //element.Album.Title;
                             imageSet.Caption = element.Caption;
                             imageSet.Exif = element.Exif;
+                            // Patch: Copy video info
+                            imageSet.IsVideo = element.IsVideo;
+                            imageSet.VideoSource = element.VideoSource;
                         }
                         catch (Exception ex)
                         {

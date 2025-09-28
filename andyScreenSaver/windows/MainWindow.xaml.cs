@@ -612,6 +612,10 @@ namespace andyScreenSaver
             var border = ((hStack1.Children[randWidth] as StackPanel).Children[randHeight] as Border);
             var image = border.Child as indexableImage;
 
+            // Ensure indexableImage gets video info from ImageSet
+            image.IsVideo = s.IsVideo;
+            image.VideoSource = s.VideoSource;
+
             // Video support: if this is a video, replace image with MediaElement
             if (image.IsVideo && !string.IsNullOrEmpty(image.VideoSource))
             {
