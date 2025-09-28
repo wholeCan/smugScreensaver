@@ -643,8 +643,8 @@ namespace andyScreenSaver
                     LoadedBehavior = MediaState.Play,
                     //UnloadedBehavior = MediaState.Stop, //throws exception!
                     Stretch = System.Windows.Media.Stretch.Uniform,
-                    Height = Math.Max(image.MaxHeight, image.ActualHeight),
-                    Width = Math.Max(image.Width, image.ActualWidth)
+                    Height = Math.Min(image.MaxHeight, image.ActualHeight),
+                    Width = Math.Min(image.Width, image.ActualWidth)
                 };
                 border.Child = mediaElement;
             }
