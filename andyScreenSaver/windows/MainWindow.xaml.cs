@@ -641,10 +641,10 @@ namespace andyScreenSaver
                 {
                     Source = new Uri(image.VideoSource, UriKind.RelativeOrAbsolute),
                     LoadedBehavior = MediaState.Play,
-                    UnloadedBehavior = MediaState.Stop,
+                    //UnloadedBehavior = MediaState.Stop, //throws exception!
                     Stretch = System.Windows.Media.Stretch.Uniform,
-                    Height = image.MaxHeight,
-                    Width = image.Width
+                    Height = Math.Max(image.MaxHeight, image.ActualHeight),
+                    Width = Math.Max(image.Width, image.ActualWidth)
                 };
                 border.Child = mediaElement;
             }

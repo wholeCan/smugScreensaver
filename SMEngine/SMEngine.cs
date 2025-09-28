@@ -1024,7 +1024,7 @@ namespace SMEngine
             //we want to allow to run for a couple hours if manually woken up.
 #if (DEBUG)
             var wakeupTime = 800;  // 8am,  (800 = 8am
-            var goToBedTime = 1300;  //10PM,  2200=10pm)  
+            var goToBedTime = 2300;  //10PM,  2200=10pm)  
 
 #else
             var wakeupTime = Settings.startTime;  // 8am,  (800 = 8am
@@ -1520,7 +1520,7 @@ namespace SMEngine
                             imageSet.AlbumTitle = element.AlbumTitle; //element.Album.Title;
                             imageSet.Caption = element.Caption;
                             imageSet.Exif = element.Exif;
-                            // Patch: Copy video info
+
                             imageSet.IsVideo = element.IsVideo;
                             imageSet.VideoSource = element.VideoSource;
                         }
