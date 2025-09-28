@@ -38,7 +38,7 @@ namespace SMEngine
 
 
 #if (DEBUG) //max albums to pull
-        private readonly int debug_limit = 50;
+        private readonly int debug_limit = 500;
 #else
         private int debug_limit = 5000000;
 #endif
@@ -708,7 +708,6 @@ namespace SMEngine
 
         public string getFolder(Album album)
         {
-
             if (album.Uris == null || album.Uris.Folder == null)
             {
                 logMsg("album is null!");
@@ -870,7 +869,7 @@ namespace SMEngine
         {
             Debug.WriteLine(DateTime.Now.ToLongTimeString() + ": " + msg);
         }
-       
+      
 
         private void runImageCollection()
         {
@@ -879,7 +878,6 @@ namespace SMEngine
                 Running = true;
                 bool startIt = true;
                 while (Running)
-                {
                 
 
                     if (ImageQueue.Count < MinQ)
@@ -922,7 +920,6 @@ namespace SMEngine
                     }
 
                     System.Threading.Thread.Sleep(50);//don't overrun processor.
-                }
                 Running = false;//reset if stopped for any reason.
             }
         }
@@ -941,7 +938,7 @@ namespace SMEngine
             {
                 usernameList = @"MY_NAME";
             }
-            var list = usernameList.Split(',');
+            var list = usernameList.Split(',').Select(u => u.Trim()).ToArray();
             userNameListSize = list.Count();
             return list;
         }
@@ -1231,7 +1228,6 @@ namespace SMEngine
             {
                 return;
             }
-
             try
             {
                 logMsg("loading album:" + a.Name);
@@ -1242,73 +1238,110 @@ namespace SMEngine
                         ImageDictionary.Clear();
                     }
                 }
-
                 var images = await Api.GetAlbumImagesWithSizes(a, Debug_limit);
-
                 if (images == null)
                 {
                     doException("images is null!");
                 }
                 logMsg("loaded " + images.AlbumImages.Count() + " images from album " + a.Name);
-                {
-                    Parallel.ForEach(images.AlbumImages,
-                       new ParallelOptions { MaxDegreeOfParallelism = 4 },
-                       i =>
-                       {
-                           var imageSizes = images.ImageSizes.Where(x => x.Key.Contains(i.ImageKey));
-                           var imageSize = imageSizes.First().Value.ImageSizes;
-                           if (imageSize == null || i == null)
-                           {
-                               throw new Exception("null imagesize");
-                           }
-                           var imageUrl = fetchImageUrl(imageSize);
-                           if (imageSizes != null && i.ImageKey != null)
-                           {
-                               lock (ImageDictionary)
-                               {
-                                   try
-                                   {
-                                       if (!ImageDictionary.ContainsKey(i.ImageKey))
-                                       {
-                                           ImageDictionary.Add(
-                                                   i.ImageKey,
-                                                   new ImageSet(
-                                                       imageUrl,
-                                                       string.IsNullOrEmpty(i.Caption) ? "" : i.Caption,
-                                                       string.IsNullOrEmpty(i.FileName) ? "" : i.FileName,
-                                                       i.Date == null ? DateTime.Now : i.Date,
-                                                       string.IsNullOrEmpty(getFolder(a)) ? "" : getFolder(a),
-                                                       string.IsNullOrEmpty(a.Name) ? "" : a.Name
-                                                       )
-                                                   );
-                                       }
-                                       else
-                                       {
-                                           logMsg("duplicate image: " + i.ImageKey);
-                                       }
-                                   }
-                                   catch (ArgumentException ex)
-                                   {
-                                       doException("duplicate image: " + i.FileName + " : " + ex.Message);
-                                   }
-                                   catch (Exception ex)
-                                   {
-                                       doException(ex.Message);
-                                   }
-                               }
-                           }
-                           else
-                           {
-                               Console.WriteLine("andy");
-                           }
-
-                       });
-                }
+                Parallel.ForEach(images.AlbumImages,
+                    new ParallelOptions { MaxDegreeOfParallelism = 4 },
+                    i =>
+                    {
+                        var imageSizes = images.ImageSizes.Where(x => x.Key.Contains(i.ImageKey));
+                        var imageSize = imageSizes.First().Value.ImageSizes;
+                        if (imageSize == null || i == null)
+                        {
+                            throw new Exception("null imagesize");
+                        }
+                        var imageUrl = fetchImageUrl(imageSize);
+                        // Video support: check file extension
+                        bool isVideo = false;
+                        string videoSource = null;
+                        if (!string.IsNullOrEmpty(i.FileName))
+                        {
+                            var ext = System.IO.Path.GetExtension(i.FileName).ToLowerInvariant();
+                            if (ext == ".mp4" || ext == ".avi" || ext == ".mov" || ext == ".wmv" || ext == ".mkv")
+                            {
+                                isVideo = true;
+                                // Use highest quality direct video URL available
+                                if (!string.IsNullOrEmpty(imageSize.VideoUrl1920))
+                                {
+                                    videoSource = imageSize.VideoUrl1920;
+                                }
+                                else if (!string.IsNullOrEmpty(imageSize.VideoUrl1280))
+                                {
+                                    videoSource = imageSize.VideoUrl1280;
+                                }
+                                else if (!string.IsNullOrEmpty(imageSize.VideoUrl960))
+                                {
+                                    videoSource = imageSize.VideoUrl960;
+                                }
+                                else if (!string.IsNullOrEmpty(imageSize.VideoUrl640))
+                                {
+                                    videoSource = imageSize.VideoUrl640;
+                                }
+                                else if (!string.IsNullOrEmpty(imageSize.VideoUrl320))
+                                {
+                                    videoSource = imageSize.VideoUrl320;
+                                }
+                                else if (!string.IsNullOrEmpty(imageSize.VideoUrl200))
+                                {
+                                    videoSource = imageSize.VideoUrl200;
+                                }
+                                else if (!string.IsNullOrEmpty(imageSize.VideoUrl110))
+                                {
+                                    videoSource = imageSize.VideoUrl110;
+                                }
+                                else
+                                {
+                                    videoSource = imageUrl;
+                                }
+                            }
+                        }
+                        if (imageSizes != null && i.ImageKey != null)
+                        {
+                            lock (ImageDictionary)
+                            {
+                                try
+                                {
+                                    if (!ImageDictionary.ContainsKey(i.ImageKey))
+                                    {
+                                        var imgSet = new ImageSet(
+                                            imageUrl,
+                                            string.IsNullOrEmpty(i.Caption) ? "" : i.Caption,
+                                            string.IsNullOrEmpty(i.FileName) ? "" : i.FileName,
+                                            i.Date == null ? DateTime.Now : i.Date,
+                                            string.IsNullOrEmpty(getFolder(a)) ? "" : getFolder(a),
+                                            string.IsNullOrEmpty(a.Name) ? "" : a.Name
+                                        );
+                                        imgSet.IsVideo = isVideo;
+                                        imgSet.VideoSource = videoSource;
+                                        ImageDictionary.Add(i.ImageKey, imgSet);
+                                    }
+                                    else
+                                    {
+                                        logMsg("duplicate image: " + i.ImageKey);
+                                    }
+                                }
+                                catch (ArgumentException ex)
+                                {
+                                    doException("duplicate image: " + i.FileName + " : " + ex.Message);
+                                }
+                                catch (Exception ex)
+                                {
+                                    doException(ex.Message);
+                                }
+                            }
+                        }
+                        else
+                        {
+                            Console.WriteLine("andy");
+                        }
+                    });
             }
             catch (Exception ex)
             {
-                //relatively safe.
-                //                    doException("loadImages: " + ex.Message);
                 logMsg(ex.Message);
             }
         }

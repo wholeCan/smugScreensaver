@@ -591,14 +591,13 @@ namespace andyScreenSaver
             try
             {
                 var sb = new StringBuilder();
-                
                 if (!string.IsNullOrEmpty(s.AlbumTitle))
-                { // fix issue where just semicolons showing up when in sleeping mode.
+                {
                     sb.Append(s.Category + ": " + s.AlbumTitle);
                 }
                 else
                 {
-                    sb.Append(s.Category); //if albumTitle empty, just show the category (expected to be rare).
+                    sb.Append(s.Category);
                 }
                 if (!string.IsNullOrEmpty(s.Caption) && !s.Caption.Contains("OLYMPUS"))
                 {
@@ -610,12 +609,29 @@ namespace andyScreenSaver
             {
                 LogError(ex, $"Problem setting caption {ex.Message}");
             }
-            indexableImage image = ((hStack1.Children[randWidth] as StackPanel).Children[randHeight] as Border).Child as indexableImage;
+            var border = ((hStack1.Children[randWidth] as StackPanel).Children[randHeight] as Border);
+            var image = border.Child as indexableImage;
 
-            //whether you set MaxHeight, or MaxWidth will determine how the images end up centered on screen.
-            image.MaxHeight = /*this.Height*/ MyHeight / GridHeight - (BorderWidth / GridHeight); 
-            image.Width = MyWidth / GridWidth - (BorderWidth / GridWidth);
-            image.Source = Bitmap2BitmapImage(s.Bitmap);
+            // Video support: if this is a video, replace image with MediaElement
+            if (image.IsVideo && !string.IsNullOrEmpty(image.VideoSource))
+            {
+                var mediaElement = new MediaElement
+                {
+                    Source = new Uri(image.VideoSource, UriKind.RelativeOrAbsolute),
+                    LoadedBehavior = MediaState.Play,
+                    UnloadedBehavior = MediaState.Stop,
+                    Stretch = System.Windows.Media.Stretch.Uniform,
+                    Height = image.MaxHeight,
+                    Width = image.Width
+                };
+                border.Child = mediaElement;
+            }
+            else
+            {
+                image.MaxHeight = MyHeight / GridHeight - (BorderWidth / GridHeight);
+                image.Width = MyWidth / GridWidth - (BorderWidth / GridWidth);
+                image.Source = Bitmap2BitmapImage(s.Bitmap);
+            }
 
             Lm.addToList(new Tuple<int, int>(randWidth, randHeight));
             var imageIndex = (int)(randWidth + (randHeight * (GridWidth)));
@@ -630,8 +646,8 @@ namespace andyScreenSaver
                         File.Delete(fileName);
                     }
                     if (DoSmartStart)
-                    { 
-                        tmp.Save(fileName, ImageFormat.Jpeg); 
+                    {
+                        tmp.Save(fileName, ImageFormat.Jpeg);
                     }
                 }
                 catch (Exception ex)
