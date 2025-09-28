@@ -586,37 +586,55 @@ namespace andyScreenSaver
                 LogError(e,e.Message);
             }
         }
+
         private void setImageCaption(ref SMEngine.CSMEngine.ImageSet s, ref Bitmap targetBitmapImage, int randWidth, int randHeight)
         {
             try
             {
-                var sb = new StringBuilder();
-                if (!string.IsNullOrEmpty(s.AlbumTitle))
+                if (! s.IsVideo)
                 {
-                    sb.Append(s.Category + ": " + s.AlbumTitle);
+                    string captionText = BuildCaptionText(s);
+                    ImageAddCaption(captionText, ref targetBitmapImage);
                 }
-                else
-                {
-                    sb.Append(s.Category);
-                }
-                if (!string.IsNullOrEmpty(s.Caption) && !s.Caption.Contains("OLYMPUS"))
-                {
-                    sb.Append(": " + s.Caption);
-                }
-                ImageAddCaption(sb.ToString(), ref targetBitmapImage);
             }
             catch (Exception ex)
             {
                 LogError(ex, $"Problem setting caption {ex.Message}");
             }
-            var border = ((hStack1.Children[randWidth] as StackPanel).Children[randHeight] as Border);
+
+            var border = GetGridBorder(randWidth, randHeight);
             var image = border.Child as indexableImage;
 
-            // Ensure indexableImage gets video info from ImageSet
+            UpdateImageOrVideo(image, border, s);
+
+            Lm.addToList(new Tuple<int, int>(randWidth, randHeight));
+            CacheImageIfFirstTime(targetBitmapImage, randWidth, randHeight);
+        }
+
+        private string BuildCaptionText(SMEngine.CSMEngine.ImageSet s)
+        {
+            var sb = new StringBuilder();
+            if (!string.IsNullOrEmpty(s.AlbumTitle))
+                sb.Append($"{s.Category}: {s.AlbumTitle}");
+            else
+                sb.Append(s.Category);
+
+            if (!string.IsNullOrEmpty(s.Caption) && !s.Caption.Contains("OLYMPUS"))
+                sb.Append($": {s.Caption}");
+
+            return sb.ToString();
+        }
+
+        private Border GetGridBorder(int randWidth, int randHeight)
+        {
+            return (hStack1.Children[randWidth] as StackPanel).Children[randHeight] as Border;
+        }
+
+        private void UpdateImageOrVideo(indexableImage image, Border border, SMEngine.CSMEngine.ImageSet s)
+        {
             image.IsVideo = s.IsVideo;
             image.VideoSource = s.VideoSource;
 
-            // Video support: if this is a video, replace image with MediaElement
             if (image.IsVideo && !string.IsNullOrEmpty(image.VideoSource))
             {
                 var mediaElement = new MediaElement
@@ -636,9 +654,11 @@ namespace andyScreenSaver
                 image.Width = MyWidth / GridWidth - (BorderWidth / GridWidth);
                 image.Source = Bitmap2BitmapImage(s.Bitmap);
             }
+        }
 
-            Lm.addToList(new Tuple<int, int>(randWidth, randHeight));
-            var imageIndex = (int)(randWidth + (randHeight * (GridWidth)));
+        private void CacheImageIfFirstTime(Bitmap targetBitmapImage, int randWidth, int randHeight)
+        {
+            int imageIndex = randWidth + (randHeight * GridWidth);
             if (ImageCounterArray[imageIndex] == 0)
             {
                 try
@@ -646,13 +666,10 @@ namespace andyScreenSaver
                     var tmp = new Bitmap(targetBitmapImage);
                     var fileName = getImageStorageLoc() + @"\" + imageIndex + @".jpg";
                     if (File.Exists(fileName) && DoSmartStart)
-                    {
                         File.Delete(fileName);
-                    }
+
                     if (DoSmartStart)
-                    {
                         tmp.Save(fileName, ImageFormat.Jpeg);
-                    }
                 }
                 catch (Exception ex)
                 {
@@ -661,7 +678,6 @@ namespace andyScreenSaver
                 ImageCounterArray[imageIndex]++;
             }
         }
-
         private void runImageUpdateThread()
         {
             Running = true;
