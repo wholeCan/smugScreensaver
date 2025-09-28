@@ -419,8 +419,13 @@ namespace andyScreenSaver
                             foreach (Border borderImage in (v as StackPanel).Children)
                             {
                                 var image = borderImage.Child as indexableImage;
-                                image.Height = calculateImageHeight() ; //161; lculateImageHeight
+                                if (image != null)
+                                {
+                                    image.Height = calculateImageHeight();
+                                }
+                                // If image is null, it's likely a MediaElement (video), so skip setting Height.
                             }
+                            
                         }
                         if (Engine.screensaverExpired())
                         {
