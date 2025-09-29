@@ -704,28 +704,17 @@ namespace andyScreenSaver
                            oldMedia.Stop();
                            border.Child = null;
                        }*/
-                    if (border.Child is IDisposable disposable) disposable.Dispose();
+                    if (border.Child is IDisposable disposable && border.Child is VideoView) //what if we never do this?
+                    {//if an image, do nothing
+                        disposable.Dispose();
+                        
+                    }
                     border.Child = null;
                 });
             }
             if (image != null)
             {
-                /*await border.Dispatcher.InvokeAsync(() =>
-                {//always stop old media if present
-                    Debug.WriteLine($"skip if playing");
-                    if (border.Child is IDisposable disposable)
-                    {
-                        if (border.Child is VideoView) {
-                            
-                            if (disposable is VideoView vv && vv.MediaPlayer != null && vv.MediaPlayer.IsPlaying)
-                            {
-                                Debug.WriteLine($"skipping video, still playing");
-                                return; //skip if video is still playing.
-                            }
-                        } 
-                    }
-                });
-                */
+                
                 image.IsVideo = s.IsVideo;
                 if (s.IsVideo)
                 { image.VideoSource = s.VideoSource; }

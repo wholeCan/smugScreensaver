@@ -1273,12 +1273,13 @@ namespace SMEngine
                                 {
                                     videoSource = imageSize.VideoUrl1280;
                                 }
-                                else */
+                                else 
                                 if (!string.IsNullOrEmpty(imageSize.VideoUrl960))
                                 {
                                     videoSource = imageSize.VideoUrl960;
                                 }
-                                else if (!string.IsNullOrEmpty(imageSize.VideoUrl640))  //start smaller?
+                                else */
+                                if (!string.IsNullOrEmpty(imageSize.VideoUrl640))  //start smaller?
                                 {
                                     videoSource = imageSize.VideoUrl640;
                                 }
