@@ -33,7 +33,7 @@ namespace SMEngine
         private readonly Queue<ImageSet> _imageQueue;
 
         private const int maximumQ = 20;   //window, only download if q is less than max and greater than min.
-        private const int minQ = 2;
+        private const int minQ = 2; //2, to allow some time to download albums before getting to 0.
         private volatile bool running = false;
 
 
@@ -1023,7 +1023,7 @@ namespace SMEngine
             //logMsg("runtime is:" + totalRuntimeSeconds.ToString("0.00"));
             //we want to allow to run for a couple hours if manually woken up.
 #if (DEBUG)
-            var wakeupTime = 800;  // 8am,  (800 = 8am
+            var wakeupTime = 400;  // 8am,  (800 = 8am
             var goToBedTime = 2300;  //10PM,  2200=10pm)  
 
 #else
@@ -1353,7 +1353,7 @@ namespace SMEngine
 
         List<ImageSet> _allImages = new List<ImageSet>();
 
-        private bool isLoadingAlbums = true;
+        private bool isLoadingAlbums = false; //to prevent multiple simultaneous loads.
         public bool IsLoadingAlbums()
         {
             return IsLoadingAlbums1;
@@ -1373,6 +1373,11 @@ namespace SMEngine
         }
         private void loadAllImages()
         {
+            if (IsLoadingAlbums1)
+            {
+                Debug.WriteLine($"Already loading albums!");
+                return;
+            }
             IsLoadingAlbums1 = true;
             AllAlbums = new List<Album>();
             PlayedImages = new Dictionary<string, ImageSet>();

@@ -652,8 +652,10 @@ namespace andyScreenSaver
 
                 if (image.IsVideo && !string.IsNullOrEmpty(image.VideoSource))
                 {
-                    string tempFile = DownloadVideoToTempFile(image.VideoSource);
-                    border.Dispatcher.Invoke(() =>
+                    // Download video asynchronously
+                    string tempFile = await Task.Run(() => DownloadVideoToTempFile(image.VideoSource));
+                    // Now update UI on the dispatcher
+                    await border.Dispatcher.InvokeAsync(() =>
                     {
                         Debug.WriteLine($"video file (temp): {tempFile}");
                         var mediaElement = new MediaElement
@@ -665,9 +667,25 @@ namespace andyScreenSaver
                             Width = Math.Min(calculatedImageWidth(), image.ActualWidth)
                         };
                         mediaElement.MediaFailed += MediaElement_MediaFailed;
-                        mediaElement.MediaEnded += (s, e) =>
+                        mediaElement.Loaded += (s, e) =>
                         {
+                            //mediaElement.Play();
+                        };
+                        mediaElement.Unloaded += (s, e) =>
+                        {
+                            
+                        };
+                        mediaElement.MediaEnded += (s,e) =>
+                        {
+                          /*  mediaElement.Position = TimeSpan.Zero;
+                            if (mediaElement.NaturalDuration.HasTimeSpan)
+                            {
+                                var midpoint = TimeSpan.FromTicks(mediaElement.NaturalDuration.TimeSpan.Ticks / 2);
+                                mediaElement.Position = midpoint;
+                            }
+                            mediaElement.Stop();*/
                             deleteTempFile(tempFile);
+                            //mediaElement.Play();
                         };
                         border.Child = mediaElement;
                     });
@@ -680,6 +698,7 @@ namespace andyScreenSaver
                 }
             }
         }
+
 
         private void deleteTempFile(string filePath)
         {
