@@ -643,41 +643,80 @@ namespace andyScreenSaver
             return (hStack1.Children[randWidth] as StackPanel).Children[randHeight] as Border;
         }
 
+        int videoCounter = 0;
+        int photoCounter = 0;
         private async Task UpdateImageOrVideo(indexableImage image, Border border, SMEngine.CSMEngine.ImageSet s)
         {
             if (image != null)
             {
                 image.IsVideo = s.IsVideo;
-                image.VideoSource = s.VideoSource;
+                if (s.IsVideo)
+                { image.VideoSource = s.VideoSource; }
+                else { image.VideoSource = null; }
 
+                    await border.Dispatcher.InvokeAsync(() =>
+                    {//always stop old media if present
+                        Debug.WriteLine($"stopping old media");
+                        if (border.Child is MediaElement oldMedia)
+                        {
+                            oldMedia.Stop();
+                            border.Child = null;
+                        }
+                    });
+              
                 if (image.IsVideo && !string.IsNullOrEmpty(image.VideoSource))
                 {
+                    videoCounter++;
+                    Debug.WriteLine($"Video counter: {videoCounter}");
                     // Download video asynchronously
                     string tempFile = await Task.Run(() => DownloadVideoToTempFile(image.VideoSource));
                     // Now update UI on the dispatcher
-                    await border.Dispatcher.InvokeAsync(() =>
+                    await border.Dispatcher.InvokeAsync(() =>  //was border.
                     {
                         Debug.WriteLine($"video file (temp): {tempFile}");
+
+                        if (border.Child is MediaElement oldMedia)
+                        {
+                            oldMedia.Stop();//duplicative?
+                           // deleteTempFile(oldMedia.Source.AbsolutePath);
+                            border.Child = null;
+                            
+                        }
                         var mediaElement = new MediaElement
                         {
                             Source = new Uri(tempFile, UriKind.Absolute),
-                            LoadedBehavior = MediaState.Play,
+                            //Source = new Uri(image.VideoSource, UriKind.Absolute),
+                            LoadedBehavior = MediaState.Manual,
                             Stretch = System.Windows.Media.Stretch.Uniform,
-                            Height = Math.Min(image.ActualHeight, calculateImageHeight()),
+                            //Height = Math.Min(image.ActualHeight, calculateImageHeight()),
                             Width = Math.Min(calculatedImageWidth(), image.ActualWidth)
-                        };
+                        };                        
                         mediaElement.MediaFailed += MediaElement_MediaFailed;
+                        mediaElement.MediaOpened += (s,e) =>
+                        {
+                         //   mediaElement.Position = TimeSpan.Zero;
+                         //   mediaElement.Play();
+                        };
                         mediaElement.Loaded += (s, e) =>
                         {
-                            //mediaElement.Play();
+                            mediaElement.Position = TimeSpan.Zero;
+                            try
+                            {
+                                mediaElement.Play();
+                                
+                            }
+                            catch(Exception ex)
+                            {
+                                LogError(ex, $"Problem playing video {ex.Message}");
+                            }
                         };
                         mediaElement.Unloaded += (s, e) =>
                         {
                             
                         };
                         mediaElement.MediaEnded += (s,e) =>
-                        {
-                          /*  mediaElement.Position = TimeSpan.Zero;
+                        {/*
+                            mediaElement.Position = TimeSpan.Zero;
                             if (mediaElement.NaturalDuration.HasTimeSpan)
                             {
                                 var midpoint = TimeSpan.FromTicks(mediaElement.NaturalDuration.TimeSpan.Ticks / 2);
@@ -685,19 +724,24 @@ namespace andyScreenSaver
                             }
                             mediaElement.Stop();*/
                             deleteTempFile(tempFile);
-                            //mediaElement.Play();
+                            /*mediaElement.Position = TimeSpan.Zero;
+                            mediaElement.Play();*/
                         };
                         border.Child = mediaElement;
                     });
                 }
                 else
                 {
+                    photoCounter++;
+                    Debug.WriteLine($"photo counter: {photoCounter}");
+
                     image.MaxHeight = MyHeight / GridHeight - (BorderWidth / GridHeight);
                     image.Width = MyWidth / GridWidth - (BorderWidth / GridWidth);
                     image.Source = Bitmap2BitmapImage(s.Bitmap);
                 }
             }
         }
+
 
 
         private void deleteTempFile(string filePath)
