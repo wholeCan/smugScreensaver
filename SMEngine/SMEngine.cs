@@ -578,7 +578,7 @@ namespace SMEngine
             {
                 Settings.quality = Int32.Parse(ReadRegistryValue("quality", "2"));
 #if (DEBUG) //use custom speed setting
-                Settings.speed_s = 3;
+                Settings.speed_s = 6;
 #else
                 Settings.speed_s = Int32.Parse(ReadRegistryValue("Speed_S", "5"));
 #endif
@@ -1265,7 +1265,7 @@ namespace SMEngine
                             {
                                 isVideo = true;
                                 // Use highest quality direct video URL available
-                                if (!string.IsNullOrEmpty(imageSize.VideoUrl1920))
+                               /* if (!string.IsNullOrEmpty(imageSize.VideoUrl1920))
                                 {
                                     videoSource = imageSize.VideoUrl1920;
                                 }
@@ -1273,7 +1273,8 @@ namespace SMEngine
                                 {
                                     videoSource = imageSize.VideoUrl1280;
                                 }
-                                else if (!string.IsNullOrEmpty(imageSize.VideoUrl960))
+                                else */
+                                if (!string.IsNullOrEmpty(imageSize.VideoUrl960))
                                 {
                                     videoSource = imageSize.VideoUrl960;
                                 }

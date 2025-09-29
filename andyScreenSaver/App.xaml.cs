@@ -11,7 +11,7 @@ using System.IO;
 using System.Linq;
 using System.Windows;
 using System.Windows.Interop;
-
+//using LibVLCSharp.Shared;
 namespace andyScreenSaver
 {
     /// <summary>
@@ -29,6 +29,7 @@ namespace andyScreenSaver
         {
             try
             {
+               // Core.Initialize(); // LibVLCSharp initialization
                 if (ApplicationMutexSingleton.Instance.AlreadyRunning)
                 {
                     Debug.WriteLine("Application already running!");

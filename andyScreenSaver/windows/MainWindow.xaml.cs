@@ -28,9 +28,12 @@ using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
+using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using System.Windows.Media.Media3D;
 using static SMEngine.CSMEngine;
+using LibVLCSharp.Shared;
+using LibVLCSharp.WPF;
 
 
 #nullable enable
@@ -101,14 +104,14 @@ namespace andyScreenSaver
         private DateTime lastUpdate = DateTime.Now;
 
         private listManager lm;
-        Color InvertMeAColour(Color ColourToInvert)
+        System.Drawing.Color InvertMeAColour(System.Drawing.Color ColourToInvert)
         {
             const int RGBMAX = 255;
-            return Color.FromArgb(RGBMAX - ColourToInvert.R,
+            return System.Drawing.Color.FromArgb(RGBMAX - ColourToInvert.R,
               RGBMAX - ColourToInvert.G, RGBMAX - ColourToInvert.B);
         }
 
-        static Color GetAverageColor(Bitmap bitmap, Rectangle region)
+        static System.Drawing.Color GetAverageColor(Bitmap bitmap, Rectangle region)
         {
 
             int totalRed = 0;
@@ -121,7 +124,7 @@ namespace andyScreenSaver
             {
                 for (int x = region.Left; x < region.Right; x++)
                 {
-                    Color pixelColor = bitmap.GetPixel(x, y);
+                    System.Drawing.Color pixelColor = bitmap.GetPixel(x, y);
 
                     totalRed += pixelColor.R;
                     totalGreen += pixelColor.G;
@@ -132,34 +135,34 @@ namespace andyScreenSaver
             }
             if (totalPixels <= 0)
             {// escape div-0
-                return Color.Black;
+                return System.Drawing.Color.Black;
             }
             // Calculate average color components
             int averageRed = totalRed / totalPixels;
             int averageGreen = totalGreen / totalPixels;
             int averageBlue = totalBlue / totalPixels;
 
-            return Color.FromArgb(averageRed, averageGreen, averageBlue);
+            return System.Drawing.Color.FromArgb(averageRed, averageGreen, averageBlue);
         }
 
-        private Color GetAverageColor(Bitmap bitmapImage)
+        private System.Drawing.Color GetAverageColor(Bitmap bitmapImage)
         {
             var numberOfRows = 12;  //upper 12th
             var numberColumns = 3;  //left 3rd
             Rectangle topLeftQuadrant = new Rectangle(0, 0, bitmapImage.Width / numberColumns, bitmapImage.Height / numberOfRows);
-            Color averageColor = GetAverageColor(bitmapImage, topLeftQuadrant);
+            System.Drawing.Color averageColor = GetAverageColor(bitmapImage, topLeftQuadrant);
             if (IsColorDark(averageColor))
             {
-                return Color.White;
+                return System.Drawing.Color.White;
             }
             else
             {
-                return Color.Black;
+                return System.Drawing.Color.Black;
             }
 
         }
 
-        static bool IsColorDark(Color color)
+        static bool IsColorDark(System.Drawing.Color color)
         {
             //Debug.WriteLine("Color {0} {1} {2}", color.R.ToString("X2"), color.G.ToString("X2"), color.B.ToString("X2"));
             // Calculate perceived brightness using Y component in YUV color space
@@ -171,7 +174,7 @@ namespace andyScreenSaver
             // Check if the brightness is below the threshold to determine if it's dark
             return brightness < brightnessThreshold;
         }
-        private Color GetAverageColorOld(Bitmap tmp)
+        private System.Drawing.Color GetAverageColorOld(Bitmap tmp)
         {
             try
             {
@@ -179,12 +182,12 @@ namespace andyScreenSaver
                 if (bm.Width == 0 || bm.Height == 0)
                 {
                     //frequent error seen at run time.
-                    return Color.Black;
+                    return System.Drawing.Color.Black;
                 }
                 var srcData = bm.LockBits(
                         new Rectangle(0, 0, bm.Width, bm.Height),
                         ImageLockMode.ReadOnly,
-                        PixelFormat.Format32bppArgb
+                        System.Drawing.Imaging.PixelFormat.Format32bppArgb
                     );
 
                 var stride = srcData.Stride;
@@ -222,17 +225,17 @@ namespace andyScreenSaver
                 var avgG = (int)totals[1] / (width * height);
                 var avgR = (int)totals[2] / (width * height);
 
-                var myColor = Color.FromArgb(avgR, avgB, avgG);
+                var myColor = System.Drawing.Color.FromArgb(avgR, avgB, avgG);
                 var measuredColor = ((float)avgR * 0.299 + (float)avgG * 0.587 + (float)avgB * 0.114);
                 if (measuredColor > 35.0)  //35 works pretty ok.
-                    return Color.Black;
+                    return System.Drawing.Color.Black;
                 else
-                    return Color.White;
+                    return System.Drawing.Color.White;
             }
             catch (Exception ex)
             {
                 LogError(ex, ex.Message);
-                return Color.Black;
+                return System.Drawing.Color.Black;
             }
         }
 
@@ -617,6 +620,20 @@ namespace andyScreenSaver
 
             var border = GetGridBorder(randWidth, randHeight);
             var image = border.Child as indexableImage;
+            /*if (image == null)
+            { //wemay only want to do this if not playing.
+                // If the child is not an indexableImage, it may be a VideoView or something else.
+                // Remove the old child and create a new indexableImage if needed.
+                if (border.Child is IDisposable disposable)
+                {
+                    disposable.Dispose();
+                }
+                border.Child = null;
+
+                // Create a new indexableImage for image display
+                image = new indexableImage();
+                border.Child = image;
+            }*/
 
             UpdateImageOrVideo(image, border, s);
 
@@ -647,87 +664,104 @@ namespace andyScreenSaver
         int photoCounter = 0;
         private async Task UpdateImageOrVideo(indexableImage image, Border border, SMEngine.CSMEngine.ImageSet s)
         {
+            if (image == null)
+            { //wemay only want to do this if not playing.
+              // If the child is not an indexableImage, it may be a VideoView or something else.
+              // Remove the old child and create a new indexableImage if needed.
+
+                if (border.Child is IDisposable disposable)
+                {
+                    if (border.Child is VideoView)
+                    {
+                        var allowToFinish = false;
+                        if (disposable is VideoView vv && vv.MediaPlayer != null && vv.MediaPlayer.IsPlaying && allowToFinish)
+                        {
+                            Debug.WriteLine($"skipping video, still playing");
+                            return; //skip if video is still playing.
+                        }
+                        else
+                        {
+                            disposable.Dispose();
+                            border.Child = null;
+                        }
+                    }
+                }
+                
+
+               
+
+                // Create a new indexableImage for image display
+                image = new indexableImage();
+                border.Child = image;
+            }
+            else
+            {
+                await border.Dispatcher.InvokeAsync(() =>
+                {//always stop old media if present
+                    Debug.WriteLine($"stopping old media");
+                    /*   if (border.Child is MediaElement oldMedia)
+                       {
+                           oldMedia.Stop();
+                           border.Child = null;
+                       }*/
+                    if (border.Child is IDisposable disposable) disposable.Dispose();
+                    border.Child = null;
+                });
+            }
             if (image != null)
             {
+                /*await border.Dispatcher.InvokeAsync(() =>
+                {//always stop old media if present
+                    Debug.WriteLine($"skip if playing");
+                    if (border.Child is IDisposable disposable)
+                    {
+                        if (border.Child is VideoView) {
+                            
+                            if (disposable is VideoView vv && vv.MediaPlayer != null && vv.MediaPlayer.IsPlaying)
+                            {
+                                Debug.WriteLine($"skipping video, still playing");
+                                return; //skip if video is still playing.
+                            }
+                        } 
+                    }
+                });
+                */
                 image.IsVideo = s.IsVideo;
                 if (s.IsVideo)
                 { image.VideoSource = s.VideoSource; }
                 else { image.VideoSource = null; }
 
-                    await border.Dispatcher.InvokeAsync(() =>
-                    {//always stop old media if present
-                        Debug.WriteLine($"stopping old media");
-                        if (border.Child is MediaElement oldMedia)
-                        {
-                            oldMedia.Stop();
-                            border.Child = null;
-                        }
-                    });
-              
+                /*   
+                        if (border.Child is IDisposable disposable) disposable.Dispose();
+                        border.Child = null;
+                    });*/
+
                 if (image.IsVideo && !string.IsNullOrEmpty(image.VideoSource))
                 {
                     videoCounter++;
-                    Debug.WriteLine($"Video counter: {videoCounter}");
-                    // Download video asynchronously
-                    string tempFile = await Task.Run(() => DownloadVideoToTempFile(image.VideoSource));
-                    // Now update UI on the dispatcher
-                    await border.Dispatcher.InvokeAsync(() =>  //was border.
+                    // string tempFile = await Task.Run(() => DownloadVideoToTempFile(image.VideoSource));
+                    await border.Dispatcher.InvokeAsync(() =>
                     {
-                        Debug.WriteLine($"video file (temp): {tempFile}");
+                        // Remove old child
+                      //  if (border.Child is IDisposable disposable) disposable.Dispose();
+                      //  border.Child = null;
 
-                        if (border.Child is MediaElement oldMedia)
+                        var libVLC = new LibVLC();
+                        var mediaPlayer = new LibVLCSharp.Shared.MediaPlayer(libVLC);
+                        var videoView = new VideoView
                         {
-                            oldMedia.Stop();//duplicative?
-                           // deleteTempFile(oldMedia.Source.AbsolutePath);
-                            border.Child = null;
-                            
-                        }
-                        var mediaElement = new MediaElement
-                        {
-                            Source = new Uri(tempFile, UriKind.Absolute),
-                            //Source = new Uri(image.VideoSource, UriKind.Absolute),
-                            LoadedBehavior = MediaState.Manual,
-                            Stretch = System.Windows.Media.Stretch.Uniform,
-                            //Height = Math.Min(image.ActualHeight, calculateImageHeight()),
-                            Width = Math.Min(calculatedImageWidth(), image.ActualWidth)
-                        };                        
-                        mediaElement.MediaFailed += MediaElement_MediaFailed;
-                        mediaElement.MediaOpened += (s,e) =>
-                        {
-                         //   mediaElement.Position = TimeSpan.Zero;
-                         //   mediaElement.Play();
+                            MediaPlayer = mediaPlayer,
+                            Width = Math.Min(calculatedImageWidth(), image.ActualWidth),
+                            Height = Math.Min(image.ActualHeight, calculateImageHeight()),
+                            HorizontalAlignment = HorizontalAlignment.Center,
+                            VerticalAlignment = VerticalAlignment.Center
                         };
-                        mediaElement.Loaded += (s, e) =>
+                        mediaPlayer.Play(new Media(libVLC, /*tempFile*/ image.VideoSource, /*FromType.FromPath*/FromType.FromLocation));
+                        mediaPlayer.EndReached += (sender, args) =>
                         {
-                            mediaElement.Position = TimeSpan.Zero;
-                            try
-                            {
-                                mediaElement.Play();
-                                
-                            }
-                            catch(Exception ex)
-                            {
-                                LogError(ex, $"Problem playing video {ex.Message}");
-                            }
+                            // Dispatcher.Invoke(() => deleteTempFile(tempFile));  //dont delete if using url
                         };
-                        mediaElement.Unloaded += (s, e) =>
-                        {
-                            
-                        };
-                        mediaElement.MediaEnded += (s,e) =>
-                        {/*
-                            mediaElement.Position = TimeSpan.Zero;
-                            if (mediaElement.NaturalDuration.HasTimeSpan)
-                            {
-                                var midpoint = TimeSpan.FromTicks(mediaElement.NaturalDuration.TimeSpan.Ticks / 2);
-                                mediaElement.Position = midpoint;
-                            }
-                            mediaElement.Stop();*/
-                            deleteTempFile(tempFile);
-                            /*mediaElement.Position = TimeSpan.Zero;
-                            mediaElement.Play();*/
-                        };
-                        border.Child = mediaElement;
+                        border.Child = videoView;
                     });
                 }
                 else
@@ -739,6 +773,10 @@ namespace andyScreenSaver
                     image.Width = MyWidth / GridWidth - (BorderWidth / GridWidth);
                     image.Source = Bitmap2BitmapImage(s.Bitmap);
                 }
+            }
+            else
+            {
+                Debug.WriteLine($"image is null");
             }
         }
 
@@ -931,6 +969,14 @@ namespace andyScreenSaver
         public Window1()
         {
             InitializeComponent();
+            try
+            {
+                Core.Initialize(); // LibVLCSharp initialization
+            }
+            catch (Exception ex)
+            {
+                LogError(ex, ex.Message);
+            }
             var borderWidth = 0;
             int.TryParse(ConfigurationSettings.AppSettings["BorderWidth"], out borderWidth);
             AppOpenCloseLogger.logOpened();
