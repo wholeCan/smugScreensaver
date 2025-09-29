@@ -635,53 +635,32 @@ namespace andyScreenSaver
             return (hStack1.Children[randWidth] as StackPanel).Children[randHeight] as Border;
         }
 
-        private void UpdateImageOrVideo(indexableImage image, Border border, SMEngine.CSMEngine.ImageSet s)
+        private async Task UpdateImageOrVideo(indexableImage image, Border border, SMEngine.CSMEngine.ImageSet s)
         {
             image.IsVideo = s.IsVideo;
             image.VideoSource = s.VideoSource;
 
             if (image.IsVideo && !string.IsNullOrEmpty(image.VideoSource))
             {
+                string tempFile = DownloadVideoToTempFile(image.VideoSource);
                 border.Dispatcher.Invoke(() =>
                 {
-                    var wil = "c:\\dev\\will.mp4";
-                    Debug.WriteLine($"video file: {image.VideoSource}");
+                    Debug.WriteLine($"video file (temp): {tempFile}");
                     var mediaElement = new MediaElement
                     {
-
-                        //Source = new Uri(image.VideoSource, UriKind.Absolute),
-                        Source = new Uri(wil, UriKind.Absolute),
+                        Source = new Uri(tempFile, UriKind.Absolute),
                         LoadedBehavior = MediaState.Play,
                         Stretch = System.Windows.Media.Stretch.Uniform,
-                        Height = Math.Min(image.MaxHeight, image.ActualHeight),
-                        Width = Math.Min(image.Width, image.ActualWidth)
+                        Height = Math.Min(image.ActualHeight, calculateImageHeight()),
+                        Width = Math.Min(calculateImageHeight()*6/4, image.ActualWidth)
                     };
                     mediaElement.MediaFailed += MediaElement_MediaFailed;
+                    mediaElement.MediaEnded += (s, e) =>
+                    {
+                        deleteTempFile(tempFile);
+                    };
                     border.Child = mediaElement;
                 });
-                /*
-                var mediaElement = new MediaElement
-                {
-                    Source = new Uri(image.VideoSource, UriKind.RelativeOrAbsolute),
-                    
-                    LoadedBehavior = MediaState.Manual,
-                    //UnloadedBehavior = MediaState.Stop, //throws exception!
-                    Stretch = System.Windows.Media.Stretch.Uniform,
-                    Height = Math.Min(image.MaxHeight, image.ActualHeight),
-                    Width = Math.Min(image.Width, image.ActualWidth)
-                };
-                */
-
-                // Add MediaFailed event handler
-                /*mediaElement.Initialized += (s, e) =>
-                {
-                    mediaElement.Dispatcher.BeginInvoke(new Action(() => {
-                        mediaElement.Play();
-                    }));
-                };
-                mediaElement.MediaFailed += MediaElement_MediaFailed;
-
-                border.Child = mediaElement;*/
             }
             else
             {
@@ -689,6 +668,32 @@ namespace andyScreenSaver
                 image.Width = MyWidth / GridWidth - (BorderWidth / GridWidth);
                 image.Source = Bitmap2BitmapImage(s.Bitmap);
             }
+        }
+
+        private void deleteTempFile(string filePath)
+        {
+            try
+            {
+                if (File.Exists(filePath))
+                {
+                    File.Delete(filePath);
+                    Debug.WriteLine($"Deleted temp file: {filePath}");
+                }
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"Error deleting temp file {filePath}: {ex.Message}");
+            }
+        }
+
+        private string DownloadVideoToTempFile(string videoUrl)
+        {
+            string tempFile = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString() + ".mp4");
+            using (var client = new System.Net.WebClient())
+            {
+                client.DownloadFile(videoUrl, tempFile);
+            }
+            return tempFile;
         }
 
         // Handler method for MediaFailed
