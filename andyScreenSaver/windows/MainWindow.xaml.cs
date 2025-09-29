@@ -14,6 +14,7 @@
 
 //using Quartz;
 //using Quartz.Impl;
+using Microsoft.Extensions.Logging;
 using SMEngine;
 using System;
 using System.Configuration;
@@ -405,6 +406,13 @@ namespace andyScreenSaver
 
         }
 
+        private Double calculatedImageWidth()
+        {
+            var width = MyWidth / GridWidth - (100 / Math.Pow(2, GridWidth));
+            Debug.WriteLine($"calculated width: {width}");
+            return width;
+        }
+
 
         private void UpdateImage()
         {
@@ -637,36 +645,39 @@ namespace andyScreenSaver
 
         private async Task UpdateImageOrVideo(indexableImage image, Border border, SMEngine.CSMEngine.ImageSet s)
         {
-            image.IsVideo = s.IsVideo;
-            image.VideoSource = s.VideoSource;
+            if (image != null)
+            {
+                image.IsVideo = s.IsVideo;
+                image.VideoSource = s.VideoSource;
 
-            if (image.IsVideo && !string.IsNullOrEmpty(image.VideoSource))
-            {
-                string tempFile = DownloadVideoToTempFile(image.VideoSource);
-                border.Dispatcher.Invoke(() =>
+                if (image.IsVideo && !string.IsNullOrEmpty(image.VideoSource))
                 {
-                    Debug.WriteLine($"video file (temp): {tempFile}");
-                    var mediaElement = new MediaElement
+                    string tempFile = DownloadVideoToTempFile(image.VideoSource);
+                    border.Dispatcher.Invoke(() =>
                     {
-                        Source = new Uri(tempFile, UriKind.Absolute),
-                        LoadedBehavior = MediaState.Play,
-                        Stretch = System.Windows.Media.Stretch.Uniform,
-                        Height = Math.Min(image.ActualHeight, calculateImageHeight()),
-                        Width = Math.Min(calculateImageHeight()*6/4, image.ActualWidth)
-                    };
-                    mediaElement.MediaFailed += MediaElement_MediaFailed;
-                    mediaElement.MediaEnded += (s, e) =>
-                    {
-                        deleteTempFile(tempFile);
-                    };
-                    border.Child = mediaElement;
-                });
-            }
-            else
-            {
-                image.MaxHeight = MyHeight / GridHeight - (BorderWidth / GridHeight);
-                image.Width = MyWidth / GridWidth - (BorderWidth / GridWidth);
-                image.Source = Bitmap2BitmapImage(s.Bitmap);
+                        Debug.WriteLine($"video file (temp): {tempFile}");
+                        var mediaElement = new MediaElement
+                        {
+                            Source = new Uri(tempFile, UriKind.Absolute),
+                            LoadedBehavior = MediaState.Play,
+                            Stretch = System.Windows.Media.Stretch.Uniform,
+                            Height = Math.Min(image.ActualHeight, calculateImageHeight()),
+                            Width = Math.Min(calculatedImageWidth(), image.ActualWidth)
+                        };
+                        mediaElement.MediaFailed += MediaElement_MediaFailed;
+                        mediaElement.MediaEnded += (s, e) =>
+                        {
+                            deleteTempFile(tempFile);
+                        };
+                        border.Child = mediaElement;
+                    });
+                }
+                else
+                {
+                    image.MaxHeight = MyHeight / GridHeight - (BorderWidth / GridHeight);
+                    image.Width = MyWidth / GridWidth - (BorderWidth / GridWidth);
+                    image.Source = Bitmap2BitmapImage(s.Bitmap);
+                }
             }
         }
 
@@ -700,7 +711,7 @@ namespace andyScreenSaver
         private void MediaElement_MediaFailed(object sender, ExceptionRoutedEventArgs e)
         {
             Debug.WriteLine($"MediaElement failed: {e.ErrorException?.Message}");
-            MessageBox.Show($"Video playback error: {e.ErrorException?.Message}", "Media Error", MessageBoxButton.OK, MessageBoxImage.Error);
+            //MessageBox.Show($"Video playback error: {e.ErrorException?.Message}", "Media Error", MessageBoxButton.OK, MessageBoxImage.Error);
         }
 
         private void CacheImageIfFirstTime(Bitmap targetBitmapImage, int randWidth, int randHeight)

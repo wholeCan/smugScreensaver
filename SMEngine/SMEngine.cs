@@ -1277,7 +1277,7 @@ namespace SMEngine
                                 {
                                     videoSource = imageSize.VideoUrl960;
                                 }
-                                else if (!string.IsNullOrEmpty(imageSize.VideoUrl640))
+                                else if (!string.IsNullOrEmpty(imageSize.VideoUrl640))  //start smaller?
                                 {
                                     videoSource = imageSize.VideoUrl640;
                                 }
