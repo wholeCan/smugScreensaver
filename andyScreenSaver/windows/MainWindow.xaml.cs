@@ -29,6 +29,7 @@ using System.Windows.Input;
 using System.Windows.Media.Imaging;
 using System.Windows.Media.Media3D;
 using static SMEngine.CSMEngine;
+using System.Windows.Media;
 
 
 #nullable enable
@@ -356,11 +357,11 @@ namespace andyScreenSaver
             {
                 // Only show overlay when showInfo is enabled
                 var text = Engine.settings.showInfo ? CaptionBuilder.Build(s) : string.Empty;
-                _tileRenderer.RenderSync(border, image, s, text);
+                _tileRenderer.RenderSync(border, image, s, text, Engine.isDefaultMute());
             }
             else
             {
-                _ = _tileRenderer.RenderAsync(border, image, s);
+                _ = _tileRenderer.RenderAsync(border, image, s, Engine.isDefaultMute());
             }
 
             _tilePlacement.MarkPlaced(randWidth, randHeight);
@@ -708,6 +709,9 @@ namespace andyScreenSaver
                     Engine.resetExpiredImageCollection();
                     UpdateImage();
                     break;
+                case Key.M:
+                    Engine.toggleDefaultMute();
+                    break;
                 case Key.S:
                     StatsEnabled = !StatsEnabled;
                     if (StatsEnabled)
@@ -862,9 +866,13 @@ namespace andyScreenSaver
 
         private void Image1_MouseUp(object sender, MouseButtonEventArgs e)
         {
+            // Ignore clicks that originate from a video tile; those toggle mute inside TileRenderer
+            if (ClickOriginatedFromVideo(e))
             {
-                UpdateImage();
+                e.Handled = true;
+                return;
             }
+            UpdateImage();
         }
         private void Window_SizeChanged_1(object sender, SizeChangedEventArgs e)
         {
@@ -874,6 +882,22 @@ namespace andyScreenSaver
         }
         private void Window_MouseRightButtonUp(object sender, MouseButtonEventArgs e)
         {
+        }
+
+        private bool ClickOriginatedFromVideo(MouseEventArgs e)
+        {
+            try
+            {
+                var d = e.OriginalSource as DependencyObject;
+                while (d != null)
+                {
+                    if (d is LibVLCSharp.WPF.VideoView)
+                        return true;
+                    d = VisualTreeHelper.GetParent(d);
+                }
+            }
+            catch { }
+            return false;
         }
     }
 }

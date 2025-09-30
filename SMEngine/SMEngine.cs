@@ -119,6 +119,7 @@ namespace SMEngine
             }
             msg.AppendLine("UserNameList: " + userNameListSize + ", " + string.Join(",", fetchUsersToLoad().ToList()));
             msg.AppendLine("Images shown: " + ImageCounter);
+            msg.AppendLine("Video muted: " +  isDefaultMute().ToString());
             msg.AppendLine("Images deduped: " + PlayedImages.Count);
             msg.AppendLine("Queue depth: " + qSize);
             msg.AppendLine("Image size: " + Settings.quality + " / " + fetchImageUrlSize());
@@ -1043,6 +1044,16 @@ namespace SMEngine
 
         DateTime manualInteruptExpiration = DateTime.Now;
         //todo: delete this
+        private bool defaultMute = true;
+        public void toggleDefaultMute()
+        {
+            defaultMute = !defaultMute;
+        }
+
+        public bool isDefaultMute()
+        {
+            return defaultMute;
+        }
         public void resetExpiredImageCollection()
         {
             if (Expired)

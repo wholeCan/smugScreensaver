@@ -68,7 +68,6 @@ namespace andyScreenSaver.windows.Helpers
             return indicator;
         }
 
-        // Host that matches the video's size and alignment so overlay sits over the video content
         private static Grid BuildOverlayHostForVideo(VideoView vv)
         {
             var host = new Grid
@@ -168,11 +167,11 @@ namespace andyScreenSaver.windows.Helpers
             {
                 container.Background = Brushes.Transparent;
             }
-            container.MouseLeftButtonUp -= Container_MouseLeftButtonUp;
-            container.MouseLeftButtonUp += Container_MouseLeftButtonUp;
+            container.PreviewMouseLeftButtonUp -= Container_PreviewMouseLeftButtonUp;
+            container.PreviewMouseLeftButtonUp += Container_PreviewMouseLeftButtonUp;
         }
 
-        private void Container_MouseLeftButtonUp(object sender, System.Windows.Input.MouseButtonEventArgs e)
+        private void Container_PreviewMouseLeftButtonUp(object sender, System.Windows.Input.MouseButtonEventArgs e)
         {
             try
             {
@@ -182,8 +181,7 @@ namespace andyScreenSaver.windows.Helpers
                     var vv = container.Children.OfType<VideoView>().FirstOrDefault();
                     if (vv?.MediaPlayer != null)
                     {
-                        vv.MediaPlayer.Mute = !vv.MediaPlayer.Mute;
-                        _log($"video mute toggled to {vv.MediaPlayer.Mute}");
+                        ToggleMute(vv.MediaPlayer);
                         UpdateAudioIndicatorOnContainer(container, audioOn: !vv.MediaPlayer.Mute);
                         e.Handled = true;
                     }
@@ -192,7 +190,39 @@ namespace andyScreenSaver.windows.Helpers
             catch { }
         }
 
-        public void RenderSync(Border border, indexableImage image, SMEngine.CSMEngine.ImageSet s, string overlayText)
+        private void AttachVideoClick(VideoView videoView, Grid container)
+        {
+            videoView.PreviewMouseLeftButtonUp -= Video_PreviewMouseLeftButtonUp;
+            videoView.PreviewMouseLeftButtonUp += Video_PreviewMouseLeftButtonUp;
+            void Video_PreviewMouseLeftButtonUp(object? s, System.Windows.Input.MouseButtonEventArgs e)
+            {
+                try
+                {
+                    if (videoView.MediaPlayer != null)
+                    {
+                        ToggleMute(videoView.MediaPlayer);
+                        UpdateAudioIndicatorOnContainer(container, audioOn: !videoView.MediaPlayer.Mute);
+                        e.Handled = true;
+                    }
+                }
+                catch { }
+            }
+        }
+
+        private void ToggleMute(LibVLCSharp.Shared.MediaPlayer mp)
+        {
+            try
+            {
+                mp.ToggleMute();
+                if (!mp.Mute && mp.Volume <= 0)
+                {
+                    mp.Volume = 80; // ensure audible
+                }
+            }
+            catch { }
+        }
+
+        public void RenderSync(Border border, indexableImage image, SMEngine.CSMEngine.ImageSet s, string overlayText, bool defaultMute)
         {
             if (border == null || s == null) return;
 
@@ -226,7 +256,7 @@ namespace andyScreenSaver.windows.Helpers
                     }
 
                     var libVLC = new LibVLC();
-                    var mediaPlayer = new LibVLCSharp.Shared.MediaPlayer(libVLC) { Mute = true };
+                    var mediaPlayer = new LibVLCSharp.Shared.MediaPlayer(libVLC) { Mute = defaultMute };
                     var videoView = new VideoView
                     {
                         MediaPlayer = mediaPlayer,
@@ -243,6 +273,7 @@ namespace andyScreenSaver.windows.Helpers
                     };
                     Panel.SetZIndex(videoView, 0);
                     container.Children.Add(videoView);
+                    AttachVideoClick(videoView, container);
 
                     // initial indicator state (Mute defaults to true)
                     UpdateAudioIndicatorOnContainer(container, audioOn: !mediaPlayer.Mute);
@@ -284,7 +315,7 @@ namespace andyScreenSaver.windows.Helpers
             });
         }
 
-        public async Task RenderAsync(Border border, indexableImage image, SMEngine.CSMEngine.ImageSet s)
+        public async Task RenderAsync(Border border, indexableImage image, SMEngine.CSMEngine.ImageSet s, bool defaultMute)
         {
             if (border == null || s == null) return;
 
@@ -335,7 +366,7 @@ namespace andyScreenSaver.windows.Helpers
                     AttachTileClick(container);
 
                     var libVLC = new LibVLC();
-                    var mediaPlayer = new LibVLCSharp.Shared.MediaPlayer(libVLC) { Mute = true };
+                    var mediaPlayer = new LibVLCSharp.Shared.MediaPlayer(libVLC) { Mute = defaultMute };
                     var videoView = new VideoView
                     {
                         MediaPlayer = mediaPlayer,
@@ -352,6 +383,7 @@ namespace andyScreenSaver.windows.Helpers
                     };
                     Panel.SetZIndex(videoView, 0);
                     container.Children.Add(videoView);
+                    AttachVideoClick(videoView, container);
 
                     // initial indicator state
                     UpdateAudioIndicatorOnContainer(container, audioOn: !mediaPlayer.Mute);
