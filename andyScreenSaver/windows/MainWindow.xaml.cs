@@ -336,7 +336,11 @@ namespace andyScreenSaver
                 string captionText = CaptionBuilder.Build(s);
                 if (! s.IsVideo)
                 {
-                    ImageUtils.AddCaption(captionText, ref targetBitmapImage);
+                    // Only bake caption into photos when showInfo is enabled
+                    if (Engine.settings.showInfo)
+                    {
+                        ImageUtils.AddCaption(captionText, ref targetBitmapImage);
+                    }
                 }
             }
             catch (Exception ex)
@@ -347,10 +351,11 @@ namespace andyScreenSaver
             var border = GetGridBorder(randWidth, randHeight);
             var image = border.Child as indexableImage;
 
-            // Render based on media type: videos get runtime overlay, photos render normally
+            // Render based on media type
             if (s.IsVideo)
             {
-                var text = CaptionBuilder.Build(s);
+                // Only show overlay when showInfo is enabled
+                var text = Engine.settings.showInfo ? CaptionBuilder.Build(s) : string.Empty;
                 _tileRenderer.RenderSync(border, image, s, text);
             }
             else

@@ -32,7 +32,7 @@ namespace andyScreenSaver.windows.Helpers
                 Padding = new Thickness(6, 2, 6, 2),
                 CornerRadius = new CornerRadius(3),
                 HorizontalAlignment = HorizontalAlignment.Left,
-                VerticalAlignment = VerticalAlignment.Top,
+                VerticalAlignment = VerticalAlignment.Bottom,
                 Margin = new Thickness(8),
                 Tag = "CaptionOverlay",
                 IsHitTestVisible = false
@@ -50,17 +50,62 @@ namespace andyScreenSaver.windows.Helpers
             return overlay;
         }
 
+        private static Border BuildAudioIndicator()
+        {
+            var indicator = new Border
+            {
+                BorderBrush = Brushes.LimeGreen,
+                BorderThickness = new Thickness(3),
+                CornerRadius = new CornerRadius(6),
+                Background = Brushes.Transparent,
+                HorizontalAlignment = HorizontalAlignment.Stretch,
+                VerticalAlignment = VerticalAlignment.Stretch,
+                Margin = new Thickness(2),
+                Tag = "AudioIndicator",
+                IsHitTestVisible = false
+            };
+            Panel.SetZIndex(indicator, int.MaxValue - 1);
+            return indicator;
+        }
+
+        // Host that matches the video's size and alignment so overlay sits over the video content
+        private static Grid BuildOverlayHostForVideo(VideoView vv)
+        {
+            var host = new Grid
+            {
+                Width = vv.Width,
+                Height = vv.Height,
+                HorizontalAlignment = vv.HorizontalAlignment,
+                VerticalAlignment = vv.VerticalAlignment,
+                IsHitTestVisible = false,
+                Tag = "CaptionOverlayHost"
+            };
+            Panel.SetZIndex(host, int.MaxValue);
+            return host;
+        }
+
         private static void RemoveExistingOverlay(Grid container)
         {
             if (container == null) return;
-            var overlays = container.Children.OfType<Border>().Where(b => (b.Tag as string) == "CaptionOverlay").ToList();
+            var overlays = container.Children.OfType<FrameworkElement>()
+                .Where(b => (b.Tag as string) == "CaptionOverlay" || (b.Tag as string) == "CaptionOverlayHost").ToList();
             foreach (var o in overlays)
             {
                 container.Children.Remove(o);
             }
         }
 
-        // NEW: add/remove overlay at runtime without touching the video
+        private static void RemoveExistingAudioIndicator(Grid container)
+        {
+            if (container == null) return;
+            var rings = container.Children.OfType<Border>().Where(b => (b.Tag as string) == "AudioIndicator").ToList();
+            foreach (var r in rings)
+            {
+                container.Children.Remove(r);
+            }
+        }
+
+        // Update only the caption overlay visibility/content at runtime
         public void UpdateOverlay(Border border, bool show, string overlayText)
         {
             if (border == null) return;
@@ -68,14 +113,83 @@ namespace andyScreenSaver.windows.Helpers
             {
                 if (border.Child is Grid container)
                 {
-                    // Remove current overlay(s)
                     RemoveExistingOverlay(container);
                     if (show && !string.IsNullOrEmpty(overlayText))
                     {
-                        container.Children.Add(BuildOverlay(overlayText, _calcWidth, _calcHeight));
+                        // Try to find the video to size the host correctly
+                        var vv = container.Children.OfType<VideoView>().FirstOrDefault();
+                        if (vv != null)
+                        {
+                            var host = BuildOverlayHostForVideo(vv);
+                            host.Children.Add(BuildOverlay(overlayText, _calcWidth, _calcHeight));
+                            container.Children.Add(host);
+                        }
+                        else
+                        {
+                            // Fallback: add overlay directly to container
+                            container.Children.Add(BuildOverlay(overlayText, _calcWidth, _calcHeight));
+                        }
                     }
                 }
             });
+        }
+
+        // Update only the audio indicator (green ring) at runtime
+        public void UpdateAudioIndicator(Border border, bool audioOn)
+        {
+            if (border == null) return;
+            border.Dispatcher.Invoke(() =>
+            {
+                if (border.Child is Grid container)
+                {
+                    RemoveExistingAudioIndicator(container);
+                    if (audioOn)
+                    {
+                        container.Children.Add(BuildAudioIndicator());
+                    }
+                }
+            });
+        }
+
+        private static void UpdateAudioIndicatorOnContainer(Grid container, bool audioOn)
+        {
+            if (container == null) return;
+            RemoveExistingAudioIndicator(container);
+            if (audioOn)
+            {
+                container.Children.Add(BuildAudioIndicator());
+            }
+        }
+
+        private void AttachTileClick(Grid container)
+        {
+            // Ensure the container can hit-test even where there is no child pixel
+            if (container.Background == null)
+            {
+                container.Background = Brushes.Transparent;
+            }
+            container.MouseLeftButtonUp -= Container_MouseLeftButtonUp;
+            container.MouseLeftButtonUp += Container_MouseLeftButtonUp;
+        }
+
+        private void Container_MouseLeftButtonUp(object sender, System.Windows.Input.MouseButtonEventArgs e)
+        {
+            try
+            {
+                if (sender is Grid container)
+                {
+                    // Find a VideoView inside and toggle its mute
+                    var vv = container.Children.OfType<VideoView>().FirstOrDefault();
+                    if (vv?.MediaPlayer != null)
+                    {
+                        vv.MediaPlayer.Mute = !vv.MediaPlayer.Mute;
+                        _log($"video mute toggled to {vv.MediaPlayer.Mute}");
+                        UpdateAudioIndicatorOnContainer(container, audioOn: !vv.MediaPlayer.Mute);
+                        e.Handled = true;
+                    }
+                }
+            }
+            catch { }
         }
 
         public void RenderSync(Border border, indexableImage image, SMEngine.CSMEngine.ImageSet s, string overlayText)
@@ -85,6 +199,7 @@ namespace andyScreenSaver.windows.Helpers
             border.Dispatcher.Invoke(() =>
             {
                 var container = new Grid { ClipToBounds = true };
+                AttachTileClick(container);
 
                 if (s.IsVideo && !string.IsNullOrEmpty(s.VideoSource))
                 {
@@ -120,20 +235,6 @@ namespace andyScreenSaver.windows.Helpers
                         HorizontalAlignment = HorizontalAlignment.Center,
                         VerticalAlignment = VerticalAlignment.Center
                     };
-                    // Toggle mute on click
-                    videoView.MouseLeftButtonUp += (s2, e2) =>
-                    {
-                        try
-                        {
-                            if (videoView.MediaPlayer != null)
-                            {
-                                videoView.MediaPlayer.Mute = !videoView.MediaPlayer.Mute;
-                                _log($"video mute toggled to {videoView.MediaPlayer.Mute}");
-                            }
-                        }
-                        catch { }
-                        e2.Handled = true;
-                    };
                     mediaPlayer.Play(new Media(libVLC, s.VideoSource, FromType.FromLocation));
                     mediaPlayer.EncounteredError += (sender, e) =>
                     {
@@ -142,6 +243,18 @@ namespace andyScreenSaver.windows.Helpers
                     };
                     Panel.SetZIndex(videoView, 0);
                     container.Children.Add(videoView);
+
+                    // initial indicator state (Mute defaults to true)
+                    UpdateAudioIndicatorOnContainer(container, audioOn: !mediaPlayer.Mute);
+
+                    // Overlay over the video area
+                    RemoveExistingOverlay(container);
+                    if (!string.IsNullOrEmpty(overlayText))
+                    {
+                        var host = BuildOverlayHostForVideo(videoView);
+                        host.Children.Add(BuildOverlay(overlayText, _calcWidth, _calcHeight));
+                        container.Children.Add(host);
+                    }
                 }
                 else
                 {
@@ -159,13 +272,12 @@ namespace andyScreenSaver.windows.Helpers
                     targetImg.Width = _calcWidth();
                     Panel.SetZIndex(targetImg, 0);
                     container.Children.Add(targetImg);
-                }
 
-                // Re-add overlay last so it always stays on top
-                RemoveExistingOverlay(container);
-                if (!string.IsNullOrEmpty(overlayText))
-                {
-                    container.Children.Add(BuildOverlay(overlayText, _calcWidth, _calcHeight));
+                    RemoveExistingOverlay(container);
+                    if (!string.IsNullOrEmpty(overlayText))
+                    {
+                        container.Children.Add(BuildOverlay(overlayText, _calcWidth, _calcHeight));
+                    }
                 }
 
                 border.Child = container;
@@ -181,25 +293,22 @@ namespace andyScreenSaver.windows.Helpers
                 await border.Dispatcher.InvokeAsync(() =>
                 {
                     // If a video is already playing and allowed to finish, skip
+                    if (border.Child is Grid existingContainer)
+                    {
+                        var playing = existingContainer.Children.OfType<VideoView>().FirstOrDefault(v => v.MediaPlayer != null && v.MediaPlayer.IsPlaying);
+                        if (playing != null)
+                        {
+                            _log($"skipping video in grid, still playing");
+                            return;
+                        }
+                    }
                     if (border.Child is VideoView existingVv && existingVv.MediaPlayer != null && existingVv.MediaPlayer.IsPlaying)
                     {
                         _log($"skipping video, still playing");
                         return;
                     }
-                    // If a container with an already playing VideoView exists, skip to preserve overlay
-                    if (border.Child is Grid container && container.Children.Count > 0)
-                    {
-                        foreach (var child in container.Children)
-                        {
-                            if (child is VideoView vv && vv.MediaPlayer != null && vv.MediaPlayer.IsPlaying)
-                            {
-                                _log($"skipping video in grid, still playing");
-                                return;
-                            }
-                        }
-                    }
 
-                    // If an old video exists, stop and dispose (direct)
+                    // Stop and dispose any old video
                     if (border.Child is VideoView oldVv && oldVv.MediaPlayer != null)
                     {
                         try { oldVv.MediaPlayer.Stop(); } catch { }
@@ -207,7 +316,6 @@ namespace andyScreenSaver.windows.Helpers
                         try { oldVv.Dispose(); } catch { }
                         border.Child = null;
                     }
-                    // Or if an old video is inside a container, stop and dispose
                     else if (border.Child is Grid g)
                     {
                         foreach (var child in g.Children)
@@ -222,12 +330,12 @@ namespace andyScreenSaver.windows.Helpers
                         border.Child = null;
                     }
 
-                    // Create and play new video (no overlay in async path)
+                    // Create container and video
+                    var container = new Grid { ClipToBounds = true };
+                    AttachTileClick(container);
+
                     var libVLC = new LibVLC();
-                    var mediaPlayer = new LibVLCSharp.Shared.MediaPlayer(libVLC)
-                    {
-                        Mute = true
-                    };
+                    var mediaPlayer = new LibVLCSharp.Shared.MediaPlayer(libVLC) { Mute = true };
                     var videoView = new VideoView
                     {
                         MediaPlayer = mediaPlayer,
@@ -236,27 +344,19 @@ namespace andyScreenSaver.windows.Helpers
                         HorizontalAlignment = HorizontalAlignment.Center,
                         VerticalAlignment = VerticalAlignment.Center
                     };
-                    // Toggle mute on click
-                    videoView.MouseLeftButtonUp += (s2, e2) =>
-                    {
-                        try
-                        {
-                            if (videoView.MediaPlayer != null)
-                            {
-                                videoView.MediaPlayer.Mute = !videoView.MediaPlayer.Mute;
-                                _log($"video mute toggled to {videoView.MediaPlayer.Mute}");
-                            }
-                        }
-                        catch { }
-                        e2.Handled = true;
-                    };
                     mediaPlayer.Play(new Media(libVLC, s.VideoSource, FromType.FromLocation));
                     mediaPlayer.EncounteredError += (sender, e) =>
                     {
                         _log($"Error encountered playing video {s.VideoSource} {e.ToString()}");
                         try { mediaPlayer.Stop(); } catch { }
                     };
-                    border.Child = videoView;
+                    Panel.SetZIndex(videoView, 0);
+                    container.Children.Add(videoView);
+
+                    // initial indicator state
+                    UpdateAudioIndicatorOnContainer(container, audioOn: !mediaPlayer.Mute);
+
+                    border.Child = container;
                 });
                 return;
             }
@@ -275,7 +375,7 @@ namespace andyScreenSaver.windows.Helpers
                     targetImg = new indexableImage();
                     border.Child = targetImg;
                 }
-                else if (border.Child is Grid gridWithVideo && gridWithVideo.Children.Count > 0 && gridWithVideo.Children[0] is VideoView)
+                else if (border.Child is Grid gridWithVideo && gridWithVideo.Children.OfType<VideoView>().Any())
                 {
                     foreach (var child in gridWithVideo.Children)
                     {
