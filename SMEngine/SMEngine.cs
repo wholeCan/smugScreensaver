@@ -61,6 +61,11 @@ namespace SMEngine
             loadAllImages();
         }
 
+        public void RePullAlbumsSafe()
+        {
+            rePullAlbums();
+        }
+
         private async void setupJob()
         {
 # if(DEBUG) // time of day to reset.
@@ -568,6 +573,9 @@ namespace SMEngine
         }
       
 
+        // Backing field for PlayedImages
+        private Dictionary<string, ImageSet> playedImages = new Dictionary<string, ImageSet>();
+
         private void runImageCollection()
         {
             if (Running == false)
@@ -821,242 +829,19 @@ namespace SMEngine
 
         private BitmapImage showImage(string URL)
         {
-            var BytesToRead = 2500;
-            var image = new BitmapImage();
-
-            try
-            {
-                if (URL != null)
-                {
-                    var request = WebRequest.Create(new Uri(URL, UriKind.Absolute));
-                    request.Timeout = -1;
-                    try
-                    {
-                        var response = (HttpWebResponse)request.GetResponse();
-
-                        if (response.StatusCode != HttpStatusCode.OK)
-                        {
-                            throw new Exception("image not returned: " + URL);
-                        }
-                        var responseStream = response.GetResponseStream();
-                        var reader = new BinaryReader(responseStream);
-                        var memoryStream = new MemoryStream();
-
-                        var bytebuffer = new byte[BytesToRead];
-                        var bytesRead = reader.Read(bytebuffer, 0, BytesToRead);
-                        var sw = new Stopwatch();
-                        sw.Start();
-                        while (bytesRead > 0)
-                        {
-                            memoryStream.Write(bytebuffer, 0, bytesRead);
-                            bytesRead = reader.Read(bytebuffer, 0, BytesToRead);
-                        }
-
-                        sw.Stop();
-                        logMsg($"Get Image {URL} took: {sw.ElapsedMilliseconds}ms.");
-                        image.BeginInit();
-                        memoryStream.Seek(0, SeekOrigin.Begin);
-                        image.StreamSource = memoryStream;
-                        image.EndInit();
-                    }
-                    catch (Exception ex)
-                    {//possible http 404 response known, just skip and move on.
-                        return null;
-                    }
-                }
-            }
-
-
-            catch (System.Net.WebException ex)
-            {//no connection, wait longer.
-                doException(ex.Message);
-                logMsg(ex.Message);
-                return null;
-            }
-            catch (Exception ex)
-            {
-                doException(ex.Message);
-                logMsg(ex.Message);
-                logMsg(ex.StackTrace);
-                return null;
-            }
-            return image;
-
+            return ImageLoader.DownloadImage(this, URL);
         }
 
         private string fetchImageUrl(ImageSizes imageSize)
         {
-            switch (Settings.quality)
-            {
-
-                case 0:
-                    return imageSize.TinyImageUrl;
-                case 1:
-                    return imageSize.SmallImageUrl;
-                case 2:
-                    return imageSize.MediumImageUrl;
-                case 3:
-                    return imageSize.LargeImageUrl;
-                case 4:
-                    return imageSize.X3LargeImageUrl;
-                case 5:
-                    return imageSize.OriginalImageUrl;
-                default:
-                    return imageSize.MediumImageUrl;
-
-            }
+            return ImageLoader.GetBestImageUrl(this, imageSize);
         }
 
-        private string fetchImageUrlSize()
-        {
-            switch (Settings.quality)
-            {
-
-                case 0:
-                    return "TinyImageUrl";
-                case 1:
-                    return "SmallImageUrl";
-                case 2:
-                    return "MediumImageUrl";
-                case 3:
-                    return "LargeImageUrl";
-                case 4:
-                    return "X3LargeImageUrl";
-                case 5:
-                    return "OriginalImageUrl";
-                default:
-                    return "MediumImageUrl";
-
-            }
-        }
         private async void loadImages(Album? a, bool singleAlbumMode, int size = 2)
         {
-            if (a == null || a.Uris.AlbumImages == null)
-            {
-                return;
-            }
-            try
-            {
-                logMsg("loading album:" + a.Name);
-                if (singleAlbumMode)
-                {
-                    lock (ImageDictionary)
-                    {
-                        ImageDictionary.Clear();
-                    }
-                }
-                var images = await Api.GetAlbumImagesWithSizes(a, Debug_limit);
-                if (images == null)
-                {
-                    doException("images is null!");
-                }
-                logMsg("loaded " + images.AlbumImages.Count() + " images from album " + a.Name);
-                Parallel.ForEach(images.AlbumImages,
-                    new ParallelOptions { MaxDegreeOfParallelism = 4 },
-                    i =>
-                    {
-                        var imageSizes = images.ImageSizes.Where(x => x.Key.Contains(i.ImageKey));
-                        var imageSize = imageSizes.First().Value.ImageSizes;
-                        if (imageSize == null || i == null)
-                        {
-                            throw new Exception("null imagesize");
-                        }
-                        var imageUrl = fetchImageUrl(imageSize);
-                        // Video support: check file extension
-                        bool isVideo = false;
-                        string videoSource = null;
-                        if (!string.IsNullOrEmpty(i.FileName))
-                        {
-                            var ext = System.IO.Path.GetExtension(i.FileName).ToLowerInvariant();
-                            if (ext == ".mp4" || ext == ".avi" || ext == ".mov" || ext == ".wmv" || ext == ".mkv")
-                            {
-                                isVideo = true;
-                                // Use highest quality direct video URL available
-                                if (!string.IsNullOrEmpty(imageSize.VideoUrl1920))
-                                {
-                                    videoSource = imageSize.VideoUrl1920;
-                                }
-                                else if (!string.IsNullOrEmpty(imageSize.VideoUrl1280))
-                                {
-                                    videoSource = imageSize.VideoUrl1280;
-                                }
-                                else 
-                                if (!string.IsNullOrEmpty(imageSize.VideoUrl960))
-                                {
-                                    videoSource = imageSize.VideoUrl960;
-                                }
-                                else 
-                                if (!string.IsNullOrEmpty(imageSize.VideoUrl640))  //start smaller?
-                                {
-                                    videoSource = imageSize.VideoUrl640;
-                                }
-                                else if (!string.IsNullOrEmpty(imageSize.VideoUrl320))
-                                {
-                                    videoSource = imageSize.VideoUrl320;
-                                }
-                                else if (!string.IsNullOrEmpty(imageSize.VideoUrl200))
-                                {
-                                    videoSource = imageSize.VideoUrl200;
-                                }
-                                else if (!string.IsNullOrEmpty(imageSize.VideoUrl110))
-                                {
-                                    videoSource = imageSize.VideoUrl110;
-                                }
-                                else
-                                {
-                                    isVideo = false;
-                                    videoSource = imageUrl;//todo, in this case, we should probably default to just show an image.
-                                }
-                            }
-                        }
-                        if (imageSizes != null && i.ImageKey != null)
-                        {
-                            lock (ImageDictionary)
-                            {
-                                try
-                                {
-                                    if (!ImageDictionary.ContainsKey(i.ImageKey))
-                                    {
-                                        var imgSet = new ImageSet(
-                                            imageUrl,
-                                            string.IsNullOrEmpty(i.Caption) ? "" : i.Caption,
-                                            string.IsNullOrEmpty(i.FileName) ? "" : i.FileName,
-                                            i.Date == null ? DateTime.Now : i.Date,
-                                            string.IsNullOrEmpty(getFolder(a)) ? "" : getFolder(a),
-                                            string.IsNullOrEmpty(a.Name) ? "" : a.Name
-                                        );
-                                        imgSet.IsVideo = isVideo;
-                                        imgSet.VideoSource = videoSource;
-                                        ImageDictionary.Add(i.ImageKey, imgSet);
-                                    }
-                                    else
-                                    {
-                                        logMsg("duplicate image: " + i.ImageKey);
-                                    }
-                                }
-                                catch (ArgumentException ex)
-                                {
-                                    doException("duplicate image: " + i.FileName + " : " + ex.Message);
-                                }
-                                catch (Exception ex)
-                                {
-                                    doException(ex.Message);
-                                }
-                            }
-                        }
-                        else
-                        {
-                            Console.WriteLine("andy");
-                        }
-                    });
-            }
-            catch (Exception ex)
-            {
-                logMsg(ex.Message);
-            }
+            if (a == null || a.Uris.AlbumImages == null) return;
+            await ImageLoader.LoadImagesForAlbum(this, a, singleAlbumMode, size);
         }
-
-
 
         public delegate void fireExceptionDel(string msg);
         public event fireExceptionDel fireException;
@@ -1195,70 +980,9 @@ namespace SMEngine
 
         }
 
-        Dictionary<string, ImageSet> playedImages = new();
-
         private ImageSet getRandomImage()
         {
-            checkLogin(Envelope);
-            {
-                var imageSet = new ImageSet();
-                //imageSet.Bm = null; //moved to constructor.
-
-                lock (ImageDictionary)
-                {
-                    if (ImageDictionary.Count > 0)//|| playedImages.Count > 0)
-                                                  // only enter if images either are loaded, or have completed at some point in the past.
-                    {
-                        try
-                        {
-                            var myQuality = qSize > 0 ? settings.quality : 1;  //allow low res for first pics.
-
-                            var imageIndex = R.Next(ImageDictionary.Count);
-                            var key = ImageDictionary.Keys.ElementAt(imageIndex);
-                            var element = ImageDictionary[key];  //optimizing to avoid multiple lookups.
-                            ImageDictionary.Remove(key);
-                            if (!PlayedImages.ContainsKey(key))
-                            {
-                                PlayedImages.Add(key, element);
-                            }
-                            var image = showImage(element.ImageURL);
-                            if (image == null)
-                            {
-                                throw new Exception("image returned is null: " + element.ImageURL);
-                            }
-                            imageSet.BitmapImage = image;
-                            imageSet.Name = element.Name;
-                            imageSet.AlbumTitle = element.AlbumTitle;
-                            imageSet.ImageURL = element.ImageURL;
-                            imageSet.Category = element.Category;
-                            imageSet.MyDate = element.MyDate;
-                            imageSet.AlbumTitle = element.AlbumTitle; //element.Album.Title;
-                            imageSet.Caption = element.Caption;
-                            imageSet.Exif = element.Exif;
-
-                            imageSet.IsVideo = element.IsVideo;
-                            imageSet.VideoSource = element.VideoSource;
-                        }
-                        catch (Exception ex)
-                        {
-                            // doException("random: " + ex.Message);
-                            //most likely a failed image download for some reason.  Turn off logger for now.
-                            logMsg(ex.Message + "\r\n" + ex.StackTrace);
-                        }
-                    }
-                    else if ((PlayedImages.Count > 0) && !IsLoadingAlbums1)
-                    {// if we're out of images, and loading is completed - then let's start a new load.
-                        Task.Factory.StartNew(() =>
-                        {
-                            logMsg("reloading library!!!");
-                            rePullAlbums();
-                        });
-                        return null;
-                    }
-                    else { return null; }
-                }
-                return imageSet;
-            }
+            return ImageSelectionHelper.TryGetRandomImage(this);
         }
         public void doException(string msg)
         {

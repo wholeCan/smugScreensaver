@@ -141,6 +141,9 @@
     <Compile Include="CSettings.cs" />
     <Compile Include="GalleryEntry.cs" />
     <Compile Include="Helpers\AuthHelper.cs" />
+    <Compile Include="Helpers\ImageLoader.cs" />
+    <Compile Include="Helpers\ImageQueueService.cs" />
+    <Compile Include="Helpers\ImageSelectionHelper.cs" />
     <Compile Include="Helpers\RegistryHelper.cs" />
     <Compile Include="Helpers\StatsFormatter.cs" />
     <Compile Include="ImageInfo.cs" />
