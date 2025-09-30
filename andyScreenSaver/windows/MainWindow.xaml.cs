@@ -333,9 +333,9 @@ namespace andyScreenSaver
         {
             try
             {
+                string captionText = CaptionBuilder.Build(s);
                 if (! s.IsVideo)
                 {
-                    string captionText = CaptionBuilder.Build(s);
                     ImageUtils.AddCaption(captionText, ref targetBitmapImage);
                 }
             }
@@ -347,8 +347,16 @@ namespace andyScreenSaver
             var border = GetGridBorder(randWidth, randHeight);
             var image = border.Child as indexableImage;
 
-            // Delegate to renderer
-            _ = _tileRenderer.RenderAsync(border, image, s);
+            // Render based on media type: videos get runtime overlay, photos render normally
+            if (s.IsVideo)
+            {
+                var text = CaptionBuilder.Build(s);
+                _tileRenderer.RenderSync(border, image, s, text);
+            }
+            else
+            {
+                _ = _tileRenderer.RenderAsync(border, image, s);
+            }
 
             _tilePlacement.MarkPlaced(randWidth, randHeight);
             CacheImageIfFirstTime(targetBitmapImage, randWidth, randHeight);
