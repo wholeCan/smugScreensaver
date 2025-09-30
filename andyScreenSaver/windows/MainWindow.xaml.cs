@@ -526,13 +526,11 @@ namespace andyScreenSaver
             {
                 AppOpenCloseLogger.uptimeCheckpoint(Engine.getUptime(), Engine.getRuntimeStatsInfo(false));
             }
-            //get dimensions
             var w = System.Windows.SystemParameters.WorkArea.Width;
             var h = System.Windows.SystemParameters.WorkArea.Height;
 
             if (Engine == null || forceStart == true)
             {
-
                 Engine = new SMEngine.CSMEngine();
                 Engine.setScreenDimensions(w, h);
                 {
