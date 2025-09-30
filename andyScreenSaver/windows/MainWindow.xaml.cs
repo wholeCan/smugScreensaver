@@ -711,6 +711,8 @@ namespace andyScreenSaver
                     break;
                 case Key.M:
                     Engine.toggleDefaultMute();
+                    // apply global mute/unmute to all videos immediately
+                    _tileRenderer?.ApplyGlobalMute(this, Engine.isDefaultMute());
                     break;
                 case Key.S:
                     StatsEnabled = !StatsEnabled;

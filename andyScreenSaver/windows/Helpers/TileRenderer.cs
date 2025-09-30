@@ -6,6 +6,7 @@ using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
+using System.Windows.Threading;
 
 namespace andyScreenSaver.windows.Helpers
 {
@@ -150,62 +151,13 @@ namespace andyScreenSaver.windows.Helpers
             });
         }
 
-        private static void UpdateAudioIndicatorOnContainer(Grid container, bool audioOn)
+        internal static void UpdateAudioIndicatorOnContainer(Grid container, bool audioOn)
         {
             if (container == null) return;
             RemoveExistingAudioIndicator(container);
             if (audioOn)
             {
                 container.Children.Add(BuildAudioIndicator());
-            }
-        }
-
-        private void AttachTileClick(Grid container)
-        {
-            // Ensure the container can hit-test even where there is no child pixel
-            if (container.Background == null)
-            {
-                container.Background = Brushes.Transparent;
-            }
-            container.PreviewMouseLeftButtonUp -= Container_PreviewMouseLeftButtonUp;
-            container.PreviewMouseLeftButtonUp += Container_PreviewMouseLeftButtonUp;
-        }
-
-        private void Container_PreviewMouseLeftButtonUp(object sender, System.Windows.Input.MouseButtonEventArgs e)
-        {
-            try
-            {
-                if (sender is Grid container)
-                {
-                    // Find a VideoView inside and force unmute
-                    var vv = container.Children.OfType<VideoView>().FirstOrDefault();
-                    if (vv?.MediaPlayer != null)
-                    {
-                        ForceUnmute(vv.MediaPlayer);
-                        UpdateAudioIndicatorOnContainer(container, audioOn: !vv.MediaPlayer.Mute);
-                        e.Handled = true;
-                    }
-                }
-            }
-            catch { }
-        }
-
-        private void AttachVideoClick(VideoView videoView, Grid container)
-        {
-            videoView.PreviewMouseLeftButtonUp -= Video_PreviewMouseLeftButtonUp;
-            videoView.PreviewMouseLeftButtonUp += Video_PreviewMouseLeftButtonUp;
-            void Video_PreviewMouseLeftButtonUp(object? s, System.Windows.Input.MouseButtonEventArgs e)
-            {
-                try
-                {
-                    if (videoView.MediaPlayer != null)
-                    {
-                        ForceUnmute(videoView.MediaPlayer);
-                        UpdateAudioIndicatorOnContainer(container, audioOn: !videoView.MediaPlayer.Mute);
-                        e.Handled = true;
-                    }
-                }
-                catch { }
             }
         }
 
@@ -235,6 +187,60 @@ namespace andyScreenSaver.windows.Helpers
             catch { }
         }
 
+        public void ApplyGlobalMute(DependencyObject root, bool mute)
+        {
+            if (root == null) return;
+            void Walk(DependencyObject d)
+            {
+                int count = VisualTreeHelper.GetChildrenCount(d);
+                for (int i = 0; i < count; i++)
+                {
+                    try
+                    {
+                        var child = VisualTreeHelper.GetChild(d, i);
+                        if (child is VideoView vv && vv.MediaPlayer != null)
+                        {
+                            try
+                            {
+                                vv.MediaPlayer.Mute = mute;
+                                if (!mute && vv.MediaPlayer.Volume <= 0)
+                                {
+                                    vv.MediaPlayer.Volume = 80;
+                                }
+                                // update indicator on containing grid
+                                DependencyObject p = vv;
+                                Grid container = null;
+                                while (p != null)
+                                {
+                                    p = VisualTreeHelper.GetParent(p);
+                                    if (p is Grid g) { container = g; break; }
+                                }
+                                if (container != null)
+                                {
+                                    UpdateAudioIndicatorOnContainer(container, audioOn: !mute);
+                                }
+                            }
+                            catch { }
+                        }
+                        Walk(child);
+                    }
+                    catch (Exception ex)
+                    {
+                        //
+                    }
+                }
+                // Ensure on UI thread
+                if (root is DispatcherObject disp && !disp.Dispatcher.CheckAccess())
+                {
+                    disp.Dispatcher.Invoke(() => Walk(root));
+                }
+                else
+                {
+                    Walk(root);
+                }
+            }
+        }
+
         public void RenderSync(Border border, indexableImage image, SMEngine.CSMEngine.ImageSet s, string overlayText, bool defaultMute)
         {
             if (border == null || s == null) return;
@@ -242,7 +248,7 @@ namespace andyScreenSaver.windows.Helpers
             border.Dispatcher.Invoke(() =>
             {
                 var container = new Grid { ClipToBounds = true };
-                AttachTileClick(container);
+               // AttachTileClick(container);
 
                 if (s.IsVideo && !string.IsNullOrEmpty(s.VideoSource))
                 {
@@ -286,7 +292,6 @@ namespace andyScreenSaver.windows.Helpers
                     };
                     Panel.SetZIndex(videoView, 0);
                     container.Children.Add(videoView);
-                    AttachVideoClick(videoView, container);
 
                     // initial indicator state (Mute defaults to true)
                     UpdateAudioIndicatorOnContainer(container, audioOn: !mediaPlayer.Mute);
@@ -376,7 +381,7 @@ namespace andyScreenSaver.windows.Helpers
 
                     // Create container and video
                     var container = new Grid { ClipToBounds = true };
-                    AttachTileClick(container);
+                   // AttachTileClick(container);
 
                     var libVLC = new LibVLC();
                     var mediaPlayer = new LibVLCSharp.Shared.MediaPlayer(libVLC) { Mute = defaultMute };
@@ -396,7 +401,6 @@ namespace andyScreenSaver.windows.Helpers
                     };
                     Panel.SetZIndex(videoView, 0);
                     container.Children.Add(videoView);
-                    AttachVideoClick(videoView, container);
 
                     // initial indicator state
                     UpdateAudioIndicatorOnContainer(container, audioOn: !mediaPlayer.Mute);
