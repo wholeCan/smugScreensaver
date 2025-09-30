@@ -177,11 +177,11 @@ namespace andyScreenSaver.windows.Helpers
             {
                 if (sender is Grid container)
                 {
-                    // Find a VideoView inside and toggle its mute
+                    // Find a VideoView inside and force unmute
                     var vv = container.Children.OfType<VideoView>().FirstOrDefault();
                     if (vv?.MediaPlayer != null)
                     {
-                        ToggleMute(vv.MediaPlayer);
+                        ForceUnmute(vv.MediaPlayer);
                         UpdateAudioIndicatorOnContainer(container, audioOn: !vv.MediaPlayer.Mute);
                         e.Handled = true;
                     }
@@ -200,7 +200,7 @@ namespace andyScreenSaver.windows.Helpers
                 {
                     if (videoView.MediaPlayer != null)
                     {
-                        ToggleMute(videoView.MediaPlayer);
+                        ForceUnmute(videoView.MediaPlayer);
                         UpdateAudioIndicatorOnContainer(container, audioOn: !videoView.MediaPlayer.Mute);
                         e.Handled = true;
                     }
@@ -215,6 +215,19 @@ namespace andyScreenSaver.windows.Helpers
             {
                 mp.ToggleMute();
                 if (!mp.Mute && mp.Volume <= 0)
+                {
+                    mp.Volume = 80; // ensure audible
+                }
+            }
+            catch { }
+        }
+
+        private void ForceUnmute(LibVLCSharp.Shared.MediaPlayer mp)
+        {
+            try
+            {
+                mp.Mute = false;
+                if (mp.Volume <= 0)
                 {
                     mp.Volume = 80; // ensure audible
                 }
