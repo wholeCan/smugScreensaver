@@ -1,4 +1,4 @@
-﻿using Microsoft.Win32;  //registry.
+using Microsoft.Win32;  //registry.
 using SmugMug.NET;
 using System;
 using System.Collections.Generic;
@@ -94,68 +94,13 @@ namespace SMEngine
 
         public string getRuntimeStatsInfo(bool showMenu = true)
         {
-#if (DEBUG) //debug on, used only for showing at runtime in case I forget which version is running.
-    var debugOn = true;
-#else
-            var debugOn = false;
-#endif
-            var msg = new StringBuilder();
-            msg.AppendLine("Time: " + DateTime.Now.ToShortDateString() + ", " + DateTime.Now.ToLongTimeString());
-            msg.AppendLine("Running since " +
-                TimeBooted.ToShortDateString()
-                + " : "
-                + TimeBooted.ToShortTimeString()
-                );
-
-            msg.AppendLine("Uptime: " + DateTime.Now.Subtract(TimeBooted).ToString());
-
-            lock (ImageDictionary)
-            {
-                msg.AppendLine("Images: " + ImageDictionary.Count);
-            }
-            lock (AllAlbums)
-            {
-                msg.AppendLine("Albums: " + AllAlbums.Count);
-            }
-            msg.AppendLine("UserNameList: " + userNameListSize + ", " + string.Join(",", fetchUsersToLoad().ToList()));
-            msg.AppendLine("Images shown: " + ImageCounter);
-            msg.AppendLine("Video muted: " +  isDefaultMute().ToString());
-            msg.AppendLine("Images deduped: " + PlayedImages.Count);
-            msg.AppendLine("Queue depth: " + qSize);
-            msg.AppendLine("Image size: " + Settings.quality + " / " + fetchImageUrlSize());
-            msg.AppendLine("Screensaver mode: " + isScreensaver.ToString());
-            msg.AppendLine("Debug mode: " +  debugOn.ToString());
-            msg.AppendLine("Time between images: " + getTimeSinceLast());
-            msg.AppendLine("Exceptions raised: " + ExceptionsRaised);
-            msg.AppendLine("Reloaded albums: " + RestartCounter + " times.");
-            msg.AppendLine("Memory: " + Process.GetCurrentProcess().WorkingSet64 / (1024 * 1024));
-            msg.AppendLine("Peak memory: " + Process.GetCurrentProcess().PeakPagedMemorySize64 / (1024 * 1024));
-            msg.AppendLine("Peak virtual memory: " + Process.GetCurrentProcess().PeakVirtualMemorySize64 / (1024 * 1024));
-            msg.AppendLine("Schedule: " + Settings.startTime.ToString() + " - " + Settings.stopTime.ToString());
-            msg.AppendLine("Version: " + (Assembly.GetEntryAssembly()?.GetName().Version).ToString());
-            msg.AppendLine("Built: " + RetrieveLinkerTimestamp());
-            if (showMenu)
-            {//menu
-                msg.AppendLine("Menu:");
-                msg.AppendLine("\ts: show or hide stats");
-                msg.AppendLine("\tw: toggle window controls");
-                msg.AppendLine("\tr: reload library");
-                msg.AppendLine("\tCtrl+U: upgrade app");
-                msg.AppendLine("\tEnter: refresh all images");
-                msg.AppendLine("\tp: pause slideshow");
-                msg.AppendLine("\t<- or ->: show next photo");
-                msg.AppendLine("\tESC or Q: exit program");
-            }
-            LastImageRequested = DateTime.Now;
-            return msg.ToString().TrimEnd();
+            return StatsFormatter.Build(this, showMenu);
         }
 
-        private static DateTime RetrieveLinkerTimestamp()
+        internal DateTime RetrieveLinkerTimestamp()
         {
-
             Assembly assembly = Assembly.GetExecutingAssembly();
             AssemblyName assemblyName = assembly.GetName();
-
 
             const int PeHeaderOffset = 60;
             const int LinkerTimestampOffset = 8;
@@ -177,70 +122,15 @@ namespace SMEngine
 
         public authEnvelope getCode()
         {
-
-            var envelope = new authEnvelope();
-
-            //todo: can I get build time variables from environment?
-            // todo: look into https://docs.microsoft.com/en-us/aspnet/core/security/app-secrets?view=aspnetcore-6.0&tabs=windows
-
-            //salty tokens
-            //var CONSUMERSECRET_SALTED_KEY = "SmugMugOAuthConsumerSecret";
-            //var consumerTokenKey = "SmugMugOAuthConsumerToken";
-            try
-            {
-                //can't encrypt this, as the current authentication is per machine.
-                envelope.consumerToken = Constants.apiToken; //fetchKey(consumerTokenKey);
-                envelope.consumerSecret = Constants.apiSecret;//fetchKey(CONSUMERSECRET_SALTED_KEY);
-            }
-
-            catch (Exception ex)
-            {
-                throw new ApplicationException("invalid token, sorry you lose.");
-            }
-            try
-            {
-
-                envelope.token =
-                    Authenticator.Decrypt(
-                    ReadRegistryValue(ACCESSTOKEN1, ""), Salt
-                    );
-                envelope.tokenSecret =
-                    Authenticator.Decrypt(
-                    ReadRegistryValue(ACCESSTOKENSECRET1, ""), Salt
-                    );
-            }
-            catch (Exception ex)
-            {
-                //token is either wrong, or missing - so return empty string.
-                envelope.token = "";
-                envelope.tokenSecret = "";
-            }
-            return envelope;
+            return AuthHelper.ReadTokensFromRegistry();
         }
 
         private static SmugMugAPI AuthenticateUsingAnonymous()
         {
-            //Access OAuth keys from App.config
-            string consumerKey = null;
-            Configuration config = ConfigurationManager.OpenExeConfiguration(ConfigurationUserLevel.None);
-            var keySetting = config.AppSettings.Settings[CONSUMERTOKEN1];
-            if (keySetting != null)
-            {
-                consumerKey = keySetting.Value;
-            }
-
-            if (String.IsNullOrEmpty(consumerKey))
-            {
-                throw new ConfigurationErrorsException("The OAuth consumer token must be specified in App.config");
-            }
-
-            //Connect to SmugMug using Anonymous access
-            SmugMugAPI apiAnonymous = new(LoginType.Anonymous, new OAuthCredentials(consumerKey));
-            return apiAnonymous;
+            return AuthHelper.AuthenticateUsingAnonymous();
         }
         private static string fetchKey(string key)
         {
-            //todo: would be better if could fetch from registry
             string consumerSecret = null;
             Configuration config = ConfigurationManager.OpenExeConfiguration(ConfigurationUserLevel.None);
             var keySetting = config.AppSettings.Settings[key];
@@ -250,7 +140,6 @@ namespace SMEngine
             }
             if (String.IsNullOrEmpty(consumerSecret))
             {
-                //   throw new ConfigurationErrorsException("The OAuth consumer token secret must be specified in App.config");
                 return null;
             }
             return consumerSecret;
@@ -258,32 +147,16 @@ namespace SMEngine
 
         public static void writeAuthTokens(authEnvelope envelope)
         {
-            WriteRegistryValue(ACCESSTOKEN1, Authenticator.Encrypt(envelope.token, Salt));
-            WriteRegistryValue(ACCESSTOKENSECRET1, Authenticator.Encrypt(envelope.tokenSecret, Salt));
+            AuthHelper.WriteTokensToRegistry(envelope);
         }
         public static SmugMugAPI AuthenticateUsingOAuth(authEnvelope envelope)
         {
-
-
-            OAuthCredentials oAuthCredentials = null;
-            if (envelope.token != null && envelope.token != "")
-            {
-                oAuthCredentials = new OAuthCredentials(envelope.consumerToken, envelope.consumerSecret,
-                    envelope.token, envelope.tokenSecret);
-            }
-            else
-            {
-                return null;
-            }
-
-            //Connect to SmugMug using oAuth
-            SmugMugAPI apiOAuth = new SmugMugAPI(LoginType.OAuth, oAuthCredentials);
-            return apiOAuth;
+            return AuthHelper.AuthenticateUsingOAuth(envelope);
         }
 
         public authEnvelope AuthenticateUsingOauthNewConnection_part1(authEnvelope envelope)
         {
-            var tokens = GenerateOAuthAccessToken_UI_PART1(envelope.consumerToken, envelope.consumerSecret);
+            var tokens = AuthHelper.GenerateOAuthAccessToken_UI_PART1(envelope.consumerToken, envelope.consumerSecret);
             tokens.consumerToken = envelope.consumerToken;
             tokens.consumerSecret = envelope.consumerSecret;
 
@@ -291,9 +164,7 @@ namespace SMEngine
         }
         public bool AuthenticateUsingOauthNewConnection_part2(authEnvelope tokens, string six)
         {
-            //attach debugger here?
-
-            var token = GenerateOAuthAccessToken_UI_PART2(tokens, six);
+            var token = AuthHelper.GenerateOAuthAccessToken_UI_PART2(tokens, six);
 
             tokens.token = token.AccessToken;
             tokens.tokenSecret = token.AccessTokenSecret;
@@ -311,129 +182,10 @@ namespace SMEngine
         }
 
         //fire off the web request to authenticate
-        private static authEnvelope GenerateOAuthAccessToken_UI_PART1(string consumerKey, string secret)
-        {
-            string baseUrl = "http://api.smugmug.com";
-            string requestUrl = "/services/oauth/1.0a/getRequestToken";
-            string authorizeUrl = "/services/oauth/1.0a/authorize";
-            string requestToken = null;
-            string requestTokenSecret = null;
-
-            #region Request Token
-            var gRequest = OAuth.OAuthRequest.ForRequestToken(consumerKey, secret, "oob");
-
-            gRequest.RequestUrl = baseUrl + requestUrl;
-            string auth = gRequest.GetAuthorizationHeader();
-
-            HttpWebRequest request = (HttpWebRequest)WebRequest.Create(gRequest.RequestUrl);
-            request.Headers.Add("Authorization", auth);
-            HttpWebResponse response = (HttpWebResponse)request.GetResponse();
-            Stream responseStream = response.GetResponseStream();
-            StreamReader readStream = new StreamReader(responseStream, System.Text.Encoding.UTF8);
-            string result = readStream.ReadToEnd();
-            foreach (string token in result.Split('&'))
-            {
-                string[] splitToken = token.Split('=');
-
-                switch (splitToken[0])
-                {
-                    case "oauth_token":
-                        requestToken = splitToken[1];
-                        break;
-                    case "oauth_token_secret":
-                        requestTokenSecret = splitToken[1];
-                        break;
-                    default:
-                        break;
-                }
-            }
-            response.Close();
-            #endregion
-
-            #region Authorization
-            string authorizationUrl = String.Format("{0}{1}?mode=auth_req_token&oauth_token={2}&Access=Full&Permissions=Modify", baseUrl, authorizeUrl, requestToken);
-            var ps = new ProcessStartInfo(authorizationUrl)
-            {
-                UseShellExecute = true,
-                Verb = "open"
-            };
-            try
-            {
-                System.Diagnostics.Process.Start(ps);
-            }
-            catch (System.ComponentModel.Win32Exception noBrowser)
-            {
-                if (noBrowser.ErrorCode == -2147467259)
-                {
-                    throw new Exception("no browser");
-                    //   MessageBox.Show(noBrowser.Message);
-                }
-            }
-            catch (Exception e)
-            {
-
-                logMsg("exception: " + e.Message);
-                throw e;
-            }
-            #endregion
-
-
-            return new authEnvelope("", "", requestToken, requestTokenSecret);
-        }
+        // moved to AuthHelper
 
         //assuming part 1 fired, input the sixDigitCode - and complete authentication
-        private static OAuthCredentials GenerateOAuthAccessToken_UI_PART2(authEnvelope envelope, string sixDigitCode)
-        {
-            string baseUrl = "http://api.smugmug.com";
-            string accessUrl = "/services/oauth/1.0a/getAccessToken";
-
-
-            string verifier = sixDigitCode;
-
-
-            #region Access Token
-            var gRequest = OAuth.OAuthRequest.ForAccessToken(
-                envelope.consumerToken,
-                envelope.consumerSecret,
-                envelope.token,
-                envelope.tokenSecret,
-                verifier);
-            gRequest.RequestUrl = baseUrl + accessUrl;
-            var auth = gRequest.GetAuthorizationHeader();
-            var request = (HttpWebRequest)WebRequest.Create(gRequest.RequestUrl);
-
-            //todo: add exception here if auth fails.
-            request.Headers.Add("Authorization", auth);
-            var response = (HttpWebResponse)request.GetResponse();
-            var responseStream = response.GetResponseStream();
-            var readStream = new StreamReader(responseStream, System.Text.Encoding.UTF8);
-            var result = readStream.ReadToEnd();
-            foreach (string token in result.Split('&'))
-            {
-                string[] splitToken = token.Split('=');
-
-                switch (splitToken[0])
-                {
-                    case "oauth_token":
-                        envelope.token = splitToken[1];
-                        break;
-                    case "oauth_token_secret":
-                        envelope.tokenSecret = splitToken[1];
-                        break;
-                    default:
-                        break;
-                }
-            }
-            response.Close();
-            #endregion
-
-            return new OAuthCredentials(
-                envelope.consumerToken,
-                envelope.consumerSecret,
-                envelope.token,
-                envelope.tokenSecret
-                );
-        }
+        // moved to AuthHelper
 #endregion
 
         private loginInfo _login;
@@ -493,25 +245,7 @@ namespace SMEngine
                 return false;
             try
             {
-                // Setting
-                string subKey = "SOFTWARE\\andysScreensaver\\login";
-                using (RegistryKey rk = RegistryKey.OpenBaseKey(RegistryHive.CurrentUser, RegistryView.Default))
-                {
-                    using (var sk1 = rk.CreateSubKey(subKey))
-                    {
-                        // I have to use CreateSubKey 
-
-                        // (create or open it if already exits), 
-                        // 'cause OpenSubKey open a subKey as read-only
-
-                        // Save the value
-                        sk1.SetValue(KeyName.ToUpper(), Value);
-
-                        sk1.Close();
-                        rk.Close();
-                        return true;
-                    }
-                }
+                return RegistryHelper.WriteString(KeyName, Value.ToString());
             }
             catch (Exception e)
             {
@@ -522,40 +256,7 @@ namespace SMEngine
         }
         private static string ReadRegistryValue(string KeyName, string defValue)
         {
-            // Opening the registry key
-            var subKey = "SOFTWARE\\andysScreensaver\\login";
-            using (var rk = RegistryKey.OpenBaseKey(RegistryHive.CurrentUser, RegistryView.Default))
-            {
-                // Open a subKey as read-only
-
-                using (var sk1 = rk.OpenSubKey(subKey))
-                {
-                    // If the RegistrySubKey doesn't exist -> (null)
-                    if (sk1 == null)
-                    {
-                        return defValue;
-                    }
-                    else
-                    {
-                        try
-                        {
-                            // If the RegistryKey exists I get its value
-                            // or null is returned.
-                            return (string)sk1.GetValue(KeyName.ToUpper());
-                        }
-                        catch (Exception e)
-                        {
-                            logMsg(e.Message);
-                            return null;
-                        }
-                        finally
-                        {
-                            sk1.Close();
-                            rk.Close();
-                        }
-                    }
-                }
-            }
+            return RegistryHelper.ReadString(KeyName, defValue);
         }
 
         private static int salt = 0xbad7eed;
@@ -670,28 +371,8 @@ namespace SMEngine
 
         public string[] getCategoriesAsync()
         {
-            var categories = new List<String>();
-
-            GettingCategories = true;
-            foreach (var album in AllAlbums)
-            {
-                if (!categories.Contains(getFolder(album)))
-                {
-                    categories.Add(getFolder(album));
-                }
-            }
-            GettingCategories = false;
-            return categories.ToArray();
-            if (User != null)
-            {
-                var myCats = getCategories();
-                foreach (var c in myCats)
-                {
-                    categories.Add(c);
-                }
-            }
-            GettingCategories = false;
-            return categories.ToArray();
+            // Return unique category names based on currently loaded albums
+            return getCategories();
         }
 
         bool gettingCategories = false;
@@ -699,11 +380,26 @@ namespace SMEngine
         public string[] getCategories()
         {
             var categories = new List<string>();
-            lock (this)
+            try
             {
                 GettingCategories = true;
-                throw new NotImplementedException();
+                lock (AllAlbums)
+                {
+                    foreach (var album in AllAlbums)
+                    {
+                        var folder = getFolder(album);
+                        if (!string.IsNullOrEmpty(folder) && !categories.Contains(folder))
+                        {
+                            categories.Add(folder);
+                        }
+                    }
+                }
             }
+            finally
+            {
+                GettingCategories = false;
+            }
+            return categories.ToArray();
         }
 
 
