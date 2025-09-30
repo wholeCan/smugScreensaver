@@ -120,6 +120,20 @@ namespace andyScreenSaver.windows.Helpers
                         HorizontalAlignment = HorizontalAlignment.Center,
                         VerticalAlignment = VerticalAlignment.Center
                     };
+                    // Toggle mute on click
+                    videoView.MouseLeftButtonUp += (s2, e2) =>
+                    {
+                        try
+                        {
+                            if (videoView.MediaPlayer != null)
+                            {
+                                videoView.MediaPlayer.Mute = !videoView.MediaPlayer.Mute;
+                                _log($"video mute toggled to {videoView.MediaPlayer.Mute}");
+                            }
+                        }
+                        catch { }
+                        e2.Handled = true;
+                    };
                     mediaPlayer.Play(new Media(libVLC, s.VideoSource, FromType.FromLocation));
                     mediaPlayer.EncounteredError += (sender, e) =>
                     {
@@ -221,6 +235,20 @@ namespace andyScreenSaver.windows.Helpers
                         Height = Math.Min(border.ActualHeight > 0 ? border.ActualHeight : _calcHeight(), _calcHeight()),
                         HorizontalAlignment = HorizontalAlignment.Center,
                         VerticalAlignment = VerticalAlignment.Center
+                    };
+                    // Toggle mute on click
+                    videoView.MouseLeftButtonUp += (s2, e2) =>
+                    {
+                        try
+                        {
+                            if (videoView.MediaPlayer != null)
+                            {
+                                videoView.MediaPlayer.Mute = !videoView.MediaPlayer.Mute;
+                                _log($"video mute toggled to {videoView.MediaPlayer.Mute}");
+                            }
+                        }
+                        catch { }
+                        e2.Handled = true;
                     };
                     mediaPlayer.Play(new Media(libVLC, s.VideoSource, FromType.FromLocation));
                     mediaPlayer.EncounteredError += (sender, e) =>
