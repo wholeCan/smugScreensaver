@@ -43,3 +43,8 @@ Pre-built installer: [LINK](nsisInstaller/andysScreensaverInstaller_small.exe)
     UI-thread-->cycle[cycle through images]
     cycle-->getImageFromEngine[get image from engine]
 ```
+
+
+Notes: 
+- with addition of video, real-time exclusion must be added.
+- vlc libs are currently manually copied in

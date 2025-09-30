@@ -712,7 +712,10 @@ namespace andyScreenSaver
                 await border.Dispatcher.InvokeAsync(() =>
                 {
                     var libVLC = new LibVLC();
-                    var mediaPlayer = new LibVLCSharp.Shared.MediaPlayer(libVLC);
+                    var mediaPlayer = new LibVLCSharp.Shared.MediaPlayer(libVLC)
+                    {
+                        Mute = true
+                    };
                     var videoView = new VideoView
                     {
                         MediaPlayer = mediaPlayer,

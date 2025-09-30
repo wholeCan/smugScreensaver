@@ -1265,7 +1265,7 @@ namespace SMEngine
                             {
                                 isVideo = true;
                                 // Use highest quality direct video URL available
-                               /* if (!string.IsNullOrEmpty(imageSize.VideoUrl1920))
+                                if (!string.IsNullOrEmpty(imageSize.VideoUrl1920))
                                 {
                                     videoSource = imageSize.VideoUrl1920;
                                 }
@@ -1278,7 +1278,7 @@ namespace SMEngine
                                 {
                                     videoSource = imageSize.VideoUrl960;
                                 }
-                                else */
+                                else 
                                 if (!string.IsNullOrEmpty(imageSize.VideoUrl640))  //start smaller?
                                 {
                                     videoSource = imageSize.VideoUrl640;
@@ -1297,6 +1297,7 @@ namespace SMEngine
                                 }
                                 else
                                 {
+                                    isVideo = false;
                                     videoSource = imageUrl;//todo, in this case, we should probably default to just show an image.
                                 }
                             }
