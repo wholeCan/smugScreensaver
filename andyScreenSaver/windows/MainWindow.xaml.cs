@@ -546,17 +546,17 @@ namespace andyScreenSaver
         private void ShowStats()
         {
            
-                        {
-                            //todo: add switch here controlled by hotkey
-                            if (StatsEnabled)
-                            {
-                                ShowMsg(Engine.getRuntimeStatsInfo(), true);
-                            }
-                            else
-                            {
-                                ShowMsg(null, false);
-                            }
-                        }
+            {
+                //todo: add switch here controlled by hotkey
+                if (StatsEnabled)
+                {
+                    ShowMsg(Engine.getRuntimeStatsInfo(), true);
+                }
+                else
+                {
+                    ShowMsg(null, false);
+                }
+            }
         }
 
         private void SetImage(ref bool run, ref ImageSet s)
@@ -620,20 +620,7 @@ namespace andyScreenSaver
 
             var border = GetGridBorder(randWidth, randHeight);
             var image = border.Child as indexableImage;
-            /*if (image == null)
-            { //wemay only want to do this if not playing.
-                // If the child is not an indexableImage, it may be a VideoView or something else.
-                // Remove the old child and create a new indexableImage if needed.
-                if (border.Child is IDisposable disposable)
-                {
-                    disposable.Dispose();
-                }
-                border.Child = null;
 
-                // Create a new indexableImage for image display
-                image = new indexableImage();
-                border.Child = image;
-            }*/
 
             UpdateImageOrVideo(image, border, s);
 
@@ -662,10 +649,12 @@ namespace andyScreenSaver
 
         int videoCounter = 0;
         int photoCounter = 0;
+        /**9/2025 - working to add video support
+         * */
         private async Task UpdateImageOrVideo(indexableImage image, Border border, SMEngine.CSMEngine.ImageSet s)
         {
             if (image == null)
-            { //wemay only want to do this if not playing.
+            { //we may only want to do this if not playing.
               // If the child is not an indexableImage, it may be a VideoView or something else.
               // Remove the old child and create a new indexableImage if needed.
 
@@ -673,7 +662,7 @@ namespace andyScreenSaver
                 {
                     if (border.Child is VideoView)
                     {
-                        var allowToFinish = false;
+                        var allowToFinish = true;
                         if (disposable is VideoView vv && vv.MediaPlayer != null && vv.MediaPlayer.IsPlaying && allowToFinish)
                         {
                             Debug.WriteLine($"skipping video, still playing");
@@ -681,14 +670,17 @@ namespace andyScreenSaver
                         }
                         else
                         {
-                            disposable.Dispose();
-                            border.Child = null;
+
+                            if (border.Child is VideoView videoView && videoView.MediaPlayer != null)
+                            {
+                                videoView.MediaPlayer.Stop();
+                                videoView.MediaPlayer.Dispose();
+                                videoView.Dispose();
+                                border.Child = null;
+                            }
                         }
                     }
                 }
-                
-
-               
 
                 // Create a new indexableImage for image display
                 image = new indexableImage();
@@ -699,110 +691,58 @@ namespace andyScreenSaver
                 await border.Dispatcher.InvokeAsync(() =>
                 {//always stop old media if present
                     Debug.WriteLine($"stopping old media");
-                    /*   if (border.Child is MediaElement oldMedia)
-                       {
-                           oldMedia.Stop();
-                           border.Child = null;
-                       }*/
                     if (border.Child is IDisposable disposable && border.Child is VideoView) //what if we never do this?
                     {//if an image, do nothing
                         disposable.Dispose();
-                        
                     }
                     border.Child = null;
                 });
             }
-            if (image != null)
-            {
+
                 
-                image.IsVideo = s.IsVideo;
-                if (s.IsVideo)
-                { image.VideoSource = s.VideoSource; }
-                else { image.VideoSource = null; }
+            image.IsVideo = s.IsVideo;
+            if (s.IsVideo)
+            { image.VideoSource = s.VideoSource; }
+            else { image.VideoSource = null; }
 
-                /*   
-                        if (border.Child is IDisposable disposable) disposable.Dispose();
-                        border.Child = null;
-                    });*/
 
-                if (image.IsVideo && !string.IsNullOrEmpty(image.VideoSource))
+            if (image.IsVideo && !string.IsNullOrEmpty(image.VideoSource))
+            {
+                videoCounter++;
+                await border.Dispatcher.InvokeAsync(() =>
                 {
-                    videoCounter++;
-                    // string tempFile = await Task.Run(() => DownloadVideoToTempFile(image.VideoSource));
-                    await border.Dispatcher.InvokeAsync(() =>
+                    var libVLC = new LibVLC();
+                    var mediaPlayer = new LibVLCSharp.Shared.MediaPlayer(libVLC);
+                    var videoView = new VideoView
                     {
-                        // Remove old child
-                      //  if (border.Child is IDisposable disposable) disposable.Dispose();
-                      //  border.Child = null;
-
-                        var libVLC = new LibVLC();
-                        var mediaPlayer = new LibVLCSharp.Shared.MediaPlayer(libVLC);
-                        var videoView = new VideoView
-                        {
-                            MediaPlayer = mediaPlayer,
-                            Width = Math.Min(calculatedImageWidth(), image.ActualWidth),
-                            Height = Math.Min(image.ActualHeight, calculateImageHeight()),
-                            HorizontalAlignment = HorizontalAlignment.Center,
-                            VerticalAlignment = VerticalAlignment.Center
-                        };
-                        mediaPlayer.Play(new Media(libVLC, /*tempFile*/ image.VideoSource, /*FromType.FromPath*/FromType.FromLocation));
-                        mediaPlayer.EndReached += (sender, args) =>
-                        {
-                            // Dispatcher.Invoke(() => deleteTempFile(tempFile));  //dont delete if using url
-                        };
-                        border.Child = videoView;
-                    });
-                }
-                else
-                {
-                    photoCounter++;
-                    Debug.WriteLine($"photo counter: {photoCounter}");
-
-                    image.MaxHeight = MyHeight / GridHeight - (BorderWidth / GridHeight);
-                    image.Width = MyWidth / GridWidth - (BorderWidth / GridWidth);
-                    image.Source = Bitmap2BitmapImage(s.Bitmap);
-                }
+                        MediaPlayer = mediaPlayer,
+                        Width = Math.Min(calculatedImageWidth(), image.ActualWidth),
+                        Height = Math.Min(image.ActualHeight, calculateImageHeight()),
+                        HorizontalAlignment = HorizontalAlignment.Center,
+                        VerticalAlignment = VerticalAlignment.Center
+                    };
+                    mediaPlayer.Play(new Media(libVLC,  image.VideoSource, FromType.FromLocation));
+                    mediaPlayer.EncounteredError += (s,e) =>
+                    {
+                        LogMsg($"Error encountered playing video {image.VideoSource} {e.ToString()}");
+                        mediaPlayer.Stop();
+                    };
+                    border.Child = videoView;
+                });
             }
             else
             {
-                Debug.WriteLine($"image is null");
+                photoCounter++;
+                Debug.WriteLine($"photo counter: {photoCounter}");
+
+                image.MaxHeight = MyHeight / GridHeight - (BorderWidth / GridHeight);
+                image.Width = MyWidth / GridWidth - (BorderWidth / GridWidth);
+                image.Source = Bitmap2BitmapImage(s.Bitmap);
             }
+            
+
         }
 
-
-
-        private void deleteTempFile(string filePath)
-        {
-            try
-            {
-                if (File.Exists(filePath))
-                {
-                    File.Delete(filePath);
-                    Debug.WriteLine($"Deleted temp file: {filePath}");
-                }
-            }
-            catch (Exception ex)
-            {
-                Debug.WriteLine($"Error deleting temp file {filePath}: {ex.Message}");
-            }
-        }
-
-        private string DownloadVideoToTempFile(string videoUrl)
-        {
-            string tempFile = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString() + ".mp4");
-            using (var client = new System.Net.WebClient())
-            {
-                client.DownloadFile(videoUrl, tempFile);
-            }
-            return tempFile;
-        }
-
-        // Handler method for MediaFailed
-        private void MediaElement_MediaFailed(object sender, ExceptionRoutedEventArgs e)
-        {
-            Debug.WriteLine($"MediaElement failed: {e.ErrorException?.Message}");
-            //MessageBox.Show($"Video playback error: {e.ErrorException?.Message}", "Media Error", MessageBoxButton.OK, MessageBoxImage.Error);
-        }
 
         private void CacheImageIfFirstTime(Bitmap targetBitmapImage, int randWidth, int randHeight)
         {
