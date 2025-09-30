@@ -290,6 +290,16 @@
       <SubType>Code</SubType>
     </Compile>
     <Compile Include="listManager.cs" />
+    <Compile Include="windows\Helpers\AppLogger.cs" />
+    <Compile Include="windows\Helpers\AsyncManualResetEvent.cs" />
+    <Compile Include="windows\Helpers\CaptionBuilder.cs" />
+    <Compile Include="windows\Helpers\ImageUtils.cs" />
+    <Compile Include="windows\Helpers\InitialImageProvider.cs" />
+    <Compile Include="windows\Helpers\LayoutHelper.cs" />
+    <Compile Include="windows\Helpers\TileGridBuilder.cs" />
+    <Compile Include="windows\Helpers\TilePlacementService.cs" />
+    <Compile Include="windows\Helpers\TileRenderer.cs" />
+    <Compile Include="windows\Helpers\UiMessageHelper.cs" />
     <Compile Include="windows\MainWindow.xaml.cs">
       <DependentUpon>MainWindow.xaml</DependentUpon>
       <SubType>Code</SubType>
