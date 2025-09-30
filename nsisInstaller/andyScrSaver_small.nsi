@@ -54,6 +54,9 @@ Section "Install Application" ;No components page, name is not important
 	File /r "C:\Users\aholk\dev\smugScreensaver\andyScreenSaver\bin\Release\*.config"
 	File /r "C:\Users\aholk\dev\smugScreensaver\andyScreenSaver\bin\Release\*.xml"
 
+	File /r "C:\Users\aholk\dev\smugScreensaver\andyScreenSaver\bin\Release\libvlc\*.dll"
+	File /r "C:\Users\aholk\dev\smugScreensaver\andyScreenSaver\bin\Release\libvlc\plugins\*"
+
 	; include Screensaver starter files
 	File /r "C:\Users\aholk\dev\smugScreensaver\ScreensaverStarter\bin\Release\net8.0-windows\*.dll"
 	File /r "C:\Users\aholk\dev\smugScreensaver\ScreensaverStarter\bin\Release\net8.0-windows\*.json"

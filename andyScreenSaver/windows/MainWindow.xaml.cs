@@ -132,7 +132,8 @@ namespace andyScreenSaver
             InitializeComponent();
             try
             {
-                Core.Initialize(); // LibVLCSharp initialization
+                Core.Initialize(); // LibVLCSharp initialization 
+                                   //only needed for show, not config.
             }
             catch (Exception ex)
             {
