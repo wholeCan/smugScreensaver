@@ -10,7 +10,7 @@
 *.userosscache
 *.sln.docstates
 *.exe
-
+SMEngine/Constants.cs
 # User-specific files (MonoDevelop/Xamarin Studio)
 *.userprefs
 
