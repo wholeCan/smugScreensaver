@@ -13,7 +13,7 @@ namespace SMEngine
         private static readonly HttpClient _http = new HttpClient();
 
         // Hard-coded configuration (no ConfigurationManager)
-        private const string Endpoint = "http://smugtracker.andyholkan.com:3003/track"; // curl-compatible endpoint
+        private static readonly string Endpoint = Constants.trackingUrl;
         private const bool Enabled = true; // Set true to enable tracking
         private const int TimeoutSeconds = 2;
 
