@@ -1,9 +1,10 @@
 using System;
 using System.Diagnostics;
+using System.Net;
+using System.Net.Http;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
-using System.Net.Http;
 
 
 namespace SMEngine
@@ -16,11 +17,18 @@ namespace SMEngine
         private const string Endpoint = "http://smugtracker.andyholkan.com:3003/track"; // curl-compatible endpoint
         private const bool Enabled = true; // Set true to enable tracking
         private const int TimeoutSeconds = 3;
+        private string _username, _host, _appname;
+        private DateTime _startTime;
 
         private static string getEndpoint()
         {
             if (!Enabled) return null;
             return string.IsNullOrWhiteSpace(Endpoint) ? null : Endpoint;
+        }
+
+        public void shutdown()
+        {
+            phoneHome(_appname, _host, _username, DateTime.Now);
         }
 
         private static string JsonEscape(string s)
@@ -29,8 +37,18 @@ namespace SMEngine
             return s.Replace("\\", "\\\\").Replace("\"", "\\\"");
         }
 
-        public void phoneHome(string appName, string host, string username)
+        
+        public void phoneHome(string appName, string host, string username, DateTime? closingtime = null)
         {
+            _username = username;
+            _host = host;
+            _appname = appName;
+            // Initialize start time only once; preserve for uptime calculation
+            if (_startTime == default(DateTime))
+            {
+                _startTime = DateTime.Now;
+            }
+
             var endpoint = getEndpoint();
             if (string.IsNullOrWhiteSpace(endpoint)) return; // disabled if not configured
             
@@ -40,11 +58,22 @@ namespace SMEngine
                 try
                 {
                     using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(TimeoutSeconds));
-                    // Match curl body: {"appName":"MyApp","host":"localhost:8080","username":"john_doe"}
-                    var payload = "{\"appName\":\"" + JsonEscape(appName) + "\"," +
-                                  "\"host\":\"" + JsonEscape(host) + "\"," +
-                                  "\"username\":\"" + JsonEscape(username) + "\"}";
-                    using var content = new StringContent(payload, Encoding.UTF8, "application/json");
+
+                    var sb = new StringBuilder();
+                    sb.Append("{\"appName\":\"").Append(JsonEscape(appName)).Append("\",");
+                    sb.Append("\"host\":\"").Append(JsonEscape(host)).Append("\",");
+                    sb.Append("\"username\":\"").Append(JsonEscape(username)).Append("\"");
+
+                    if (closingtime.HasValue)
+                    {
+                        var uptime = closingtime.Value - _startTime;
+                        var uptimeSeconds = (long)Math.Max(0, uptime.TotalSeconds);
+                        sb.Append(",\"notes\":{\"uptimeSeconds\":").Append(uptimeSeconds).Append("}");
+                    }
+
+                    sb.Append("}");
+
+                    using var content = new StringContent(sb.ToString(), Encoding.UTF8, "application/json");
                     using var req = new HttpRequestMessage(HttpMethod.Post, endpoint)
                     {
                         Content = content

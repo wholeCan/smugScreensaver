@@ -532,6 +532,7 @@ namespace andyScreenSaver
         {
             MyCursor = Cursor;
             StopImageLoop();
+            Engine.shutdown();
             Application.Current.Shutdown();
         }
 

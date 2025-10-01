@@ -485,6 +485,12 @@ namespace SMEngine
             }
         }
 
+        public void shutdown()
+        {
+            tracker.shutdown();
+        }
+        private Tracker tracker = new Tracker();
+
         private async void loadAlbums(string userNickName = null)
         {
             try
@@ -499,7 +505,7 @@ namespace SMEngine
                     
                 }
 
-                var tracker = new Tracker();
+                //var tracker = new Tracker();
                 tracker.phoneHome("andyScreenSaver", Dns.GetHostName(), User.NickName);
 
                 var albums = await Api.GetAlbums(User, Debug_limit);
