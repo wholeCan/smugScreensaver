@@ -55,7 +55,17 @@ namespace SMEngine
             return s.Replace("\\", "\\\\").Replace("\"", "\\\"");
         }
 
-        public void phoneHome(TrackerDetails details)
+        public void setup(TrackerDetails details)
+        {
+            if (details == null) return;
+
+            // Cache for shutdown and initialize session start
+            _username = details.Username;
+            _host = details.Host;
+            _appname = details.AppName;
+            _startTime = DateTime.Now;
+        }
+        private void phoneHome(TrackerDetails details)
         {
             if (details == null) return;
 
