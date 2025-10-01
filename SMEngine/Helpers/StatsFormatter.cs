@@ -1,6 +1,7 @@
 using System;
 using System.Reflection;
 using System.Text;
+using System.Linq;
 
 namespace SMEngine
 {
@@ -25,7 +26,8 @@ namespace SMEngine
 
             lock (engine.ImageDictionary)
             {
-                msg.AppendLine("Images: " + engine.ImageDictionary.Count);
+                msg.AppendLine("Images: " + engine.ImageDictionary.Values.Count(v => v != null && !v.IsVideo));
+                msg.AppendLine("Videos: " + engine.ImageDictionary.Values.Count(v => v != null && v.IsVideo));
             }
             lock (CSMEngine.AllAlbums)
             {

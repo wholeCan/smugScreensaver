@@ -471,6 +471,7 @@ namespace SMEngine
                 Loggedin = false;
                 if (Api != null) return true;
                 Api = AuthenticateUsingOAuth(envelope);
+               
                 if (Api == null)
                     return false;
                 Loggedin = true; // used for thread control.
