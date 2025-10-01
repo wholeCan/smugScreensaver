@@ -12,8 +12,8 @@
  *  2/26/2022: major refactor of smEngine and everything else to upgrade to smugmug 2.0 api
  * **/
 
-//using Quartz;
-//using Quartz.Impl;
+using andyScreenSaver.windows.Helpers;
+using LibVLCSharp.Shared;
 using SMEngine;
 using System;
 using System.Configuration;
@@ -21,7 +21,6 @@ using System.Diagnostics;
 using System.Drawing;
 using System.Drawing.Imaging;
 using System.IO;
-using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Windows;
@@ -30,6 +29,7 @@ using System.Windows.Input;
 using System.Windows.Media.Imaging;
 using System.Windows.Media.Media3D;
 using static SMEngine.CSMEngine;
+using System.Windows.Media;
 
 
 #nullable enable
@@ -57,6 +57,16 @@ namespace andyScreenSaver
         int gridWidth = 5;  //these are replaced by setting menu.
         int gridHeight = 4;
         int borderWidth = 5;//see config file for setting.
+
+        private LayoutHelper _layoutHelper;
+        private TilePlacementService _tilePlacement;
+        private TileRenderer _tileRenderer;
+
+        // Async loop state (Option A)
+        private CancellationTokenSource? _imageLoopCts;
+        private Task? _imageLoopTask;
+        private AsyncManualResetEvent _pauseGate = new AsyncManualResetEvent(initialState: true);
+
         public void disableActions()
         {
             ScreensaverModeDisabled = true;
@@ -68,26 +78,7 @@ namespace andyScreenSaver
 
         private BitmapImage? Bitmap2BitmapImage(System.Drawing.Bitmap bitmap)
         {
-            BitmapImage? bitmapImage = null;
-            try
-            {
-                var memory = new MemoryStream();
-                var b = new Bitmap(bitmap);
-                b.Save(memory, ImageFormat.Png);
-                memory.Position = 0;
-                memory.Seek(0, SeekOrigin.Begin);
-                bitmapImage = new BitmapImage();
-                bitmapImage.BeginInit();
-                bitmapImage.StreamSource = memory;
-                bitmapImage.CacheOption = BitmapCacheOption.OnLoad;
-                bitmapImage.EndInit();
-                memory.Close();
-            }
-            catch (Exception ex)
-            {
-                LogError(ex, ex.Message);
-            }
-            return bitmapImage;
+            try { return ImageUtils.BitmapToBitmapImage(bitmap); } catch (Exception ex) { LogError(ex, ex.Message); return null; }
         }
 
         private void HideSetup()
@@ -100,259 +91,9 @@ namespace andyScreenSaver
         private DateTime lastUpdate = DateTime.Now;
 
         private listManager lm;
-        Color InvertMeAColour(Color ColourToInvert)
-        {
-            const int RGBMAX = 255;
-            return Color.FromArgb(RGBMAX - ColourToInvert.R,
-              RGBMAX - ColourToInvert.G, RGBMAX - ColourToInvert.B);
-        }
-
-        static Color GetAverageColor(Bitmap bitmap, Rectangle region)
-        {
-
-            int totalRed = 0;
-            int totalGreen = 0;
-            int totalBlue = 0;
-
-            int totalPixels = 0;
-
-            for (int y = region.Top; y < region.Bottom; y++)
-            {
-                for (int x = region.Left; x < region.Right; x++)
-                {
-                    Color pixelColor = bitmap.GetPixel(x, y);
-
-                    totalRed += pixelColor.R;
-                    totalGreen += pixelColor.G;
-                    totalBlue += pixelColor.B;
-
-                    totalPixels++;
-                }
-            }
-            if (totalPixels <= 0)
-            {// escape div-0
-                return Color.Black;
-            }
-            // Calculate average color components
-            int averageRed = totalRed / totalPixels;
-            int averageGreen = totalGreen / totalPixels;
-            int averageBlue = totalBlue / totalPixels;
-
-            return Color.FromArgb(averageRed, averageGreen, averageBlue);
-        }
-
-        private Color GetAverageColor(Bitmap bitmapImage)
-        {
-            var numberOfRows = 12;  //upper 12th
-            var numberColumns = 3;  //left 3rd
-            Rectangle topLeftQuadrant = new Rectangle(0, 0, bitmapImage.Width / numberColumns, bitmapImage.Height / numberOfRows);
-            Color averageColor = GetAverageColor(bitmapImage, topLeftQuadrant);
-            if (IsColorDark(averageColor))
-            {
-                return Color.White;
-            }
-            else
-            {
-                return Color.Black;
-            }
-
-        }
-
-        static bool IsColorDark(Color color)
-        {
-            //Debug.WriteLine("Color {0} {1} {2}", color.R.ToString("X2"), color.G.ToString("X2"), color.B.ToString("X2"));
-            // Calculate perceived brightness using Y component in YUV color space
-            double brightness = (0.299 * color.R + 0.587 * color.G + 0.114 * color.B) / 255;
-
-            // You can adjust this threshold as needed
-           double brightnessThreshold = 0.7;  //ANDY, higher number means more white.
-
-            // Check if the brightness is below the threshold to determine if it's dark
-            return brightness < brightnessThreshold;
-        }
-        private Color GetAverageColorOld(Bitmap tmp)
-        {
-            try
-            {
-                var bm = new Bitmap(tmp);
-                if (bm.Width == 0 || bm.Height == 0)
-                {
-                    //frequent error seen at run time.
-                    return Color.Black;
-                }
-                var srcData = bm.LockBits(
-                        new Rectangle(0, 0, bm.Width, bm.Height),
-                        ImageLockMode.ReadOnly,
-                        PixelFormat.Format32bppArgb
-                    );
-
-                var stride = srcData.Stride;
-
-                var Scan0 = srcData.Scan0;
-
-                var totals = new long[] { 0, 0, 0 };
-
-                var width = bm.Width;
-                var height = bm.Height;
-
-                unsafe
-                {
-                    byte* p = (byte*)(void*)Scan0;
-
-                    //this logic is probably not really relevant since  I switchted to cropping the image.  leaving it in because it works ok.
-
-
-                    for (int y = 0; y < height / 3; y++)  //note, dividing by two, because i want the top left region.
-                    {
-                        for (int x = 0; x < width / 2; x++)  //note, dividing by two, because i want the top left region.
-                        {
-                            for (int color = 0; color < 3; color++)
-                            {
-                                int idx = (y * stride) + x * 4 + color;
-
-                                totals[color] += p[idx];
-                            }
-                        }
-                    }
-                }
-
-
-                var avgB = (int)totals[0] / (width * height);
-                var avgG = (int)totals[1] / (width * height);
-                var avgR = (int)totals[2] / (width * height);
-
-                var myColor = Color.FromArgb(avgR, avgB, avgG);
-                var measuredColor = ((float)avgR * 0.299 + (float)avgG * 0.587 + (float)avgB * 0.114);
-                if (measuredColor > 35.0)  //35 works pretty ok.
-                    return Color.Black;
-                else
-                    return Color.White;
-            }
-            catch (Exception ex)
-            {
-                LogError(ex, ex.Message);
-                return Color.Black;
-            }
-        }
-
-        private Bitmap? GetupperLeftCornerImage(Bitmap original)
-        {
-            try
-            {
-                Bitmap bmpImage = new Bitmap(original);
-                var cropArea = new Rectangle(0, 0, (int)original.Height / 3, (int)original.Width / 3);
-                return bmpImage.Clone(cropArea, bmpImage.PixelFormat);
-            }
-            catch (Exception)
-            {   //known out of memory exception, just pass over it.
-                return null;
-            }
-
-        }
-
-        private int CalculateFontSize(int imageHeight, double xPercentage)
-        {
-            // Formula: FontSize = ImageHeight * (X / 100)
-            double fontSize = imageHeight * (xPercentage / 100);
-
-            // Round to the nearest integer
-            return (int)Math.Round(fontSize);
-        }
-        private int GetFontSize(Bitmap image, int configSize)
-        {
-            var minimumFontSize = configSize+7;
-            var maxFontSize = configSize+19;
-            var percentOfHeight = 3;
-            var imageHeight = calculateImageHeight(); //image.Height;
-            var calculatedFont = CalculateFontSize(Convert.ToInt32(imageHeight), percentOfHeight);
-            var baseValue = Math.Max(minimumFontSize, calculatedFont);
-            var midValue = Math.Min(baseValue, maxFontSize);
-            Debug.WriteLine("*** font size: " + midValue);
-            return midValue;
-        }
-        private int GetFontSizeOld(Bitmap image, int configSize)
-        {
-            int fontSize = configSize;
-            if (image.HorizontalResolution < 150)
-            {
-                fontSize += 7;
-            }
-            if (image.HorizontalResolution < 80)
-            {
-                fontSize += 19;
-            }
-            return fontSize;
-
-        }
-
         static Bitmap ScaleImage(Bitmap originalImage, int desiredHeight)
         {
-            // Calculate the scaling factor
-            float scaleFactor = (float)desiredHeight / originalImage.Height;
-
-            // Calculate the new width based on the scaling factor
-            int newWidth = (int)(originalImage.Width * scaleFactor);
-
-            // Create a new Bitmap with the desired height and width
-            Bitmap scaledImage = new Bitmap(newWidth, desiredHeight);
-
-            using (Graphics g = Graphics.FromImage(scaledImage))
-            {
-                // Set the interpolation mode for better quality
-                g.InterpolationMode = System.Drawing.Drawing2D.InterpolationMode.HighQualityBicubic;
-
-                // Draw the original image onto the new bitmap with the calculated size
-                g.DrawImage(originalImage, 0, 0, newWidth, desiredHeight);
-            }
-            
-
-            return scaledImage;
-        }
-
-        [Obsolete]
-        private void ImageAddCaption(string text, ref Bitmap referenceImage)
-        {
-            //let's see if we can a caption on the bitmap.
-            var firstLocation = new PointF(10f, 10f);
-            try
-            {
-               // referenceImage = (Bitmap)ScaleImage(referenceImage, Convert.ToInt32(calculateImageHeight())).Clone();
-                //exception when tmp.rawData and tmp.userData is null.
-                using (var graphics = Graphics.FromImage(referenceImage))
-                {
-                    
-                    var configPenSize = 8;
-                    int.TryParse(ConfigurationSettings.AppSettings["captionPenSize"], out configPenSize);
-
-                //    var fontSize = configPenSize;
-                   // var croppedImage = getupperLeftCornerImage(tmp);//can probably skip this.
-                   // if (croppedImage == null)
-                   /// {
-                   //     //throw new Exception("could not find corner");
-                   //     return;
-                   // }
-
-                    var penColor = new SolidBrush(GetAverageColor(referenceImage));// System.Drawing.Brushes.White;
-
-
-
-                    var fontSize = GetFontSize(referenceImage, configPenSize);
-                    using (var arialFont = new Font("Arial", fontSize))
-                    {
-                        graphics.DrawString(text, arialFont, penColor, firstLocation);
-                    }
-                   
-                }
-            }
-            catch (Exception ex)
-            {
-                //ignore known issue
-                if (ex.Message != "A Graphics object cannot be created from an image that has an indexed pixel format.")
-                {
-                    LogError(ex, ex.Message);
-                }
-                
-            }
+            return ImageUtils.ScaleImage(originalImage, desiredHeight);
         }
 
         private void shuffleImages()
@@ -366,160 +107,176 @@ namespace andyScreenSaver
 
         private void LogMsg(string msg)
         {
-            Debug.WriteLine("Window: " + DateTime.Now.ToLongTimeString() + ": " + msg);
+            AppLogger.Log(msg);
         }
 
         private void LogError(Exception ex, string msg)
         {
-            // Console.WriteLine(msg);
-            LogMsg($"{DateTime.Now}: {msg}");
-            lock (this)
-            {
-                try
-                {
-                    var dir = Path.GetTempPath();
-                    using (var sw = new StreamWriter(
-                        $"{dir}\\errlog.smug." + DateTime.Now.ToShortDateString().Replace('/', '-') + ".txt",
-                        true)
-                        )
-                    {
-                        sw.WriteLine($"{DateTime.Now}: exception: {msg}");
-                        if (ex.StackTrace != null)
-                        {
-                            sw.WriteLine($"{DateTime.Now}: stack trace: {ex.StackTrace}");
-                        }
-                        
-                        sw.Close();
-                    }
-                }
-                catch (Exception ex2)
-                {
-                    Debug.WriteLine("Uh Oh! Error writing error file!");
-                }
-            }
+            AppLogger.LogError(ex, msg);
         }
 
         private Double calculateImageHeight()
         {
-            return MyHeight / GridHeight - (100 / Math.Pow(2, GridHeight));
-
+            return _layoutHelper?.CalculateImageHeight() ?? 0d;
         }
 
+        private Double calculatedImageWidth()
+        {
+            var width = _layoutHelper?.CalculateImageWidth() ?? 0d;
+            Debug.WriteLine($"calculated width: {width}");
+            return width;
+        }
+
+        public Window1()
+        {
+            InitializeComponent();
+            try
+            {
+                Core.Initialize(); // LibVLCSharp initialization 
+                                   //only needed for show, not config.
+            }
+            catch (Exception ex)
+            {
+                LogError(ex, ex.Message);
+            }
+            var borderWidth = 0;
+            int.TryParse(ConfigurationSettings.AppSettings["BorderWidth"], out borderWidth);
+            AppOpenCloseLogger.logOpened();
+
+            // Initialize helpers if null
+            _layoutHelper ??= new LayoutHelper(
+                () => MyWidth,
+                () => MyHeight,
+                () => GridWidth,
+                () => GridHeight,
+                () => BorderWidth
+            );
+            _tileRenderer ??= new TileRenderer(
+                () => calculatedImageWidth(),
+                () => calculateImageHeight(),
+                (m) => LogMsg(m)
+            );
+        }
+
+        private void UpdateLayoutAndExpiredBanner()
+        {
+            hStack1.Dispatcher.BeginInvoke(new Action(delegate ()
+                {
+                    TileGridBuilder.SetImageHeights(hStack1, calculateImageHeight());
+                    if (Engine.screensaverExpired())
+                    {
+                        ShowMsg(
+                            DateTime.Now.ToShortTimeString() +
+                            ": Slide show is stopped until " +
+                            (Engine.settings.startTime / 100).ToString() +
+                            ":" +
+                            (Engine.settings.startTime % 100).ToString("00") +
+                            " - press <left> or <right> arrow to wake up.",
+                            false
+                        );
+                    }
+                }));
+        }
+
+        private ImageSet? TryGetNextImage()
+        {
+            try
+            {
+                return Engine.getImage();
+            }
+            catch (Exception ex)
+            {
+                if (ex.Message.Contains("Too many requests"))
+                {
+                    Thread.Sleep(1000);
+                }
+                throw;
+            }
+        }
+
+        private void ShowSetupRequiredBanner()
+        {
+            SetupRequired.Dispatcher.BeginInvoke(new Action(delegate ()
+            {
+                SetupRequired.Visibility = System.Windows.Visibility.Visible;
+                SetupRequired.Content = "Setup required!  Go to the screensaver menu.";
+            }));
+        }
+
+        private void HandleNoImageAvailable()
+        {
+            SetupRequired.Dispatcher.BeginInvoke(new Action(delegate ()
+            {
+                SetupRequired.Visibility = System.Windows.Visibility.Visible;
+                SetupRequired.Content = "No data presently available, trying again...";
+                shuffleImages();
+            }));
+        }
+
+        private void HandleImageAvailable(bool blackImagePlaced)
+        {
+            if (!blackImagePlaced && !Engine.screensaverExpired())
+            {
+                ShowStats();
+            }
+        }
+
+        private (bool run, ImageSet? image) ProcessPlacement(bool run, ImageSet? image)
+        {
+            bool localRun = run;
+            ImageSet? localImage = image;
+            hStack1.Dispatcher.Invoke(System.Windows.Threading.DispatcherPriority.Normal, new Action(delegate ()
+            {
+                SetImage(ref localRun, ref localImage);
+            }));
+            return (localRun, localImage);
+        }
+
+        private void CollapseSetupBannerIfAppropriate(bool run, bool blackImagePlaced)
+        {
+            if (run && !Engine.settings.showInfo && !blackImagePlaced)
+            {
+                SetupRequired.Dispatcher.BeginInvoke(new Action(delegate ()
+                {
+                    SetupRequired.Visibility = System.Windows.Visibility.Collapsed;
+                }));
+            }
+        }
+
+        private bool IsLoggedIn()
+        {
+            return Engine.getLogin().login != string.Empty;
+        }
 
         private void UpdateImage()
         {
-            //todo: add try-catch block here?
             try
             {
-                hStack1.Dispatcher.BeginInvoke(new Action(delegate ()
-                    {
-                        //resuze each of the images to fit screen.
-                        foreach (var v in hStack1.Children)
-                        {
-                            foreach (Border borderImage in (v as StackPanel).Children)
-                            {
-                                var image = borderImage.Child as indexableImage;
-                                image.Height = calculateImageHeight() ; //161; lculateImageHeight
-                            }
-                        }
-                        if (Engine.screensaverExpired())
-                        {
-                            ShowMsg(
-                                DateTime.Now.ToShortTimeString() +
-                                ": Slide show is stopped until " +
-                                (Engine.settings.startTime / 100).ToString() +
-                                ":" +
-                                (Engine.settings.startTime % 100).ToString("00") +
-                                " - press <left> or <right> arrow to wake up.",
-                                false
-                                );
-                        }
-                    }));
-                var run = false;
-                ImageSet? image = null;
+                UpdateLayoutAndExpiredBanner();
 
-                var counter = 0;
-                var blackImagePlaced = false;
+                bool run = false;
+                bool blackImagePlaced = false;
+                ImageSet? image = TryGetNextImage();
 
-                while (image == null && counter < 1)
-                {//if image isn't ready, wait for it.
-                    try
-                    {
-                        image = Engine.getImage();
-                    }
-                    catch (Exception ex)
-                    {
-                        if (ex.Message.Contains("Too many requests"))
-                        {
-                            // consider sleeping a bit, 429 received from server.
-                            Thread.Sleep(1000);
-                        }
-                        throw ex;
-                    }
-                    counter++;//allow it to die.
-                    if (image == null)
-                    {
-                        if (counter % 100 == 0)
-                        {
-                            HideSetup();
-                        }
-                    }
-                    else
-                    {
-
-                        //Thread.Sleep(100);
-                    }
-                }
-                if (Engine.getLogin().login == "")
+                if (!IsLoggedIn())
                 {
-                    SetupRequired.Dispatcher.BeginInvoke(new Action(delegate ()
-                    {
-                        SetupRequired.Visibility = System.Windows.Visibility.Visible;
-                        SetupRequired.Content = "Setup required!  Go to the screensaver menu.";
-                    }));
+                    ShowSetupRequiredBanner();
                 }
                 else
                 {
-
-                    if (image == null)//image has failed for some reason.
+                    if (image == null)
                     {
-                        SetupRequired.Dispatcher.BeginInvoke(new Action(delegate ()
-                        {
-                            SetupRequired.Visibility = System.Windows.Visibility.Visible;
-                            SetupRequired.Content = "No data presently available, trying again...";
-                            shuffleImages();
-
-                            if (Engine.warm())
-                            {
-                                if (image != null)
-                                {
-                                    image.Bitmap = Engine.getBlackImagePixel();
-                                    blackImagePlaced = true;
-                                }
-                            }
-
-                        }));
+                        HandleNoImageAvailable();
                     }
                     else
-                    {//putting this in the else, because the blackImagePlaced is set in another thread and creates a race condition.
-                     //  the red text disappears after resetting network connection, when really i want it to show up.
-                        if (!blackImagePlaced && !Engine.screensaverExpired())
-                        {
-                            ShowStats();
-                        }
+                    {
+                        HandleImageAvailable(blackImagePlaced);
                     }
-                    hStack1.Dispatcher.Invoke(System.Windows.Threading.DispatcherPriority.Normal, new Action(delegate ()
-                    {
-                        SetImage(ref run, ref image);
-                    }));
+
+                    (run, image) = ProcessPlacement(run, image);
                 }
-                if (run && !Engine.settings.showInfo && !blackImagePlaced)
-                {
-                    SetupRequired.Dispatcher.BeginInvoke(new Action(delegate ()
-                    {
-                        SetupRequired.Visibility = System.Windows.Visibility.Collapsed;
-                    }));
-                }
+
+                CollapseSetupBannerIfAppropriate(run, blackImagePlaced);
             }
             catch (Exception ex)
             {
@@ -529,18 +286,14 @@ namespace andyScreenSaver
 
         private void ShowStats()
         {
-           
-                        {
-                            //todo: add switch here controlled by hotkey
-                            if (StatsEnabled)
-                            {
-                                ShowMsg(Engine.getRuntimeStatsInfo(), true);
-                            }
-                            else
-                            {
-                                ShowMsg(null, false);
-                            }
-                        }
+            if (StatsEnabled)
+            {
+                ShowMsg(Engine.getRuntimeStatsInfo(), true);
+            }
+            else
+            {
+                ShowMsg(null, false);
+            }
         }
 
         private void SetImage(ref bool run, ref ImageSet s)
@@ -550,22 +303,13 @@ namespace andyScreenSaver
                 if (s != null)
                 {
                     run = true;
-                    var maxTotalCells = Convert.ToInt32(GridWidth) * Convert.ToInt32(GridHeight);
-                    var beginIndex = 0;
-                    var rIndex = new Random().Next(beginIndex, maxTotalCells);
-                    var randWidth = rIndex % GridWidth;
-                    var randHeight = rIndex / GridWidth;
-                    while (Lm.isInList(new Tuple<int, int>(randWidth, randHeight)))
-                    {
-                        rIndex = new Random().Next(beginIndex, maxTotalCells);
-                        randWidth = rIndex % GridWidth;
-                        randHeight = rIndex / GridWidth;
+                    var cell = _tilePlacement.PickNextCell();
+                    var randWidth = cell.Item1;
+                    var randHeight = cell.Item2;
 
-                    }
                     Bitmap bmyImage2;
                     if (s != null && s.Bitmap != null)
                     {
-                        //do this so we can try to guarantee the size prior to writing captions.
                         s.Bitmap = (Bitmap)ScaleImage(s.Bitmap, Convert.ToInt32(calculateImageHeight()));
                         bmyImage2 = s.Bitmap;
                         
@@ -586,39 +330,62 @@ namespace andyScreenSaver
                 LogError(e,e.Message);
             }
         }
+
         private void setImageCaption(ref SMEngine.CSMEngine.ImageSet s, ref Bitmap targetBitmapImage, int randWidth, int randHeight)
         {
             try
             {
-                var sb = new StringBuilder();
-                
-                if (!string.IsNullOrEmpty(s.AlbumTitle))
-                { // fix issue where just semicolons showing up when in sleeping mode.
-                    sb.Append(s.Category + ": " + s.AlbumTitle);
-                }
-                else
+                string captionText = CaptionBuilder.Build(s);
+                if (! s.IsVideo)
                 {
-                    sb.Append(s.Category); //if albumTitle empty, just show the category (expected to be rare).
+                    // Only bake caption into photos when showInfo is enabled
+                    if (Engine.settings.showInfo)
+                    {
+                        ImageUtils.AddCaption(captionText, ref targetBitmapImage);
+                    }
                 }
-                if (!string.IsNullOrEmpty(s.Caption) && !s.Caption.Contains("OLYMPUS"))
-                {
-                    sb.Append(": " + s.Caption);
-                }
-                ImageAddCaption(sb.ToString(), ref targetBitmapImage);
             }
             catch (Exception ex)
             {
                 LogError(ex, $"Problem setting caption {ex.Message}");
             }
-            indexableImage image = ((hStack1.Children[randWidth] as StackPanel).Children[randHeight] as Border).Child as indexableImage;
 
-            //whether you set MaxHeight, or MaxWidth will determine how the images end up centered on screen.
-            image.MaxHeight = /*this.Height*/ MyHeight / GridHeight - (BorderWidth / GridHeight); 
-            image.Width = MyWidth / GridWidth - (BorderWidth / GridWidth);
-            image.Source = Bitmap2BitmapImage(s.Bitmap);
+            var border = GetGridBorder(randWidth, randHeight);
+            var image = border.Child as indexableImage;
 
-            Lm.addToList(new Tuple<int, int>(randWidth, randHeight));
-            var imageIndex = (int)(randWidth + (randHeight * (GridWidth)));
+            // Render based on media type
+            if (s.IsVideo)
+            {
+                // Only show overlay when showInfo is enabled
+                var text = Engine.settings.showInfo ? CaptionBuilder.Build(s) : string.Empty;
+                _tileRenderer.RenderSync(border, image, s, text, Engine.isDefaultMute());
+            }
+            else
+            {
+                _ = _tileRenderer.RenderAsync(border, image, s, Engine.isDefaultMute());
+            }
+
+            _tilePlacement.MarkPlaced(randWidth, randHeight);
+            CacheImageIfFirstTime(targetBitmapImage, randWidth, randHeight);
+        }
+
+        private string BuildCaptionText(SMEngine.CSMEngine.ImageSet s)
+        {
+            return CaptionBuilder.Build(s);
+        }
+
+        private Border GetGridBorder(int randWidth, int randHeight)
+        {
+            return TileGridBuilder.GetBorderAt(hStack1, randWidth, randHeight);
+        }
+
+
+
+
+
+        private void CacheImageIfFirstTime(Bitmap targetBitmapImage, int randWidth, int randHeight)
+        {
+            int imageIndex = randWidth + (randHeight * GridWidth);
             if (ImageCounterArray[imageIndex] == 0)
             {
                 try
@@ -626,13 +393,10 @@ namespace andyScreenSaver
                     var tmp = new Bitmap(targetBitmapImage);
                     var fileName = getImageStorageLoc() + @"\" + imageIndex + @".jpg";
                     if (File.Exists(fileName) && DoSmartStart)
-                    {
                         File.Delete(fileName);
-                    }
+
                     if (DoSmartStart)
-                    { 
-                        tmp.Save(fileName, ImageFormat.Jpeg); 
-                    }
+                        tmp.Save(fileName, ImageFormat.Jpeg);
                 }
                 catch (Exception ex)
                 {
@@ -642,31 +406,77 @@ namespace andyScreenSaver
             }
         }
 
-        private void runImageUpdateThread()
+        private void SafeUpdateImage()
+        {
+            try
+            {
+                UpdateImage();
+            }
+            catch (Exception ex)
+            {
+                LogError(ex, "updateImage failed: " + ex.Message);
+            }
+        }
+
+        private int ComputeSleepMilliseconds()
+        {
+            var elapsedMs = (int)DateTime.Now.Subtract(LastUpdate).TotalMilliseconds;
+            var targetMs = (int)(Engine.settings.speed_s * 1000);
+            var remaining = targetMs - elapsedMs;
+            return remaining > 0 ? remaining : 0;
+        }
+
+        private async Task ImageUpdateLoopAsync(CancellationToken token)
         {
             Running = true;
-            while (Running)
+            while (!token.IsCancellationRequested && Running)
             {
-                myManualResetEvent.WaitOne();
                 try
                 {
-                    UpdateImage();
+                    await _pauseGate.WaitAsync(token).ConfigureAwait(false);
+                    await Task.Run(() => UpdateImage(), token).ConfigureAwait(false);
+                }
+                catch (OperationCanceledException)
+                {
+                    break;
                 }
                 catch (Exception ex)
                 {
                     LogError(ex, "updateImage failed: " + ex.Message);
                 }
-                finally
+
+                // pacing outside finally
+                var remaining = ComputeSleepMilliseconds();
+                if (remaining > 0)
                 {
-                    var millisecondsSinceLastRun = DateTime.Now.Subtract(LastUpdate).TotalMilliseconds;
-                    var timeToSleep = Engine.settings.speed_s * 1000 - millisecondsSinceLastRun;
-                    if (timeToSleep > 0)
-                    {
-                        LogMsg("sleeping for " + timeToSleep + " milliseconds");
-                        Thread.Sleep((Int32)timeToSleep);
-                    }
-                    LastUpdate = DateTime.Now;
+                    try { await Task.Delay(remaining, token).ConfigureAwait(false); } catch (OperationCanceledException) { break; }
                 }
+                LastUpdate = DateTime.Now;
+            }
+        }
+
+        private void StartImageLoop()
+        {
+            StopImageLoop();
+            _imageLoopCts = new CancellationTokenSource();
+            _imageLoopTask = ImageUpdateLoopAsync(_imageLoopCts.Token);
+        }
+
+        private async void StopImageLoop()
+        {
+            try
+            {
+                _imageLoopCts?.Cancel();
+                if (_imageLoopTask != null)
+                {
+                    try { await _imageLoopTask.ConfigureAwait(false); } catch { /* ignore */ }
+                }
+            }
+            finally
+            {
+                _imageLoopTask = null;
+                _imageLoopCts?.Dispose();
+                _imageLoopCts = null;
             }
         }
 
@@ -678,31 +488,14 @@ namespace andyScreenSaver
             {
                 Engine.login(Engine.getCode());
             }
-            catch (Exception e)
+            catch (Exception)
             {
                 MessageBox.Show("Invalid login, shutting down!");
-
                 return;
             }
-            //todo: why is this outside the try block?  is there a reason to start the thread?
-            //would it hurt to not do so?  Would need to test.
-            
-            ThreadStartImageUpdate = new ThreadStart(runImageUpdateThread);
-            if (ThreadImageUpdate != null && ThreadImageUpdate.IsAlive && Running == true)
-            {// working on issue where after a few days, multiple images are starting simultaneously.
-                Running = false;
-                Thread.Sleep(10);
-                ThreadImageUpdate.Abort();
-                ThreadImageUpdate.Join();
-            }
-            ThreadImageUpdate = new Thread(ThreadStartImageUpdate)
-            {
-                IsBackground = true
-            };
-            ThreadImageUpdate.Start();
 
+            StartImageLoop();
         }
-        Task? task = null;
 
         private void ToggleScreen()
         {
@@ -721,30 +514,36 @@ namespace andyScreenSaver
         bool isPaused = false;
         private void TogglePauseSlideshow()
         {
-            //            Engine.Pause();
             if (isPaused)
-                myManualResetEvent.Set();// allow to run
+            {
+                _pauseGate.Set();
+            }
             else
-                myManualResetEvent.Reset();//.Suspend();
+            {
+                _pauseGate.Reset();
+            }
             isPaused = !isPaused;
             ShowStats();
         }
 
-        private readonly static ManualResetEvent myManualResetEvent = new(true);
+        private void Doshutdown()
+        {
+            MyCursor = Cursor;
+            StopImageLoop();
+            Application.Current.Shutdown();
+        }
 
-       private void InitEngine(bool? forceStart = false)
+        private void InitEngine(bool? forceStart = false)
         {
             if (Engine != null)
             {
                 AppOpenCloseLogger.uptimeCheckpoint(Engine.getUptime(), Engine.getRuntimeStatsInfo(false));
             }
-            //get dimensions
             var w = System.Windows.SystemParameters.WorkArea.Width;
             var h = System.Windows.SystemParameters.WorkArea.Height;
 
             if (Engine == null || forceStart == true)
             {
-
                 Engine = new SMEngine.CSMEngine();
                 Engine.setScreenDimensions(w, h);
                 {
@@ -761,23 +560,11 @@ namespace andyScreenSaver
                     {
                         LogError(ex, $"Invalid connection {ex.Message}");
                     }
-
-                    //todo how to shut down if failed?
                 }
             }
         }
 
-      
 
-        //Application myParent;
-        [Obsolete]
-        public Window1()
-        {
-            InitializeComponent();
-            var borderWidth = 0;
-            int.TryParse(ConfigurationSettings.AppSettings["BorderWidth"], out borderWidth);
-            AppOpenCloseLogger.logOpened();
-        }
         int[] imageCounterArray;
         private string getImageStorageLoc()
         {
@@ -785,7 +572,11 @@ namespace andyScreenSaver
             return storageDirectory;
         }
 
-
+        private BitmapImage GetInitialTileImage(int imageIndex, string storageDirectory)
+        {
+            const string fallback = "/andyScrSaver;component/2011072016-03-00IMG7066-L.jpg";
+            return InitialImageProvider.Build(imageIndex, storageDirectory, DoSmartStart, fallback);
+        }
 
         static void MouseCursorResetMethod(object state)
         {
@@ -808,7 +599,7 @@ namespace andyScreenSaver
                     {
                         Debug.WriteLine("thread err 239d");
                     }
-                    Thread.Sleep(100);// wait a bit between runs.
+                    Thread.Sleep(100);
                 }
             }
         }
@@ -826,6 +617,7 @@ namespace andyScreenSaver
             mouseThreadWithParameters.Start(this);
 
             Lm = new listManager(GridWidth * GridHeight);
+            _tilePlacement = new TilePlacementService(Lm, () => GridWidth, () => GridHeight);
             ImageCounterArray = new int[GridHeight * GridWidth];
 
             for (var i = 0; i < GridHeight * GridWidth - 1; i++)
@@ -833,20 +625,7 @@ namespace andyScreenSaver
                 ImageCounterArray[i] = 0;
             }
 
-            for (var idx = 0; idx < GridWidth; idx++)
-            {
-                var sp = new StackPanel
-                {
-                    HorizontalAlignment = System.Windows.HorizontalAlignment.Center,
-                    Orientation = Orientation.Vertical
-                };
-
-
-                hStack1.Children.Add(sp);//add vertical stack panel.
-            }
-            var imageIndex = 0;  //to be used for saving/loading default image.
             var storageDirectory = getImageStorageLoc();
-
             try
             {
                 if (!Directory.Exists(storageDirectory) && DoSmartStart)
@@ -858,51 +637,15 @@ namespace andyScreenSaver
             {
                 LogError(ex, ex.Message);
             }
-            foreach (StackPanel stackPanel in hStack1.Children)
-            {
-                for (var idx = 0; idx < GridHeight; idx++)
-                {
 
-                    var myBorder = new Border();
-                    myBorder.BorderThickness = new Thickness(Engine.settings.borderThickness);
-
-                    var i = new indexableImage();
-                    myBorder.Child = i;
-
-                    var bi3 = new BitmapImage();
-                    if (!File.Exists(storageDirectory + @"\" + imageIndex + @".jpg") || !DoSmartStart)
-                    {
-                        bi3.BeginInit();
-                        bi3.UriSource = new Uri("/andyScrSaver;component/2011072016-03-00IMG7066-L.jpg", UriKind.Relative);
-                        bi3.EndInit();
-                    }
-                    else
-                    {
-                        var fileName = storageDirectory + @"\" + imageIndex + @".jpg";
-                        bi3.BeginInit();
-                        try
-                        {
-                            bi3.UriSource = new Uri(fileName, UriKind.RelativeOrAbsolute);
-                            bi3.CacheOption = BitmapCacheOption.OnLoad;
-                        }
-                        catch (Exception ex)
-                        {
-                            LogError(ex, ex.Message);
-                            bi3.UriSource = new Uri("/andyScrSaver;component/2011072016-03-00IMG7066-L.jpg", UriKind.Relative);
-                        }
-                        finally
-                        {
-                            bi3.CacheOption = BitmapCacheOption.OnLoad;
-                        }
-                        bi3.EndInit();
-                    }
-                    i.Source = bi3;
-                    i.ImageIndex = imageIndex++;
-                    i.Height = /*this.Height*/ MyHeight / GridHeight - (BorderWidth / GridHeight); //161; 
-                    i.HorizontalAlignment = System.Windows.HorizontalAlignment.Center;
-                    stackPanel.Children.Add(myBorder);
-                }
-            }
+            TileGridBuilder.BuildGrid(
+                hStack1,
+                GridWidth,
+                GridHeight,
+                Engine.settings.borderThickness,
+                imageIndex => GetInitialTileImage(imageIndex, storageDirectory),
+                MyHeight / GridHeight - (BorderWidth / GridHeight)
+            );
 
             if (!System.Diagnostics.Debugger.IsAttached)
             {
@@ -916,10 +659,6 @@ namespace andyScreenSaver
 
             ScreensaverModeDisabled = false;
             MyCursor = Cursor;
-
-            //initEngine();
-
-            
 
             LastMouseMove = DateTime.Now;
             TotalMouseMoves = 0;
@@ -951,27 +690,11 @@ namespace andyScreenSaver
         {
             return lastMouseMove;
         }
-/*        private void Window_MouseWheel(object sender, MouseWheelEventArgs e)
-        {
-            if (e.Delta > 0)
-                // Zoom in
-                camMain.Position = Point3D.Add(camMain.Position, ZoomDelta);
-            else
-                // Zoom out
-                camMain.Position = Point3D.Subtract(camMain.Position, ZoomDelta);
-        }
-*/
-        private void Doshutdown()
-        {
-            MyCursor = Cursor;
-           // AppOpenCloseLogger.logClosed("Screensaver: "+ Engine.getUptime(), Engine.getRuntimeStatsInfo(false));
-            Application.Current.Shutdown();
-        }
+
         private void Window_MouseDown(object sender, MouseButtonEventArgs e)
         {
             if (!screensaverModeDisabled)
             {
-            //    doshutdown();
             }
         }
         private void Window_KeyDown(object sender, KeyEventArgs e)
@@ -984,6 +707,11 @@ namespace andyScreenSaver
                 case Key.Right:
                     Engine.resetExpiredImageCollection();
                     UpdateImage();
+                    break;
+                case Key.M:
+                    Engine.toggleDefaultMute();
+                    // apply global mute/unmute to all videos immediately
+                    _tileRenderer?.ApplyGlobalMute(this, Engine.isDefaultMute());
                     break;
                 case Key.S:
                     StatsEnabled = !StatsEnabled;
@@ -1025,7 +753,6 @@ namespace andyScreenSaver
         private void ReloadScreen()
         {
             Engine.resetExpiredImageCollection();
-            //todo: w's idea to reload all images on screen.
             var totalImages = gridHeight * gridWidth;
             for (int i = 0; i < totalImages*1.5; i++)
                 UpdateImage();
@@ -1037,14 +764,11 @@ namespace andyScreenSaver
             
             if (!upgradeManager.ReadyForUpgrade)
             {
-                //do nothing.
                 Debug.WriteLine("already upgraded");
-             //   MessageBox.Show("Latest is already installed.");
             }
             else
             {
                 Debug.WriteLine("upgrade query to user");
-                //MessageBox.Show("yes or no?");
                 MessageBoxResult result = System.Windows.MessageBox.Show(
                     "Do you want to continue with installing a new version?",
                     "Upgrade confirmation",
@@ -1070,41 +794,10 @@ namespace andyScreenSaver
 
         private void ShowMsg(string? msg, bool showStatsIsSet)
         {
-
-            SetupRequired.Dispatcher.BeginInvoke(new Action(delegate ()
-            {
-             //   if (showStatsIsSet)
-             if (isPaused)
-                {//hack: there are a couple cases where we have text, but don't want to show paused - like when sleeping.
-                    if (string.IsNullOrEmpty(msg))
-                        {
-                        msg = "Paused";// + isPaused.ToString();
-                    }
-                    else { msg = "Paused" +"\n" + msg;
-                    }
-                }
-                if (string.IsNullOrEmpty(msg))
-                {
-                    SetupRequired.Visibility = Visibility.Hidden;
-                    return;
-                }
-                if (showStatsIsSet)
-                    {//hack: there are a couple cases where we have text, but don't want to show paused - like when sleeping.
-                    if (!isPaused)
-                    {
-                        msg = "Paused: " + isPaused.ToString() + "\n" + msg;
-                    }
-                    }
-                SetupRequired.Visibility = Visibility.Visible;
-                
-                SetupRequired.Content = msg;
-                
-            }));
-
+            UiMessageHelper.ShowMessage(SetupRequired, isPaused, msg, showStatsIsSet);
         }
         public void ShowException(String msg)
         {
-            //log exceptions fired from smEngine
             LogError(new Exception("showException raised"), msg);
         }
 
@@ -1138,25 +831,24 @@ namespace andyScreenSaver
         private DateTime lastMouseMove;
         private long totalMouseMoves;
         private long maxMouseMoves = 100;
+        private Task? task = null;
 
         private void Window_MouseMove(object sender, MouseEventArgs e)
         {
-            //author: ASH
-            //modified 2023, logic all wrong
             var resetTime = LastMouseMove.AddMilliseconds(500);
             if (!screensaverModeDisabled)
             {
                 if (DateTime.Now < resetTime)
                 {
                     TotalMouseMoves++;
-                    if (TotalMouseMoves > MaxMouseMoves)//a little bit of slack before closing.
+                    if (TotalMouseMoves > MaxMouseMoves)
                     {
-                        Doshutdown(); //shut down screensaver
+                        Doshutdown();
                     }
                 }
                 else
                 {
-                    TotalMouseMoves = 0; // reset wiggle counter if it's been a little while.
+                    TotalMouseMoves = 0;
                 }
             }
             else
@@ -1164,22 +856,24 @@ namespace andyScreenSaver
                 this.Cursor = MyCursor;
             }
             LastMouseMove = DateTime.Now;
-            //Thread.Sleep(0);
         }
 
         private void Window_Closed(object sender, EventArgs e)
         {
             LogMsg("Closing");
-            
+            try { Engine?.shutdown(); } catch { }
             AppOpenCloseLogger.logClosed(Engine.getUptime(), Engine.getRuntimeStatsInfo(false));
         }
 
         private void Image1_MouseUp(object sender, MouseButtonEventArgs e)
         {
-         //   if (ScreensaverModeDisabled)
+            // Ignore clicks that originate from a video tile; those toggle mute inside TileRenderer
+            if (ClickOriginatedFromVideo(e))
             {
-                UpdateImage();// automatic way totalMouseMoves 
+                e.Handled = true;
+                return;
             }
+            UpdateImage();
         }
         private void Window_SizeChanged_1(object sender, SizeChangedEventArgs e)
         {
@@ -1189,6 +883,22 @@ namespace andyScreenSaver
         }
         private void Window_MouseRightButtonUp(object sender, MouseButtonEventArgs e)
         {
+        }
+
+        private bool ClickOriginatedFromVideo(MouseEventArgs e)
+        {
+            try
+            {
+                var d = e.OriginalSource as DependencyObject;
+                while (d != null)
+                {
+                    if (d is LibVLCSharp.WPF.VideoView)
+                        return true;
+                    d = VisualTreeHelper.GetParent(d);
+                }
+            }
+            catch { }
+            return false;
         }
     }
 }

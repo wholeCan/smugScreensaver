@@ -11,7 +11,7 @@ using System.IO;
 using System.Linq;
 using System.Windows;
 using System.Windows.Interop;
-
+//using LibVLCSharp.Shared;
 namespace andyScreenSaver
 {
     /// <summary>
@@ -29,6 +29,13 @@ namespace andyScreenSaver
         {
             try
             {
+                // Global shutdown hooks to ensure Engine/Tracker shutdown
+                this.Exit += (_, __) => SafeShutdown();
+                this.DispatcherUnhandledException += (_, __) => SafeShutdown();
+                AppDomain.CurrentDomain.ProcessExit += (_, __) => SafeShutdown();
+                AppDomain.CurrentDomain.UnhandledException += (_, __) => SafeShutdown();
+
+               // Core.Initialize(); // LibVLCSharp initialization
                 if (ApplicationMutexSingleton.Instance.AlreadyRunning)
                 {
                     Debug.WriteLine("Application already running!");
@@ -195,6 +202,25 @@ namespace andyScreenSaver
                 }
 
             }
+        }
+
+        private static void SafeShutdown()
+        {
+            try
+            {
+                foreach (Window w in Current.Windows)
+                {
+                    if (w is Window1 main && main.Engine != null)
+                    {
+                        try { main.Engine.shutdown(); } catch { }
+                    }
+                    else if (w is SettingsWindow settings)
+                    {
+                        try { settings.ShutdownEngine(); } catch { }
+                    }
+                }
+            }
+            catch { }
         }
 
         /// <summary>

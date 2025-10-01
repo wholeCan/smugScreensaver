@@ -15,8 +15,8 @@
         Width="486"
         MouseRightButtonUp="Window_MouseRightButtonUp"
         >
-    
-    <Grid Name="grid1" MouseUp="Image1_MouseUp">
+
+    <Grid Name="grid1" MouseUp="Image1_MouseUp" >
         <Viewport3D Name="viewport3D1" HorizontalAlignment="Right" Width="296" Height="298" VerticalAlignment="Top" Margin="0,0,302,0">
             <Viewport3D.Camera>
                 <PerspectiveCamera x:Name="camMain" Position="255 38.5 255" LookDirection="-130 -40 -130" FarPlaneDistance="450" UpDirection="0,1,0" NearPlaneDistance="1" FieldOfView="70">

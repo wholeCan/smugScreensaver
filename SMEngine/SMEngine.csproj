@@ -140,11 +140,20 @@
     <Compile Include="Constants.cs" />
     <Compile Include="CSettings.cs" />
     <Compile Include="GalleryEntry.cs" />
+    <Compile Include="Helpers\AuthHelper.cs" />
+    <Compile Include="Helpers\ImageLoader.cs" />
+    <Compile Include="Helpers\ImageQueueService.cs" />
+    <Compile Include="Helpers\ImageSelectionHelper.cs" />
+    <Compile Include="Helpers\RegistryHelper.cs" />
+    <Compile Include="Helpers\StatsFormatter.cs" />
     <Compile Include="ImageInfo.cs" />
     <Compile Include="ImageSet.cs" />
     <Compile Include="loginInfo.cs" />
-    <Compile Include="SMEngine.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="SMEngine.cs" />
+    <Compile Include="Tracker.cs" />
+    <Compile Include="TrackerDetails.cs" />
+    <Compile Include="TrackerNotes.cs" />
   </ItemGroup>
   <ItemGroup>
     <None Include="app.config" />

@@ -8,6 +8,8 @@ Started in 2013, this code base is a hobby to build a screensaver based on a smu
 
 5/7/22:  let's make the repo public! Kind of a big deal for me, I have quite a few projects I've built for work, or on the side... this is the first one I decided to take public to see how it goes.
 
+10/1/25: fairly extensive refactor, adding video support, and some other features along with upgrading dotnet version.
+
 ### requirements:
 - I wanted 0 hard disk usage, or at least as little as possible.  the photo URLs are loaded into memory at startup, and there is an engine that maintains about 10 images in memory at any given time.
 - 3 threads:
@@ -43,3 +45,8 @@ Pre-built installer: [LINK](nsisInstaller/andysScreensaverInstaller_small.exe)
     UI-thread-->cycle[cycle through images]
     cycle-->getImageFromEngine[get image from engine]
 ```
+
+
+Notes: 
+- with addition of video, real-time exclusion must be added.
+- vlc libs are currently manually copied in

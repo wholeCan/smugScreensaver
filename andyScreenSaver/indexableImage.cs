@@ -1,11 +1,11 @@
 ﻿using System;
 using System.Diagnostics;
-using System.Drawing;
-using System.Drawing.Imaging;
 using System.IO;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
-
+using System.Windows.Controls;
+using System.Windows;
+using DrawingImage = System.Drawing.Image;
 
 namespace andyScreenSaver
 {
@@ -18,6 +18,9 @@ namespace andyScreenSaver
             get { return _imageIndex; }
             set { _imageIndex = value; }
         }
-    }
 
+        // Video support
+        public bool IsVideo { get; set; } = false;
+        public string? VideoSource { get; set; } = null;
+    }
 }

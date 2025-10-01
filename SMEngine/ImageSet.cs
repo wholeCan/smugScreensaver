@@ -41,6 +41,8 @@ namespace SMEngine
             public DateTime MyDate { get => myDate; set => myDate = value; }
             public string Name { get => name; set => name = value; }
             public string ImageURL { get => imageURL; set => imageURL = value; }
+            public bool IsVideo { get; set; } = false;
+            public string VideoSource { get; set; } = null;
 
             public ImageSet(string mediumUrl, string Caption, string name, DateTime mydate, string folder, string albumname)
             {

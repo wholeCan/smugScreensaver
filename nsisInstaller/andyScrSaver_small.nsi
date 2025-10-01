@@ -24,6 +24,11 @@ RequestExecutionLevel admin
 
 ;--------------------------------
 
+; Use paths relative to this .nsi file location (robust regardless of CWD)
+!define ROOT_DIR "${__FILEDIR__}\.."
+!define APP_RELEASE "${ROOT_DIR}\andyScreenSaver\bin\Release"
+!define STARTER_RELEASE "${ROOT_DIR}\ScreensaverStarter\bin\Release\net8.0-windows"
+
 ; Pages
 
 Page directory
@@ -49,15 +54,18 @@ Section "Install Application" ;No components page, name is not important
   
 
   ; Put file there
-	File /r "C:\Users\aholk\dev\smugScreensaver\andyScreenSaver\bin\Release\*.exe"
-	File /r "C:\Users\aholk\dev\smugScreensaver\andyScreenSaver\bin\Release\*.dll"
-	File /r "C:\Users\aholk\dev\smugScreensaver\andyScreenSaver\bin\Release\*.config"
-	File /r "C:\Users\aholk\dev\smugScreensaver\andyScreenSaver\bin\Release\*.xml"
+	File /r "${APP_RELEASE}\*.exe"
+	File /r "${APP_RELEASE}\*.dll"
+	File /r "${APP_RELEASE}\*.config"
+	File /r "${APP_RELEASE}\*.xml"
+
+	File /r "${APP_RELEASE}\libvlc*.*"
+
 
 	; include Screensaver starter files
-	File /r "C:\Users\aholk\dev\smugScreensaver\ScreensaverStarter\bin\Release\net8.0-windows\*.dll"
-	File /r "C:\Users\aholk\dev\smugScreensaver\ScreensaverStarter\bin\Release\net8.0-windows\*.json"
-	File /r "C:\Users\aholk\dev\smugScreensaver\ScreensaverStarter\bin\Release\net8.0-windows\*.exe"
+	File /r "${STARTER_RELEASE}\*.dll"
+	File /r "${STARTER_RELEASE}\*.json"
+	File /r "${STARTER_RELEASE}\*.exe"
   
   CreateDirectory "$SMPROGRAMS\andySlideShow"
   CreateShortCut "$SMPROGRAMS\andySlideShow\slideshow.lnk" "$INSTDIR\andyScrSaver.exe" "" "$INSTDIR\andyScrSaver.exe" 0

@@ -1,0 +1,16 @@
+﻿<Window x:Class="demoVideo.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:local="clr-namespace:demoVideo"
+        mc:Ignorable="d"
+        Title="MainWindow" Height="450" Width="800">
+    <Grid>
+        <StackPanel>
+            <MediaElement Name="mediaElement" Width="400" Height="300" LoadedBehavior="Play" UnloadedBehavior="Stop" Source="https://photos.smugmug.com/Archives/2012/Videos/2012-Videos/i-gPbRZzm/0/LLwdX58s8vC3XcxRhvNqjTNSNw5RPmT3PJ2JGghpH/1920/will%20first%20word-1920.mp4"/>
+            
+        </StackPanel>
+
+    </Grid>
+</Window>
