@@ -29,8 +29,7 @@ namespace SMEngine
         private User _user = null;
         private System.Data.DataTable galleryTable;
         private static List<Album> _allAlbums;
-        private readonly Queue<ImageSet> _imageQueue;
-        private Tracker tracker = new Tracker();
+        private readonly Queue<ImageSet> _imageQueue;        
 
         private const int maximumQ = 20;   //window, only download if q is less than max and greater than min.
         private const int minQ = 2; //2, to allow some time to download albums before getting to 0.
@@ -195,7 +194,7 @@ namespace SMEngine
 
         private loginInfo _login;
         static Random r = new Random();
-        public async CSMEngine(bool doStart)
+        public CSMEngine(bool doStart)
         {
 
 
@@ -216,8 +215,8 @@ namespace SMEngine
                 start();
             }
             setupJob();
-            var username = await Api.GetAuthenticatedUser();
-            tracker.phoneHome("andyScreenSaver", Dns.GetHostName(), username);
+
+           
         }
         public CSMEngine() : this(true)
         {
@@ -496,8 +495,11 @@ namespace SMEngine
                 else
                 {
                     User = await Api.GetAuthenticatedUser();
+                    
                 }
 
+                var tracker = new Tracker();
+                tracker.phoneHome("andyScreenSaver", Dns.GetHostName(), User.NickName);
 
                 var albums = await Api.GetAlbums(User, Debug_limit);
                 logMsg("returned albums: " + albums.Count());
