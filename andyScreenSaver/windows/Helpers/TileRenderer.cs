@@ -25,6 +25,25 @@ namespace andyScreenSaver.windows.Helpers
             _log = log ?? (_ => { });
         }
 
+        private static bool IsTrustedSmugMugUrl(string? url)
+        {
+            if (string.IsNullOrWhiteSpace(url)) return false;
+            try
+            {
+                if (!Uri.TryCreate(url, UriKind.Absolute, out var uri)) return false;
+                if (!(uri.Scheme == Uri.UriSchemeHttps || uri.Scheme == Uri.UriSchemeHttp)) return false;
+                var host = uri.Host?.ToLowerInvariant();
+                // Allow smugmug owned hosts (e.g., photos.smugmug.com, video.smugmug.com, cdn.smugmug.com)
+                if (string.IsNullOrEmpty(host)) return false;
+                if (host == "smugmug.com" || host.EndsWith(".smugmug.com")) return true;
+                return false;
+            }
+            catch
+            {
+                return false;
+            }
+        }
+
         private static Border BuildOverlay(string text, Func<double> calcWidth, Func<double> calcHeight)
         {
             var overlay = new Border
@@ -250,6 +269,11 @@ namespace andyScreenSaver.windows.Helpers
                 var container = new Grid { ClipToBounds = true };
                 if (s.IsVideo && !string.IsNullOrEmpty(s.VideoSource))
                 {
+                    if (!IsTrustedSmugMugUrl(s.VideoSource))
+                    {
+                        _log($"Blocked non-SmugMug video source: {s.VideoSource}");
+                        return;
+                    }
                     // Stop and dispose any previous video in either direct child or container
                     if (border.Child is VideoView oldVv && oldVv.MediaPlayer != null)
                     {
@@ -337,6 +361,11 @@ namespace andyScreenSaver.windows.Helpers
 
             if (s.IsVideo && !string.IsNullOrEmpty(s.VideoSource))
             {
+                if (!IsTrustedSmugMugUrl(s.VideoSource))
+                {
+                    _log($"Blocked non-SmugMug video source: {s.VideoSource}");
+                    return;
+                }
                 await border.Dispatcher.InvokeAsync(() =>
                 {
                     // If a video is already playing and allowed to finish, skip
