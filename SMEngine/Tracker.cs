@@ -64,6 +64,7 @@ namespace SMEngine
             _host = details.Host;
             _appname = details.AppName;
             _startTime = DateTime.Now;
+            phoneHome(details);
         }
         private void phoneHome(TrackerDetails details)
         {
