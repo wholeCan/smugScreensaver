@@ -5,6 +5,8 @@ using System.Net.Http;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
+using System.Collections.Generic;
+using System.Globalization;
 
 
 namespace SMEngine
@@ -28,7 +30,16 @@ namespace SMEngine
 
         public void shutdown()
         {
-            phoneHome(_appname, _host, _username, DateTime.Now);
+            IDictionary<string, object> notes = null;
+            if (_startTime != default(DateTime))
+            {
+                var uptime = DateTime.Now - _startTime;
+                notes = new Dictionary<string, object>
+                {
+                    ["uptimeSeconds"] = (long)Math.Max(0, uptime.TotalSeconds)
+                };
+            }
+            phoneHome(_appname ?? "SMEngine", _host ?? "shutdown", _username ?? Environment.UserName, notes);
         }
 
         private static string JsonEscape(string s)
@@ -37,8 +48,54 @@ namespace SMEngine
             return s.Replace("\\", "\\\\").Replace("\"", "\\\"");
         }
 
-        
-        public void phoneHome(string appName, string host, string username, DateTime? closingtime = null)
+        private static void AppendJsonValue(StringBuilder sb, object value)
+        {
+            if (value == null) { sb.Append("null"); return; }
+            switch (Type.GetTypeCode(value.GetType()))
+            {
+                case TypeCode.Boolean:
+                    sb.Append(((bool)value) ? "true" : "false");
+                    break;
+                case TypeCode.SByte:
+                case TypeCode.Byte:
+                case TypeCode.Int16:
+                case TypeCode.UInt16:
+                case TypeCode.Int32:
+                case TypeCode.UInt32:
+                case TypeCode.Int64:
+                case TypeCode.UInt64:
+                case TypeCode.Single:
+                case TypeCode.Double:
+                case TypeCode.Decimal:
+                    sb.Append(Convert.ToString(value, CultureInfo.InvariantCulture));
+                    break;
+                case TypeCode.DateTime:
+                    sb.Append('"').Append(((DateTime)value).ToUniversalTime().ToString("o")).Append('"');
+                    break;
+                default:
+                    sb.Append('"').Append(JsonEscape(Convert.ToString(value))).Append('"');
+                    break;
+            }
+        }
+
+        private static string SerializeNotes(IDictionary<string, object> notes)
+        {
+            var sb = new StringBuilder();
+            sb.Append('{');
+            bool first = true;
+            foreach (var kv in notes)
+            {
+                if (!first) sb.Append(',');
+                first = false;
+                sb.Append('"').Append(JsonEscape(kv.Key)).Append('"').Append(':');
+                AppendJsonValue(sb, kv.Value);
+                
+            }
+            sb.Append('}');
+            return sb.ToString();
+        }
+
+        public void phoneHome(string appName, string host, string username, IDictionary<string, object> notes = null)
         {
             _username = username;
             _host = host;
@@ -64,11 +121,9 @@ namespace SMEngine
                     sb.Append("\"host\":\"").Append(JsonEscape(host)).Append("\",");
                     sb.Append("\"username\":\"").Append(JsonEscape(username)).Append("\"");
 
-                    if (closingtime.HasValue)
+                    if (notes != null && notes.Count > 0)
                     {
-                        var uptime = closingtime.Value - _startTime;
-                        var uptimeSeconds = (long)Math.Max(0, uptime.TotalSeconds);
-                        sb.Append(",\"notes\":{\"uptimeSeconds\":").Append(uptimeSeconds).Append("}");
+                        sb.Append(",\"notes\":").Append(SerializeNotes(notes));
                     }
 
                     sb.Append("}");
