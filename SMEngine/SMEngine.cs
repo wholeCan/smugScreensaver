@@ -13,10 +13,64 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Windows.Media.Imaging;
+using System.Net.Http;
 
 
 namespace SMEngine
 {
+
+    public class Tracker
+    {
+        private static readonly HttpClient _http = new HttpClient();
+
+        // Hard-coded configuration (no ConfigurationManager)
+        private const string Endpoint = "https://localhost:8080/track"; // TODO: replace with your endpoint
+        private const bool Enabled = false; // Set true to enable tracking
+        private const int TimeoutSeconds = 3;
+
+        private static string getEndpoint()
+        {
+            if (!Enabled) return null;
+            return string.IsNullOrWhiteSpace(Endpoint) ? null : Endpoint;
+        }
+
+        private static string JsonEscape(string s)
+        {
+            if (s == null) return string.Empty;
+            return s.Replace("\\", "\\\\").Replace("\"", "\\\"");
+        }
+
+        public void phoneHome(string appName, string host, string username)
+        {
+            var endpoint = getEndpoint();
+            if (string.IsNullOrWhiteSpace(endpoint)) return; // disabled if not configured
+
+            // Fire-and-forget
+            Task.Run(async () =>
+            {
+                try
+                {
+                    using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(TimeoutSeconds));
+                    var payload = "{\"appName\":\"" + JsonEscape(appName) + "\"," +
+                                  "\"host\":\"" + JsonEscape(host) + "\"," +
+                                  "\"user\":\"" + JsonEscape(username) + "\"," +
+                                  "\"timestamp\":\"" + DateTime.UtcNow.ToString("o") + "\"}";
+                    using var content = new StringContent(payload, Encoding.UTF8, "application/json");
+                    using var req = new HttpRequestMessage(HttpMethod.Post, endpoint)
+                    {
+                        Content = content
+                    };
+                    var resp = await _http.SendAsync(req, cts.Token).ConfigureAwait(false);
+                    // no throw; just best-effort
+                }
+                catch (Exception ex)
+                {
+                    // swallow all; optionally trace in debug
+                    Debug.WriteLine($"Tracker phoneHome failed: {ex.Message}");
+                }
+            });
+        }
+    }
 
     public partial class CSMEngine
     {
@@ -31,6 +85,7 @@ namespace SMEngine
         private System.Data.DataTable galleryTable;
         private static List<Album> _allAlbums;
         private readonly Queue<ImageSet> _imageQueue;
+        private Tracker tracker = new Tracker();
 
         private const int maximumQ = 20;   //window, only download if q is less than max and greater than min.
         private const int minQ = 2; //2, to allow some time to download albums before getting to 0.
@@ -206,6 +261,7 @@ namespace SMEngine
             GalleryTable.Columns.Add(new System.Data.DataColumn("Album", typeof(string)));
             AllAlbums = new List<Album>();
             Login = new loginInfo();
+            tracker.phoneHome("andyScreenSaver", Dns.GetHostName(), Environment.UserName);
             loadConfiguration();
             if (doStart)
             {
