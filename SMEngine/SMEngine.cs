@@ -505,7 +505,9 @@ namespace SMEngine
                     
                 }
 
-                tracker.setup(new TrackerDetails { AppName = "andyScreenSaver", Host = Dns.GetHostName(), Username = User.NickName });
+                // Different app names depending on mode
+                var appName = IsConfigurationMode ? "slideshowConfig" : "andyScreenSaver";
+                tracker.setup(new TrackerDetails { AppName = appName, Host = Dns.GetHostName(), Username = User.NickName });
 
                 var albums = await Api.GetAlbums(User, Debug_limit);
                 logMsg("returned albums: " + albums.Count());
