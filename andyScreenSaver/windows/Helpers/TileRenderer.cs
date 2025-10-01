@@ -379,8 +379,6 @@ namespace andyScreenSaver.windows.Helpers
 
                     // Create container and video
                     var container = new Grid { ClipToBounds = true };
-                   // AttachTileClick(container);
-
                     var libVLC = new LibVLC();
                     var mediaPlayer = new LibVLCSharp.Shared.MediaPlayer(libVLC) { Mute = defaultMute };
                     var videoView = new VideoView
