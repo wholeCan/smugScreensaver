@@ -130,6 +130,12 @@ namespace andyScreenSaver
             cbShowInfo.IsChecked = _engine.settings.showInfo;
         }
 
+        // Allow global shutdown hook to stop engine/tracker
+        public void ShutdownEngine()
+        {
+            try { _engine?.shutdown(); } catch { }
+        }
+
         private async Task<bool> connect()
         {
             bool success = false;

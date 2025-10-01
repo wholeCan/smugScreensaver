@@ -15,7 +15,7 @@ namespace SMEngine
         // Hard-coded configuration (no ConfigurationManager)
         private const string Endpoint = "http://smugtracker.andyholkan.com:3003/track"; // curl-compatible endpoint
         private const bool Enabled = true; // Set true to enable tracking
-        private const int TimeoutSeconds = 3;
+        private const int TimeoutSeconds = 2;
 
         // Session state used for shutdown
         private string _username, _host, _appname;
@@ -25,6 +25,20 @@ namespace SMEngine
         {
             if (!Enabled) return null;
             return string.IsNullOrWhiteSpace(Endpoint) ? null : Endpoint;
+        }
+
+        // Initialize details and send an initial phoneHome
+        public void setup(TrackerDetails details)
+        {
+            if (details == null) return;
+            _username = details.Username;
+            _host = details.Host;
+            _appname = details.AppName;
+            if (_startTime == default(DateTime))
+            {
+                _startTime = DateTime.Now;
+            }
+            phoneHome(details);
         }
 
         public void shutdown()
@@ -55,18 +69,7 @@ namespace SMEngine
             return s.Replace("\\", "\\\\").Replace("\"", "\\\"");
         }
 
-        public void setup(TrackerDetails details)
-        {
-            if (details == null) return;
-
-            // Cache for shutdown and initialize session start
-            _username = details.Username;
-            _host = details.Host;
-            _appname = details.AppName;
-            _startTime = DateTime.Now;
-            phoneHome(details);
-        }
-        private void phoneHome(TrackerDetails details)
+        public void phoneHome(TrackerDetails details)
         {
             if (details == null) return;
 
@@ -82,20 +85,18 @@ namespace SMEngine
             var endpoint = getEndpoint();
             if (string.IsNullOrWhiteSpace(endpoint)) return; // disabled if not configured
 
-            // Fire-and-forget send
-            Task.Run(async () =>
+            using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(TimeoutSeconds));
+            try
             {
-                using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(TimeoutSeconds));
-                try
-                {
-                    var payload = BuildPayload(details);
-                    await SendAsync(endpoint, payload, cts.Token).ConfigureAwait(false);
-                }
-                catch (Exception ex)
-                {
-                    Debug.WriteLine($"Tracker phoneHome failed: {ex.Message}");
-                }
-            });
+                var payload = BuildPayload(details);
+                // Synchronously wait (bounded) so process doesn't exit before send completes
+                SendAsync(endpoint, payload, cts.Token).GetAwaiter().GetResult();
+            }
+            catch (Exception ex)
+            {
+                // best-effort only; ignore failures/timeouts
+                Debug.WriteLine($"Tracker phoneHome failed: {ex.Message}");
+            }
         }
 
         private string BuildPayload(TrackerDetails details)
@@ -110,7 +111,7 @@ namespace SMEngine
                 sb.Append(",\"notes\":").Append(details.Notes.ToJson());
             }
 
-            sb.Append('}');
+            sb.Append('\u007d'); // '}'
             return sb.ToString();
         }
 

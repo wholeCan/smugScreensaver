@@ -532,7 +532,6 @@ namespace andyScreenSaver
         {
             MyCursor = Cursor;
             StopImageLoop();
-            Engine.shutdown();
             Application.Current.Shutdown();
         }
 
@@ -864,7 +863,7 @@ namespace andyScreenSaver
         private void Window_Closed(object sender, EventArgs e)
         {
             LogMsg("Closing");
-            
+            try { Engine?.shutdown(); } catch { }
             AppOpenCloseLogger.logClosed(Engine.getUptime(), Engine.getRuntimeStatsInfo(false));
         }
 
