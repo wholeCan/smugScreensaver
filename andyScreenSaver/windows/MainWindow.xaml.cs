@@ -379,8 +379,6 @@ namespace andyScreenSaver
             return TileGridBuilder.GetBorderAt(hStack1, randWidth, randHeight);
         }
 
-        int videoCounter = 0;
-        int photoCounter = 0;
 
 
 
