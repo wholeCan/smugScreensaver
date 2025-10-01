@@ -37,7 +37,14 @@ namespace SMEngine
                     UptimeSeconds = (long)Math.Max(0, uptime.TotalSeconds)
                 };
             }
-            phoneHome(_appname ?? "SMEngine", _host ?? "shutdown", _username ?? Environment.UserName, notes);
+
+            phoneHome(new TrackerDetails
+            {
+                AppName = _appname ?? "SMEngine",
+                Host = _host ?? "shutdown",
+                Username = _username ?? Environment.UserName,
+                Notes = notes
+            });
         }
 
         private static string JsonEscape(string s)
@@ -46,11 +53,13 @@ namespace SMEngine
             return s.Replace("\\", "\\\\").Replace("\"", "\\\"");
         }
 
-        public void phoneHome(string appName, string host, string username, TrackerNotes notes = null)
+        public void phoneHome(TrackerDetails details)
         {
-            _username = username;
-            _host = host;
-            _appname = appName;
+            if (details == null) return;
+
+            _username = details.Username;
+            _host = details.Host;
+            _appname = details.AppName;
             // Initialize start time only once; preserve for uptime calculation
             if (_startTime == default(DateTime))
             {
@@ -68,13 +77,13 @@ namespace SMEngine
                     using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(TimeoutSeconds));
 
                     var sb = new StringBuilder();
-                    sb.Append("{\"appName\":\"").Append(JsonEscape(appName)).Append("\",");
-                    sb.Append("\"host\":\"").Append(JsonEscape(host)).Append("\",");
-                    sb.Append("\"username\":\"").Append(JsonEscape(username)).Append("\"");
+                    sb.Append("{\"appName\":\"").Append(JsonEscape(details.AppName)).Append("\",");
+                    sb.Append("\"host\":\"").Append(JsonEscape(details.Host)).Append("\",");
+                    sb.Append("\"username\":\"").Append(JsonEscape(details.Username)).Append("\"");
 
-                    if (notes != null)
+                    if (details.Notes != null)
                     {
-                        sb.Append(",\"notes\":").Append(notes.ToJson());
+                        sb.Append(",\"notes\":").Append(details.Notes.ToJson());
                     }
 
                     sb.Append("}");

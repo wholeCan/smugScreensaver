@@ -505,8 +505,7 @@ namespace SMEngine
                     
                 }
 
-                //var tracker = new Tracker();
-                tracker.phoneHome("andyScreenSaver", Dns.GetHostName(), User.NickName);
+                tracker.phoneHome(new TrackerDetails { AppName = "andyScreenSaver", Host = Dns.GetHostName(), Username = User.NickName });
 
                 var albums = await Api.GetAlbums(User, Debug_limit);
                 logMsg("returned albums: " + albums.Count());
