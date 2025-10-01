@@ -248,8 +248,6 @@ namespace andyScreenSaver.windows.Helpers
             border.Dispatcher.Invoke(() =>
             {
                 var container = new Grid { ClipToBounds = true };
-               // AttachTileClick(container);
-
                 if (s.IsVideo && !string.IsNullOrEmpty(s.VideoSource))
                 {
                     // Stop and dispose any previous video in either direct child or container
