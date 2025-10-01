@@ -13,7 +13,7 @@ namespace SMEngine
         private static readonly HttpClient _http = new HttpClient();
 
         // Hard-coded configuration (no ConfigurationManager)
-        private const string Endpoint = "http://127.0.0.1:3000/track"; // curl-compatible endpoint
+        private const string Endpoint = "http://smugtracker.andyholkan.com:3003/track"; // curl-compatible endpoint
         private const bool Enabled = true; // Set true to enable tracking
         private const int TimeoutSeconds = 3;
 
@@ -33,7 +33,7 @@ namespace SMEngine
         {
             var endpoint = getEndpoint();
             if (string.IsNullOrWhiteSpace(endpoint)) return; // disabled if not configured
-
+            
             // Fire-and-forget
             Task.Run(async () =>
             {
