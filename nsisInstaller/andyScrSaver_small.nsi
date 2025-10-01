@@ -59,8 +59,8 @@ Section "Install Application" ;No components page, name is not important
 	File /r "${APP_RELEASE}\*.config"
 	File /r "${APP_RELEASE}\*.xml"
 
-	File /r "${APP_RELEASE}\libvlc\*.dll"
-	File /r "${APP_RELEASE}\libvlc\plugins\*"
+	File /r "${APP_RELEASE}\libvlc*.*"
+
 
 	; include Screensaver starter files
 	File /r "${STARTER_RELEASE}\*.dll"
