@@ -31,7 +31,7 @@ namespace CliDownloader
 
             // Wait for albums to load
             engine.IsConfigurationMode = false;          
-            engine.settings.quality = 5; // Set to highest quality
+            engine.settings.quality = 5; // Set to highest quality (5 is highest, 1 is lowest)
 
             var albumLoadThread = new Thread(() => engine.GetType().GetMethod("loadAllImages", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance).Invoke(engine, null));
             albumLoadThread.Start();
@@ -93,6 +93,7 @@ namespace CliDownloader
             }
         }
 
+        // Add a variable to count downloaded files in DownloadAlbum
         static void DownloadAlbum(CSMEngine engine, SmugMug.NET.Album album)
         {
             Console.WriteLine($"Downloading gallery: {album.Name}");
@@ -126,10 +127,11 @@ namespace CliDownloader
             {
                 safeAlbumDir = safeAlbumDir.Substring(1);
             }
-   
+
             Directory.CreateDirectory(safeAlbumDir);
 
             var captionFilePath = Path.Combine(safeAlbumDir, "captions.txt");
+            int downloadedCount = 0;
             using (var captionWriter = new StreamWriter(captionFilePath, false))
             {
                 foreach (var image in images)
@@ -144,6 +146,7 @@ namespace CliDownloader
                             {
                                 client.DownloadFile(originalUrl, fileName);
                                 Console.WriteLine($"Downloaded: {fileName}");
+                                downloadedCount++;
                             }
                         }
                         catch (Exception ex)
@@ -154,6 +157,7 @@ namespace CliDownloader
                     }
                 }
             }
+            Console.WriteLine($"Downloaded {downloadedCount} files from gallery: {album.Name}");
         }
     }
 }
