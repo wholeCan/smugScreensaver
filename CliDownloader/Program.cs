@@ -39,38 +39,31 @@ namespace CliDownloader
 //            while (engine.IsLoadingAlbums1) { Thread.Sleep(100); }
 
 
-            if (args[0] == "list" && args.Length > 1 && args[1] == "galleries")
+            if (args[0] == "list" && args.Length >= 1)
             {
-                while (true)
+                var albums = CSMEngine.AllAlbums.ToList();
+                if (albums.Count == 0)
                 {
-                    var albums = CSMEngine.AllAlbums.ToList(); // Reload albums each time
-                    if (albums.Count == 0)
-                    {
-                        Console.WriteLine("No galleries found.");
-                        break;
-                    }
-                    for (int i = 0; i < albums.Count; i++)
-                    {
-                        var album = albums[i];
-                        var imageCount = engine.ImageDictionary.Values.Count(img => img.AlbumTitle == album.Name);
-                        Console.WriteLine($"{i + 1}: gallery key: {album.AlbumKey}, album name: {album.Name}, photo count: {imageCount}");
-                    }
+                    Console.WriteLine("No galleries found.");
+                    return;
+                }
+                for (int i = 0; i < albums.Count; i++)
+                {
+                    var album = albums[i];
+                    var imageCount = engine.ImageDictionary.Values.Count(img => img.AlbumTitle == album.Name);
+                    Console.WriteLine($"{i + 1}: gallery key: {album.UrlPath}, album name: {album.Name}, photo count: {imageCount}");
+                }
 
-                    Console.Write("Enter the number of the gallery to download (or 'quit' to exit): ");
-                    var input = Console.ReadLine();
-                    if (input.Trim().Equals("quit", StringComparison.OrdinalIgnoreCase))
-                    {
-                        break;
-                    }
-                    if (int.TryParse(input, out int selectedIndex) && selectedIndex >= 1 && selectedIndex <= albums.Count)
-                    {
-                        var selectedAlbum = albums[selectedIndex - 1];
-                        DownloadAlbum(engine, selectedAlbum);
-                    }
-                    else
-                    {
-                        Console.WriteLine("Invalid selection.");
-                    }
+                Console.Write("Enter the number of the gallery to download: ");
+                var input = Console.ReadLine();
+                if (int.TryParse(input, out int selectedIndex) && selectedIndex >= 1 && selectedIndex <= albums.Count)
+                {
+                    var selectedAlbum = albums[selectedIndex - 1];
+                    DownloadAlbum(engine, selectedAlbum);
+                }
+                else
+                {
+                    Console.WriteLine("Invalid selection.");
                 }
             }
             else if (args[0] == "download" && args.Length > 1)
@@ -105,14 +98,10 @@ namespace CliDownloader
             Console.WriteLine($"Downloading gallery: {album.Name}");
             var loadImagesMethod = typeof(SMEngine.CSMEngine).GetMethod("loadImages", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
             loadImagesMethod.Invoke(engine, new object[] { album, true, 2 });
-            // Wait for images to load (simple sleep, could be improved)
-            // Thread.Sleep(5000);
 
-            // Enhanced synchronous wait for all image downloads to complete
             var imagesLoading = true;
             while (imagesLoading)
             {
-                // Check if all images for the album have been loaded
                 var loadedImages = engine.ImageDictionary.Values.Count(i => i.AlbumTitle == album.Name);
                 if (loadedImages >= album.ImageCount)
                 {
@@ -120,7 +109,7 @@ namespace CliDownloader
                 }
                 else
                 {
-                    Thread.Sleep(500); // Poll every 0.5 seconds
+                    Thread.Sleep(500);
                 }
             }
 
@@ -130,23 +119,25 @@ namespace CliDownloader
                 Console.WriteLine($"No images found in gallery: {album.Name}");
                 return;
             }
-            var safeAlbumName = string.Join("_", album.Name.Split(Path.GetInvalidFileNameChars()));
-            Directory.CreateDirectory(safeAlbumName);
 
-            // Prepare caption file
-            var captionFilePath = Path.Combine(safeAlbumName, "captions.txt");
+            // Use album.UrlPath to create a subdirectory for the album
+            var safeAlbumDir = album.UrlPath.Replace("/","\\");
+            if (safeAlbumDir.StartsWith("\\"))
+            {
+                safeAlbumDir = safeAlbumDir.Substring(1);
+            }
+   
+            Directory.CreateDirectory(safeAlbumDir);
+
+            var captionFilePath = Path.Combine(safeAlbumDir, "captions.txt");
             using (var captionWriter = new StreamWriter(captionFilePath, false))
             {
                 foreach (var image in images)
                 {
-                    // Try to get the highest quality image URL
-                    var originalUrl = image.ImageURL; // fallback to ImageURL
-                    // If there is a property or method to get original quality, use it here
-                    // e.g. originalUrl = image.OriginalImageUrl ?? image.ImageURL;
-                    // But currently only ImageURL is available
+                    var originalUrl = image.ImageURL;
                     if (!string.IsNullOrEmpty(originalUrl))
                     {
-                        var fileName = Path.Combine(safeAlbumName, image.Name);
+                        var fileName = Path.Combine(safeAlbumDir, image.Name);
                         try
                         {
                             using (var client = new System.Net.WebClient())
@@ -159,7 +150,6 @@ namespace CliDownloader
                         {
                             Console.WriteLine($"Failed to download {originalUrl}: {ex.Message}");
                         }
-                        // Write caption info
                         captionWriter.WriteLine($"{image.Name}\t{image.Caption}");
                     }
                 }
