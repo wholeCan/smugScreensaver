@@ -1,8 +1,9 @@
-﻿using System;
+﻿using SMEngine;
+using System;
 using System.IO;
 using System.Linq;
+using System.Net;
 using System.Threading;
-using SMEngine;
 using static SMEngine.CSMEngine;
 
 namespace CliDownloader
@@ -164,6 +165,13 @@ namespace CliDownloader
 
         static Int64 DownloadAlbum(CSMEngine engine, SmugMug.NET.Album album, string outputDir)
         {
+            var albumDescription = album.Description ?? null;
+            if (albumDescription != null)
+            {
+                Console.WriteLine($"Album: {album.Name}");
+                var descriptionPath = Path.Combine(outputDir, "albumDescription.txt");
+                File.WriteAllText(descriptionPath, albumDescription);
+            }
             Console.WriteLine($"Downloading gallery: {album.Name}");
             var loadImagesMethod = typeof(SMEngine.CSMEngine).GetMethod("loadImages", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
             loadImagesMethod.Invoke(engine, new object[] { album, true, 2 });
@@ -211,7 +219,8 @@ namespace CliDownloader
             {
                 foreach (var image in images)
                 {
-                    var originalUrl = image.ImageURL;
+                    var originalUrl =  image.IsVideo?image.VideoSource:image.ImageURL;
+
                     if (!string.IsNullOrEmpty(originalUrl))
                     {
                         var fileName = Path.Combine(fullAlbumDir, image.Name);
@@ -236,6 +245,20 @@ namespace CliDownloader
                                     downloadedCount++;
                                 }
                                 success = true;
+                            }
+                            catch (WebException ex)
+                            {
+                                Console.WriteLine($"WebException: {ex.Message}");
+
+                                if (ex.Response != null)
+                                {
+                                    using (var reader = new StreamReader(ex.Response.GetResponseStream()))
+                                    {
+                                        string errorDetails = reader.ReadToEnd();
+                                        Console.WriteLine("Server response:");
+                                        Console.WriteLine(errorDetails);
+                                    }
+                                }
                             }
                             catch (Exception ex)
                             {
