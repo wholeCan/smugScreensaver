@@ -225,6 +225,19 @@ namespace CliDownloader
                     if (!string.IsNullOrEmpty(originalUrl))
                     {
                         var fileName = Path.Combine(fullAlbumDir, image.Name);
+
+                        string urlExtension = Path.GetExtension(originalUrl);
+
+                        string fileNameExtension = Path.GetExtension(fileName);
+                        if (!Path.HasExtension(fileName))
+                        {
+                            Console.WriteLine($"File has NO extension: {fileNameExtension}");
+                        }
+                        // Check if filename has an extension, if not exists - steal one.
+                        fileName = Path.HasExtension(fileName)
+                            ? fileName
+                            : fileName + urlExtension;
+
                         if (File.Exists(fileName))
                         {
                             Console.WriteLine($"Skipped (already exists): {fileName}");
