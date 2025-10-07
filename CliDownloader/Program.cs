@@ -10,6 +10,7 @@ namespace CliDownloader
 {
     internal class Program
     {
+        const int BUILD_QUALITY = 4; // Original quality = 5, 4 if not as owner, low = 1
         static string GetOutputDirectory(string[] args)
         {
             if (args.Length > 2 && !new[] { "list", "download", "all" }.Contains(args[args.Length - 1].ToLower()))
@@ -132,7 +133,7 @@ namespace CliDownloader
             }
 
             engine.IsConfigurationMode = false;
-            engine.settings.quality = 4; // Original quality = 5, 4 if not as owner, low = 1
+            engine.settings.quality = BUILD_QUALITY; // Original quality = 5, 4 if not as owner, low = 1
             Console.WriteLine("Downloading all album names - be patient... this takes several minutes....");
             var albumLoadThread = new Thread(() => engine.GetType().GetMethod("loadAllImages", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance).Invoke(engine, null));
             albumLoadThread.Start();
