@@ -5,7 +5,7 @@
 using System.Windows.Media.Imaging;
 using static SMEngine.CSMEngine;
 
-var engine = new SMEngine.CSMEngine(true);
+var engine = new SMEngine.CSMEngine(true, "smEngineTestHarness");
 var loggedIn = true;
 
 for (int i = 0; i < 4; i++)

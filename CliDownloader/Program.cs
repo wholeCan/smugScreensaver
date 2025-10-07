@@ -122,7 +122,7 @@ namespace CliDownloader
                 return;
             }
 
-            var engine = new CSMEngine(false);
+            var engine = new CSMEngine(false, "cli-downloader");
             var envelope = engine.getCode();
             if (!engine.login(envelope))
             {
