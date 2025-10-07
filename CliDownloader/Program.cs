@@ -131,7 +131,7 @@ namespace CliDownloader
             }
 
             engine.IsConfigurationMode = false;
-            engine.settings.quality = 5; // Original quality = 5, low = 1
+            engine.settings.quality = 4; // Original quality = 5, 4 if not as owner, low = 1
             Console.WriteLine("Downloading all album names - be patient... this takes several minutes....");
             var albumLoadThread = new Thread(() => engine.GetType().GetMethod("loadAllImages", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance).Invoke(engine, null));
             albumLoadThread.Start();
@@ -215,6 +215,13 @@ namespace CliDownloader
                     if (!string.IsNullOrEmpty(originalUrl))
                     {
                         var fileName = Path.Combine(fullAlbumDir, image.Name);
+                        if (File.Exists(fileName))
+                        {
+                            Console.WriteLine($"Skipped (already exists): {fileName}");
+                            downloadedCount++;
+                            captionWriter.WriteLine($"{image.Name}\t{image.Caption}");
+                            continue;
+                        }
                         int attempts = 0;
                         bool success = false;
                         while (attempts < 3 && !success)
@@ -223,6 +230,7 @@ namespace CliDownloader
                             {
                                 using (var client = new System.Net.WebClient())
                                 {
+                                    client.Headers.Add("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64)");
                                     client.DownloadFile(originalUrl, fileName);
                                     Console.WriteLine($"Downloaded: {fileName}");
                                     downloadedCount++;
@@ -233,7 +241,7 @@ namespace CliDownloader
                             {
                                 attempts++;
                                 Console.WriteLine($"Failed to download {originalUrl} (attempt {attempts}): {ex.Message}");
-                                Thread.Sleep(1000);
+                                Thread.Sleep(2000); // Wait 2 seconds before retry
                                 if (attempts == 3)
                                 {
                                     failureLog.WriteLine($"{album.Name}\t{image.Name}\t{originalUrl}\t{ex.Message}");
