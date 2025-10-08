@@ -231,7 +231,11 @@ namespace CliDownloader
                         string fileNameExtension = Path.GetExtension(fileName);
                         if (!Path.HasExtension(fileName))
                         {
-                            Console.WriteLine($"File has NO extension: {fileNameExtension}");
+                            if (!Path.HasExtension(originalUrl))
+                            {
+                                Console.WriteLine("geez, url has no extension either");
+                            }
+                            Console.WriteLine($"{fileName} File has NO extension: {fileNameExtension}, adding {urlExtension}");
                         }
                         // Check if filename has an extension, if not exists - steal one.
                         fileName = Path.HasExtension(fileName)
