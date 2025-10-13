@@ -544,7 +544,7 @@ namespace andyScreenSaver
 
             if (Engine == null || forceStart == true)
             {
-                Engine = new SMEngine.CSMEngine();
+                Engine = new SMEngine.CSMEngine(true, "andyScreenSaver");
                 Engine.setScreenDimensions(w, h);
                 {
                     GridHeight = Engine.settings.gridHeight;

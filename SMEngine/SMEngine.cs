@@ -194,10 +194,11 @@ namespace SMEngine
 
         private loginInfo _login;
         static Random r = new Random();
-        public CSMEngine(bool doStart)
+        string _appName = null;
+        public CSMEngine(bool doStart, string appname)
         {
 
-
+            _appName = appname;
             
             _imageQueue = new Queue<ImageSet>();
             GalleryTable = new System.Data.DataTable();
@@ -218,7 +219,7 @@ namespace SMEngine
 
            
         }
-        public CSMEngine() : this(true)
+        private CSMEngine() : this(true, "smEngine")
         {
 
         }
@@ -506,7 +507,11 @@ namespace SMEngine
                 }
 
                 // Different app names depending on mode
-                var appName = IsConfigurationMode ? "slideshowConfig" : "andyScreenSaver";
+                if (_appName == null)
+                {
+                    _appName =  IsConfigurationMode ? "slideshowConfig" : "andyScreenSaver";//Assembly.GetExecutingAssembly().GetName().Name;
+                }   
+                var appName = _appName;
                 tracker.setup(new TrackerDetails { AppName = appName, Host = Dns.GetHostName(), Username = User.NickName });
 
                 var albums = await Api.GetAlbums(User, Debug_limit);

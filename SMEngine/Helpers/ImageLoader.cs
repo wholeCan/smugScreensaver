@@ -83,6 +83,12 @@ namespace SMEngine
             return image;
         }
 
+        public static string SanitizeFilename(string filename)
+        {
+            char[] invalidChars = Path.GetInvalidFileNameChars();
+            return new string(filename.Select(ch => invalidChars.Contains(ch) ? '_' : ch).ToArray());
+        }
+
         public static async Task LoadImagesForAlbum(CSMEngine engine, Album a, bool singleAlbumMode, int size = 2)
         {
             if (a == null || a.Uris.AlbumImages == null) return;
@@ -117,6 +123,12 @@ namespace SMEngine
                         string videoSource = null;
                         if (!string.IsNullOrEmpty(i.FileName))
                         {
+                            //known problem, if file contains a ", then an exception is being thrown as invalid character.
+                            var sanitizedFilename = SanitizeFilename(i.FileName);
+                            if (sanitizedFilename != i.FileName)
+                            {
+                                i.FileName = sanitizedFilename;
+                            }
                             var ext = System.IO.Path.GetExtension(i.FileName).ToLowerInvariant();
                             if (ext == ".mp4" || ext == ".avi" || ext == ".mov" || ext == ".wmv" || ext == ".mkv")
                             {

@@ -1,5 +1,6 @@
 using System;
 using System.Linq;
+using System.Security.Cryptography;
 using System.Threading.Tasks;
 
 namespace SMEngine
@@ -17,7 +18,15 @@ namespace SMEngine
                 {
                     try
                     {
-                        var imageIndex = CSMEngine.R.Next(engine.ImageDictionary.Count);
+                        // Use cryptographically secure random for better randomness
+                        int imageIndex;
+                        using (var rng = RandomNumberGenerator.Create())
+                        {
+                            var randomBytes = new byte[4];
+                            rng.GetBytes(randomBytes);
+                            var randomInt = BitConverter.ToUInt32(randomBytes, 0);
+                            imageIndex = (int)(randomInt % (uint)engine.ImageDictionary.Count);
+                        }
                         var key = engine.ImageDictionary.Keys.ElementAt(imageIndex);
                         var element = engine.ImageDictionary[key];
                         engine.ImageDictionary.Remove(key);

@@ -32,7 +32,7 @@ namespace andyScreenSaver
         //}
         public async void initEngine()
         {
-            _engine = new CSMEngine();
+            _engine = new CSMEngine(true, "slideshowConfig");
             await this.Dispatcher.BeginInvoke(new Action(async delegate ()
             {
 
