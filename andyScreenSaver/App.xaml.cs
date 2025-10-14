@@ -22,8 +22,7 @@ namespace andyScreenSaver
         // Used to host WPF content in preview mode, attach HwndSource to parent Win32 window.
         private HwndSource winWPFContent;
         private Window1 winSaver;
-
-        //DisableScreensaverClassSingleton disableScreensaverSingleton = DisableScreensaverClassSingleton.Instance;
+        private DisableScreensaverClassSingleton screensaverManager = DisableScreensaverClassSingleton.Instance;
 
         private void Application_Startup(object sender, StartupEventArgs e)
         {
@@ -148,10 +147,9 @@ namespace andyScreenSaver
                  * If not a 'sanctioned mode', ie no params included - go into slideshow mode with controls.
                  * **/
                 else
-                {//no parameters
-                 //var win = new Window1();
+                {//no parameters - slideshow mode, disable system screensaver
+                    screensaverManager.DisableScreenSaver();
 
-                    //disableScreensaverSingleton.DisableScreenSaver();
                     var wins = new List<Window1>();
                     var iter = 0;
                     foreach (var s in System.Windows.Forms.Screen.AllScreens)

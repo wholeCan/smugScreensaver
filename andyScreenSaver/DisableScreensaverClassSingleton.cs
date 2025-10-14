@@ -1,25 +1,40 @@
-﻿using System.Runtime.InteropServices;
+﻿using System;
+using System.Runtime.InteropServices;
 
 namespace andyScreenSaver
 {
+    /// <summary>
+    /// Manages screensaver prevention using SetThreadExecutionState.
+    /// This is cleaner than SystemParametersInfo because it:
+    /// - Doesn't modify user's system settings permanently
+    /// - Automatically resets when the app exits
+    /// - Is the Windows-recommended approach for keeping display active
+    /// </summary>
     internal class DisableScreensaverClassSingleton
     {
-        const int SPI_SETSCREENSAVEACTIVE = 0x0011;
-        bool screensaverDisabled = false;
+        [Flags]
+        public enum EXECUTION_STATE : uint
+        {
+            ES_CONTINUOUS = 0x80000000,
+            ES_DISPLAY_REQUIRED = 0x00000002,
+            ES_SYSTEM_REQUIRED = 0x00000001
+        }
 
-        [DllImport("user32.dll", SetLastError = true)]
-        static extern bool SystemParametersInfo(int uiAction, int uiParam, ref int pvParam, int fWinIni);
+        [DllImport("kernel32.dll", CharSet = CharSet.Auto, SetLastError = true)]
+        static extern EXECUTION_STATE SetThreadExecutionState(EXECUTION_STATE esFlags);
 
         private static DisableScreensaverClassSingleton instance;
+        private bool isActive = false;
+
         private DisableScreensaverClassSingleton()
         {
-            screensaverDisabled = false;//start up in normal mode, and require activation.       
+            isActive = false;
         }
+
         public static DisableScreensaverClassSingleton Instance
         {
             get
             {
-                // If the instance is null, create a new instance
                 if (instance == null)
                 {
                     instance = new DisableScreensaverClassSingleton();
@@ -28,27 +43,37 @@ namespace andyScreenSaver
             }
         }
 
-            public void DisableScreenSaver()
+        /// <summary>
+        /// Prevents the screensaver and display from turning off while the app runs.
+        /// This is non-intrusive and automatically resets when the app exits.
+        /// </summary>
+        public void DisableScreenSaver()
+        {
+            if (!isActive)
             {
-                int nullVar = 0;
-            
-                SystemParametersInfo(SPI_SETSCREENSAVEACTIVE, 0, ref nullVar, 0);
-                screensaverDisabled = true;
+                SetThreadExecutionState(
+                    EXECUTION_STATE.ES_CONTINUOUS |
+                    EXECUTION_STATE.ES_DISPLAY_REQUIRED |
+                    EXECUTION_STATE.ES_SYSTEM_REQUIRED);
+                isActive = true;
+            }
         }
 
-            public void EnableScreenSaver()
+        /// <summary>
+        /// Re-enables normal screensaver behavior.
+        /// </summary>
+        public void EnableScreenSaver()
+        {
+            if (isActive)
             {
-                if (instance != null)
-                {
-                    int restoreValue = 1; // You can set it to 1 to enable the screen saver back
-                    SystemParametersInfo(SPI_SETSCREENSAVEACTIVE, 0, ref restoreValue, 0);
-                }
+                SetThreadExecutionState(EXECUTION_STATE.ES_CONTINUOUS);
+                isActive = false;
             }
-        ~DisableScreensaverClassSingleton ()
+        }
+
+        ~DisableScreensaverClassSingleton()
         {
             EnableScreenSaver();
         }
-
-     
     }
 }
