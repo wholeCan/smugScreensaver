@@ -32,7 +32,7 @@
                 <Button Content="add Albums" Grid.Column="2" HorizontalAlignment="Left" Margin="29,65,0,0" VerticalAlignment="Top" Width="75" Click="Button_Click"/>
             </Grid>
         </GroupBox>
-        <CheckBox Content="Show Info" Height="16" HorizontalAlignment="Left" Margin="19,292,0,0" Name="cbShowInfo" VerticalAlignment="Top" />
+        <CheckBox Content="Show Image captions" Height="16" HorizontalAlignment="Left" Margin="19,292,0,0" Name="cbShowInfo" VerticalAlignment="Top" />
         <Button Content="Contribute" Height="23" HorizontalAlignment="Left" Margin="19,423,0,0" Name="button5" VerticalAlignment="Top" Width="75" Click="button5_Click" />
         <Button Content="Contact" Height="23" HorizontalAlignment="Left" Margin="19,452,0,0" Name="button6" VerticalAlignment="Top" Width="75" Click="button6_Click" />
         <Label Content="Grid dimensions:" HorizontalAlignment="Left" Margin="19,344,0,0" VerticalAlignment="Top"/>

@@ -424,6 +424,7 @@ namespace andyScreenSaver.windows.Helpers
                         _log($"Error encountered playing video {s.VideoSource} {e.ToString()}");
                         try { mediaPlayer.Stop(); } catch { }
                     };
+                    
                     Panel.SetZIndex(videoView, 0);
                     container.Children.Add(videoView);
 

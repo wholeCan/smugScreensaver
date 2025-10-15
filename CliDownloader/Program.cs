@@ -22,7 +22,7 @@ namespace CliDownloader
 
         static void WriteAlbumListToFile(string filePath, CSMEngine engine)
         {
-            var albums = CSMEngine.AllAlbums.ToList();
+            var albums = engine.AllAlbums.ToList();
             using (var writer = new StreamWriter(filePath, false))
             {
                 foreach (var album in albums)
@@ -34,7 +34,7 @@ namespace CliDownloader
 
         static void ListGalleries(CSMEngine engine, string outputDir)
         {
-            var albums = CSMEngine.AllAlbums.ToList();
+            var albums = engine.AllAlbums.ToList();
             if (albums.Count == 0)
             {
                 Console.WriteLine("No galleries found.");
@@ -79,7 +79,7 @@ namespace CliDownloader
                 var albumCount = 0;
                 foreach (var albumName in albumNames)
                 {
-                    var album = CSMEngine.AllAlbums.FirstOrDefault(a => a.Name.Equals(albumName.Trim(), StringComparison.OrdinalIgnoreCase));
+                    var album = engine.AllAlbums.FirstOrDefault(a => a.Name.Equals(albumName.Trim(), StringComparison.OrdinalIgnoreCase));
                     if (album == null)
                     {
                         Console.WriteLine($"Album not found: {albumName}");
@@ -104,7 +104,7 @@ namespace CliDownloader
 
         static void DownloadSingleGallery(CSMEngine engine, string galleryName, string outputDir)
         {
-            var album = CSMEngine.AllAlbums.FirstOrDefault(a => a.Name.Equals(galleryName, StringComparison.OrdinalIgnoreCase));
+            var album = engine.AllAlbums.FirstOrDefault(a => a.Name.Equals(galleryName, StringComparison.OrdinalIgnoreCase));
             if (album == null)
             {
                 Console.WriteLine($"Gallery '{galleryName}' not found.");
