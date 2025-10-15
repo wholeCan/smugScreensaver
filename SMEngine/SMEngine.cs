@@ -702,24 +702,24 @@ namespace SMEngine
             if (Running == false)
             {
                 Running = true;
-                bool startIt = true;
+                bool refillQueue = true;
                 var cancellationToken = _cancellationTokenSource.Token;
 
                 while (Running && !cancellationToken.IsCancellationRequested)
                 {
-
-                    /*if (qSize < MinQ)
+                    if (qSize < MinQ)
                     {
-                        startIt = true;
-                    }*/
-                    if (qSize<MinQ && qSize < MaximumQ)
+                        refillQueue = true;
+                    }
+
+                    if (refillQueue && qSize < MaximumQ)
                     {
                         try
                         {
                             if (!screensaverExpired())  //new test, ensuring not pulling image while asleep
                             {
                                 var imageSet = getRandomImage();
-                                if (imageSet != null)
+                                if (imageSet != null && refillQueue)
                                 {
                                     lock (_imageQueueLock)
                                     {
@@ -751,7 +751,7 @@ namespace SMEngine
                     }
                     else
                     {
-                        startIt = false;
+                        refillQueue = false;
                     }
 
                     try
