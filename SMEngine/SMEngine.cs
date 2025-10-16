@@ -534,7 +534,7 @@ namespace SMEngine
                 TAlbumLoad?.Join(TimeSpan.FromSeconds(5));
 
                 // Dispose managed resources
-                tracker?.shutdown();
+                tracker?.shutdown(ImageCounter);
                 _cancellationTokenSource?.Dispose();
 
                 // Clear collections

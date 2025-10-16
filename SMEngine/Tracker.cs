@@ -1,6 +1,7 @@
 using System;
 using System.Diagnostics;
 using System.Net.Http;
+using System.Reflection;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
@@ -41,7 +42,7 @@ namespace SMEngine
             phoneHome(details);
         }
 
-        public void shutdown()
+        public void shutdown(long imageCounter)
         {
             TrackerNotes notes = null;
             if (_startTime != default(DateTime))
@@ -49,7 +50,9 @@ namespace SMEngine
                 var uptime = DateTime.Now - _startTime;
                 notes = new TrackerNotes
                 {
-                    UptimeSeconds = (long)Math.Max(0, uptime.TotalSeconds)
+                    UptimeSeconds = (long)Math.Max(0, uptime.TotalSeconds),
+                    version = (Assembly.GetEntryAssembly()?.GetName().Version).ToString(),
+                    imageCounter = imageCounter
                 };
             }
 
@@ -91,6 +94,7 @@ namespace SMEngine
                 var payload = BuildPayload(details);
                 // Synchronously wait (bounded) so process doesn't exit before send completes
                 SendAsync(endpoint, payload, cts.Token).GetAwaiter().GetResult();
+                
             }
             catch (Exception ex)
             {
@@ -123,6 +127,7 @@ namespace SMEngine
                 Content = content
             };
             await _http.SendAsync(req, token).ConfigureAwait(false);
+            Thread.Sleep(1); // brief pause to help ensure send completes before process exits
         }
     }
 
