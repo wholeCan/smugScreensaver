@@ -2,74 +2,61 @@ using System;
 using System.IO;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Controls.Primitives;
 using System.Windows.Media.Imaging;
 
 namespace andyScreenSaver.windows.Helpers
 {
     internal static class TileGridBuilder
     {
-        public static void BuildGrid(StackPanel rootHorizontalStack,
+        public static void BuildGrid(UniformGrid grid,
                                      int gridWidth,
                                      int gridHeight,
                                      int borderThickness,
-                                     Func<int, BitmapImage> initialImageProvider,
-                                     double initialTileHeight)
+                                     Func<int, BitmapImage> initialImageProvider)
         {
-            if (rootHorizontalStack == null) throw new ArgumentNullException(nameof(rootHorizontalStack));
-            rootHorizontalStack.Children.Clear();
+            if (grid == null) throw new ArgumentNullException(nameof(grid));
 
-            int imageIndex = 0;
-            for (int col = 0; col < gridWidth; col++)
+            grid.Rows = gridHeight;
+            grid.Columns = gridWidth;
+            grid.Children.Clear();
+
+            int totalCells = gridWidth * gridHeight;
+            for (int imageIndex = 0; imageIndex < totalCells; imageIndex++)
             {
-                var columnStack = new StackPanel
+                var border = new Border
                 {
-                    HorizontalAlignment = HorizontalAlignment.Center,
-                    Orientation = Orientation.Vertical
+                    BorderThickness = new Thickness(borderThickness)
                 };
 
-                for (int row = 0; row < gridHeight; row++)
+                var img = new indexableImage
                 {
-                    var border = new Border
-                    {
-                        BorderThickness = new Thickness(borderThickness)
-                    };
+                    Source = initialImageProvider?.Invoke(imageIndex),
+                    ImageIndex = imageIndex,
+                    Stretch = System.Windows.Media.Stretch.Uniform,
+                    HorizontalAlignment = HorizontalAlignment.Center,
+                    VerticalAlignment = VerticalAlignment.Center
+                };
 
-                    var img = new indexableImage
-                    {
-                        Source = initialImageProvider?.Invoke(imageIndex),
-                        ImageIndex = imageIndex,
-                        Height = initialTileHeight,
-                        HorizontalAlignment = HorizontalAlignment.Center
-                    };
-
-                    border.Child = img;
-                    columnStack.Children.Add(border);
-                    imageIndex++;
-                }
-
-                rootHorizontalStack.Children.Add(columnStack);
+                border.Child = img;
+                grid.Children.Add(border);
             }
         }
 
-        public static Border GetBorderAt(StackPanel rootHorizontalStack, int x, int y)
+        public static Border GetBorderAt(UniformGrid grid, int x, int y)
         {
-            var column = rootHorizontalStack.Children[x] as StackPanel;
-            return column.Children[y] as Border;
+            // UniformGrid stores children in row-major order
+            int index = (y * grid.Columns) + x;
+            return grid.Children[index] as Border;
         }
 
-        public static void SetImageHeights(StackPanel rootHorizontalStack, double height)
+        public static void SetImageHeights(UniformGrid grid, double height)
         {
-            foreach (var v in rootHorizontalStack.Children)
+            foreach (var child in grid.Children)
             {
-                if (v is StackPanel col)
+                if (child is Border border && border.Child is indexableImage img)
                 {
-                    foreach (var child in col.Children)
-                    {
-                        if (child is Border border && border.Child is indexableImage img)
-                        {
-                            img.Height = height;
-                        }
-                    }
+                    img.Height = height;
                 }
             }
         }

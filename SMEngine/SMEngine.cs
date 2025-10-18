@@ -17,19 +17,24 @@ using System.Windows.Media.Imaging;
 namespace SMEngine
 {
 
-    public partial class CSMEngine
+    public partial class CSMEngine : IDisposable
     {
-        private static DateTime timeStarted = DateTime.Now;
-        private readonly static DateTime timeBooted = DateTime.Now;
+        private bool _disposed = false;
+        private readonly CancellationTokenSource _cancellationTokenSource = new CancellationTokenSource();
+        private readonly DateTime _timeStarted = DateTime.Now;
+        private static readonly DateTime _timeBooted = DateTime.Now;
 
         private readonly Dictionary<String, ImageSet> _imageDictionary;
-        private static Int64 imageCounter = 0;
+        private long _imageCounter = 0;
+        private readonly object _imageCounterLock = new object();
 
         private SmugMugAPI api = null;
         private User _user = null;
         private System.Data.DataTable galleryTable;
-        private static List<Album> _allAlbums;
-        private readonly Queue<ImageSet> _imageQueue;        
+        private List<Album> _allAlbums;
+        private readonly object _allAlbumsLock = new object();
+        private readonly Queue<ImageSet> _imageQueue;
+        private readonly object _imageQueueLock = new object();        
 
         private const int maximumQ = 20;   //window, only download if q is less than max and greater than min.
         private const int minQ = 2; //2, to allow some time to download albums before getting to 0.
@@ -65,7 +70,7 @@ namespace SMEngine
             rePullAlbums();
         }
 
-        private async void setupJob()
+        private Task SetupJobAsync()
         {
 # if(DEBUG) // time of day to reset.
             var frequencyMinutes = 24.0 * 60.0;/// 24; //24 = 1 per day.  1 = 1 per hour
@@ -88,6 +93,7 @@ namespace SMEngine
                });
           */
 
+            return Task.CompletedTask;
         }
 
         public string getTimeSinceLast()
@@ -193,7 +199,8 @@ namespace SMEngine
 #endregion
 
         private loginInfo _login;
-        static Random r = new Random();
+        private readonly Random _random = new Random();
+        private readonly object _randomLock = new object();
         string _appName = null;
         public CSMEngine(bool doStart, string appname)
         {
@@ -206,7 +213,7 @@ namespace SMEngine
             PlayedImages = new Dictionary<string, ImageSet>();
             GalleryTable.Columns.Add(new System.Data.DataColumn("Category", typeof(string)));
             GalleryTable.Columns.Add(new System.Data.DataColumn("Album", typeof(string)));
-            AllAlbums = new List<Album>();
+            _allAlbums = new List<Album>();
             Settings = new CSettings();
             Login = new loginInfo();
 
@@ -215,7 +222,7 @@ namespace SMEngine
             {
                 start();
             }
-            setupJob();
+            _ = SetupJobAsync();
 
            
         }
@@ -235,13 +242,16 @@ namespace SMEngine
         public bool checkCategoryForAlbums(string category)
         {
             //we are checking to see if there are any albums in this category
-            var albums = AllAlbums.FirstOrDefault(x => getFolder(x).Equals(category));
-            if (albums == null)
+            lock (_allAlbumsLock)
             {
-                logMsg("albums was returned as false for some reason");
-                return false;
+                var albums = _allAlbums.FirstOrDefault(x => getFolder(x).Equals(category));
+                if (albums == null)
+                {
+                    logMsg("albums was returned as false for some reason");
+                    return false;
+                }
+                return true;
             }
-            return true;
         }
 
         public void saveConfiguration()
@@ -278,7 +288,7 @@ namespace SMEngine
             WriteRegistryValue("quality", Settings.quality.ToString());
             WriteRegistryValue("Speed_S", Settings.speed_s.ToString());
             WriteRegistryValue("LoadAll", Settings.load_all ? 1.ToString() : 0.ToString());
-            WriteRegistryValue("ShowInfo", Settings.showInfo ? 1.ToString() : 0.ToString());
+            WriteRegistryValue("ShowInfo", Settings.showImageCaptions ? 1.ToString() : 0.ToString());
 
             WriteRegistryValue("gridH", Settings.gridHeight.ToString());
             WriteRegistryValue("gridW", Settings.gridWidth.ToString());
@@ -296,9 +306,9 @@ namespace SMEngine
                 Settings.speed_s = Int32.Parse(ReadRegistryValue("Speed_S", "5"));
 #endif
                 var loadAll = Int32.Parse(ReadRegistryValue("LoadAll", "1"));
-                var showInfo = Int32.Parse(ReadRegistryValue("ShowInfo", "1"));
+                var showImageCaptions = Int32.Parse(ReadRegistryValue("ShowInfo", "1"));
                 Settings.load_all = loadAll == 1 ? true : false;
-                Settings.showInfo = showInfo == 1 ? true : false;
+                Settings.showImageCaptions = showImageCaptions == 1 ? true : false;
 
                 Settings.gridHeight = Int32.Parse(ReadRegistryValue("gridH", "3"));
                 Settings.gridWidth = Int32.Parse(ReadRegistryValue("gridW", "4"));
@@ -395,9 +405,9 @@ namespace SMEngine
             try
             {
                 GettingCategories = true;
-                lock (AllAlbums)
+                lock (_allAlbumsLock)
                 {
-                    foreach (var album in AllAlbums)
+                    foreach (var album in _allAlbums)
                     {
                         var folder = getFolder(album);
                         if (!string.IsNullOrEmpty(folder) && !categories.Contains(folder))
@@ -430,11 +440,14 @@ namespace SMEngine
         public string[] getAlbums(string category)
         {
             var catAlbums = new List<string>();
-            foreach (Album album in AllAlbums)
+            lock (_allAlbumsLock)
             {
-                if (getFolder(album).Equals(category))
+                foreach (Album album in _allAlbums)
                 {
-                    catAlbums.Add(album.Name);
+                    if (getFolder(album).Equals(category))
+                    {
+                        catAlbums.Add(album.Name);
+                    }
                 }
             }
             return catAlbums.ToArray();
@@ -442,18 +455,24 @@ namespace SMEngine
         public void addAllAlbums()
         {
             GalleryTable.Clear();
-            foreach (Album a in AllAlbums)
+            lock (_allAlbumsLock)
             {
-                addGallery(getFolder(a), a.Name);
+                foreach (Album a in _allAlbums)
+                {
+                    addGallery(getFolder(a), a.Name);
+                }
             }
         }
 
         public void addAllAlbums(string byCategoryName)
         {
-            var albums = AllAlbums.Where(x => getFolder(x) == byCategoryName);
-            foreach (var a in albums)
+            lock (_allAlbumsLock)
             {
-                addGallery(getFolder(a), a.Name);
+                var albums = _allAlbums.Where(x => getFolder(x) == byCategoryName);
+                foreach (var a in albums)
+                {
+                    addGallery(getFolder(a), a.Name);
+                }
             }
         }
 
@@ -488,11 +507,55 @@ namespace SMEngine
 
         public void shutdown()
         {
-            tracker.shutdown();
+            Dispose();
         }
+
+        public void Dispose()
+        {
+            Dispose(true);
+            GC.SuppressFinalize(this);
+        }
+
+        protected virtual void Dispose(bool disposing)
+        {
+            if (_disposed)
+                return;
+
+            if (disposing)
+            {
+                // Request cancellation
+                _cancellationTokenSource?.Cancel();
+
+                // Stop threads gracefully
+                Running = false;
+
+                // Wait for threads to finish (with timeout)
+                imageCollectionThread?.Join(TimeSpan.FromSeconds(5));
+                TAlbumLoad?.Join(TimeSpan.FromSeconds(5));
+
+                // Dispose managed resources
+                tracker?.shutdown(ImageCounter);
+                _cancellationTokenSource?.Dispose();
+
+                // Clear collections
+                lock (_imageQueueLock)
+                {
+                    _imageQueue?.Clear();
+                }
+                lock (_allAlbumsLock)
+                {
+                    _allAlbums?.Clear();
+                }
+                _imageDictionary?.Clear();
+                PlayedImages?.Clear();
+            }
+
+            _disposed = true;
+        }
+
         private Tracker tracker = new Tracker();
 
-        private async void loadAlbums(string userNickName = null)
+        private async Task LoadAlbumsAsync(string userNickName = null)
         {
             try
             {
@@ -503,22 +566,22 @@ namespace SMEngine
                 else
                 {
                     User = await Api.GetAuthenticatedUser();
-                    
+
                 }
 
                 // Different app names depending on mode
                 if (_appName == null)
                 {
                     _appName =  IsConfigurationMode ? "slideshowConfig" : "andyScreenSaver";//Assembly.GetExecutingAssembly().GetName().Name;
-                }   
+                }
                 var appName = _appName;
                 tracker.setup(new TrackerDetails { AppName = appName, Host = Dns.GetHostName(), Username = User.NickName });
 
                 var albums = await Api.GetAlbums(User, Debug_limit);
                 logMsg("returned albums: " + albums.Count());
-                lock (AllAlbums)
+                lock (_allAlbumsLock)
                 {
-                    AllAlbums.AddRange(albums.Take(Debug_limit));
+                    _allAlbums.AddRange(albums.Take(Debug_limit));
                 }
 
 
@@ -526,6 +589,7 @@ namespace SMEngine
             catch (Exception ex)
             {
                 doException(ex.Message);
+                logMsg($"LoadAlbumsAsync failed: {ex.Message}");
             }
         }
 
@@ -534,21 +598,56 @@ namespace SMEngine
         {
             get
             {
-                return ImageQueue.Count;
+                lock (_imageQueueLock)
+                {
+                    return _imageQueue.Count;
+                }
             }
         }
 
         //public static DateTime TimeStarted { get => timeStarted; set => timeStarted = value; }
 
-        public static DateTime TimeBooted => timeBooted;
+        public static DateTime TimeBooted => _timeBooted;
 
         public Dictionary<string, ImageSet> ImageDictionary => _imageDictionary;
 
-        public static long ImageCounter { get => imageCounter; set => imageCounter = value; }
+        public long ImageCounter
+        {
+            get
+            {
+                lock (_imageCounterLock)
+                {
+                    return _imageCounter;
+                }
+            }
+            set
+            {
+                lock (_imageCounterLock)
+                {
+                    _imageCounter = value;
+                }
+            }
+        }
         public SmugMugAPI Api { get => api; set => api = value; }
         public User User { get => _user; set => _user = value; }
         public DataTable GalleryTable { get => galleryTable; set => galleryTable = value; }
-        public static List<Album> AllAlbums { get => _allAlbums; set => _allAlbums = value; }
+        public List<Album> AllAlbums
+        {
+            get
+            {
+                lock (_allAlbumsLock)
+                {
+                    return _allAlbums;
+                }
+            }
+            set
+            {
+                lock (_allAlbumsLock)
+                {
+                    _allAlbums = value;
+                }
+            }
+        }
 
         public Queue<ImageSet> ImageQueue => _imageQueue;
 
@@ -572,7 +671,7 @@ namespace SMEngine
         public DateTime LastImageRequested { get => lastImageRequested; set => lastImageRequested = value; }
         public int RestartCounter { get => restartCounter; set => restartCounter = value; }
         public loginInfo Login { get => _login; set => _login = value; }
-        public static Random R { get => r; set => r = value; }
+        public Random R => _random;
         public CSettings Settings { get => _settings; set => _settings = value; }
         public static int Salt { get => salt; set => salt = value; }
         public bool GettingCategories { get => gettingCategories; set => gettingCategories = value; }
@@ -603,50 +702,67 @@ namespace SMEngine
             if (Running == false)
             {
                 Running = true;
-                bool startIt = true;
-                while (Running)
-                
+                bool refillQueue = true;
+                var cancellationToken = _cancellationTokenSource.Token;
 
-                    /*if (qSize < MinQ)
+                while (Running && !cancellationToken.IsCancellationRequested)
+                {
+                    if (qSize < MinQ)
                     {
-                        startIt = true;
-                    }*/
-                    if (qSize<MinQ && qSize < MaximumQ)
+                        refillQueue = true;
+                    }
+
+                    if (refillQueue && qSize < MaximumQ)
                     {
                         try
                         {
                             if (!screensaverExpired())  //new test, ensuring not pulling image while asleep
                             {
                                 var imageSet = getRandomImage();
-                                if (imageSet != null)
+                                if (imageSet != null && refillQueue)
                                 {
-                                    lock (ImageQueue)
+                                    lock (_imageQueueLock)
                                     {
-                                        ImageQueue.Enqueue(imageSet);
-                                        logMsg($"Image queue depth: {qSize}");
+                                        _imageQueue.Enqueue(imageSet);
+                                        logMsg($"Image queue depth: {_imageQueue.Count}");
                                     }
                                 }
                             }
                             else
                             {//wait for thread to wake up!
                                 logMsg("Sleeping while waiting to wake up");
-                                Thread.Sleep(5000);
+                                try
+                                {
+                                    cancellationToken.WaitHandle.WaitOne(5000);
+                                }
+                                catch (OperationCanceledException)
+                                {
+                                    break;
+                                }
                             }
                         }
                         catch (Exception ex)
                         {
                             doException(ex.Message);
-                            logMsg(ex.Message);
+                            logMsg($"runImageCollection error: {ex.Message}");
                             Running = false;
                             logMsg("Invalid login");
                         }
                     }
                     else
                     {
-                        startIt = false;
+                        refillQueue = false;
                     }
 
-                    System.Threading.Thread.Sleep(50);//don't overrun processor.
+                    try
+                    {
+                        cancellationToken.WaitHandle.WaitOne(50);//don't overrun processor.
+                    }
+                    catch (OperationCanceledException)
+                    {
+                        break;
+                    }
+                }
                 Running = false;//reset if stopped for any reason.
             }
         }
@@ -677,6 +793,7 @@ namespace SMEngine
             }
             catch (Exception ex)
             {
+                logMsg($"start: Failed to get code: {ex.Message}");
                 return;
             }
             if (TAlbumLoad == null)
@@ -730,7 +847,7 @@ namespace SMEngine
         public bool warm()
         {
             var warmupTime = 60; //seconds, don't black out images until alive for a minute.
-            return DateTime.Now.Subtract(timeStarted).TotalSeconds > warmupTime;
+            return DateTime.Now.Subtract(_timeStarted).TotalSeconds > warmupTime;
         }
 
         //how is this used vs isExpired?
@@ -795,15 +912,20 @@ namespace SMEngine
         {
             var b = new ImageSet();
             logMsg("fetching image...");
-            lock (ImageQueue)
+            lock (_imageQueueLock)
             {
-                if (qSize > 0)
+                if (_imageQueue.Count > 0)
                 {
-                    b = ImageQueue.Dequeue();
-                    logMsg($"Dequeue, Image queue depth: {qSize}");
-                    ImageCounter++;
+                    b = _imageQueue.Dequeue();
+                    logMsg($"Dequeue, Image queue depth: {_imageQueue.Count}");
                 }
             }
+
+            lock (_imageCounterLock)
+            {
+                _imageCounter++;
+            }
+
             if (!screensaverExpired())
             {
                 b.Bitmap = BitmapImage2Bitmap(b.BitmapImage);
@@ -859,7 +981,7 @@ namespace SMEngine
             return ImageLoader.GetBestImageUrl(this, imageSize);
         }
 
-        private async void loadImages(Album? a, bool singleAlbumMode, int size = 2)
+        private async Task LoadImagesAsync(Album? a, bool singleAlbumMode, int size = 2)
         {
             if (a == null || a.Uris.AlbumImages == null) return;
             await ImageLoader.LoadImagesForAlbum(this, a, singleAlbumMode, size);
@@ -911,11 +1033,11 @@ namespace SMEngine
                     {
                         if (username == @"MY_NAME")
                         {
-                            loadAlbums();
+                            LoadAlbumsAsync().GetAwaiter().GetResult();
                         }
                         else
                         {
-                            loadAlbums(username);
+                            LoadAlbumsAsync(username).GetAwaiter().GetResult();
                         }
                     }
 
@@ -923,10 +1045,21 @@ namespace SMEngine
                     if (Settings.load_all)
                     {
                         var ary = getCategoriesAsync();
-                        var rnd = new Random();
-                        var shuffledCats = ary.OrderBy(x => rnd.Next()).ToList();
+                        List<string> shuffledCats;
+                        List<Album> shuffledAlbums;
 
-                        var shuffledAlbums = AllAlbums.OrderBy(x => rnd.Next()).ToList();
+                        lock (_randomLock)
+                        {
+                            shuffledCats = ary.OrderBy(x => _random.Next()).ToList();
+                        }
+
+                        lock (_allAlbumsLock)
+                        {
+                            lock (_randomLock)
+                            {
+                                shuffledAlbums = _allAlbums.OrderBy(x => _random.Next()).ToList();
+                            }
+                        }
 
                         System.Diagnostics.Stopwatch sw = new System.Diagnostics.Stopwatch();
                         sw.Start();
@@ -948,12 +1081,13 @@ namespace SMEngine
                                       {
                                           if (!IsConfigurationMode)
                                           {
-                                              loadImages(a, false);
+                                              LoadImagesAsync(a, false).GetAwaiter().GetResult();
                                           }
                                       }
                                       catch (Exception ex)
                                       {
                                           doException(ex.Message);
+                                          logMsg($"Parallel loadImages failed: {ex.Message}");
                                       }
                                   }
                                   /*else
@@ -976,10 +1110,13 @@ namespace SMEngine
                             {
                                 var cat = GalleryTable.Rows[i].ItemArray[0].ToString();
                                 var gal = GalleryTable.Rows[i].ItemArray[1].ToString();
-                                a = AllAlbums.FirstOrDefault(x => getFolder(x) == cat && x.Name == gal);
+                                lock (_allAlbumsLock)
+                                {
+                                    a = _allAlbums.FirstOrDefault(x => getFolder(x) == cat && x.Name == gal);
+                                }
                                 if (a != null)
                                 {
-                                    loadImages(a, false);//load single album from gallery.
+                                    LoadImagesAsync(a, false).GetAwaiter().GetResult();//load single album from gallery.
                                 }
                             }
                         }

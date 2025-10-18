@@ -57,8 +57,8 @@ namespace andyScreenSaver
                     {//full screen mode, added by andy.
                         var win = new Window1();
                         win.Init();
-                        win.setDimensions(333, 200);
-                        win.disableActions();//ensures that moving mouse doesn't kill the app.
+                        win.SetDimensions(333, 200);
+                        win.DisableScreensaverMode();//ensures that moving mouse doesn't kill the app.
                         
                         win.WindowState = WindowState.Maximized;
                         win.WindowStyle = WindowStyle.None;
@@ -69,7 +69,7 @@ namespace andyScreenSaver
                         try
                         {
                             winSaver = new Window1();
-                            winSaver.setDimensions(333, 200);
+                            winSaver.SetDimensions(333, 200);
                             Int32 previewHandle = Convert.ToInt32(e.Args[1]);
                             var pPreviewHnd = new IntPtr(previewHandle);
 
@@ -81,7 +81,7 @@ namespace andyScreenSaver
                             sourceParams.PositionY = 0;
                             sourceParams.Height = lpRect.Bottom - lpRect.Top;
 
-                            winSaver.setDimensions(sourceParams.Height, sourceParams.Width);
+                            winSaver.SetDimensions(sourceParams.Height, sourceParams.Width);
                             winSaver.Init();//just added this.
                             sourceParams.Width = lpRect.Right - lpRect.Left;
                             sourceParams.ParentWindow = pPreviewHnd;
@@ -120,7 +120,7 @@ namespace andyScreenSaver
                                 var win1 = new Window1();
                                 var workingArea = s.Bounds;
                                 win1.WindowStyle = WindowStyle.None;
-                                win1.setDimensions(workingArea.Height, workingArea.Width); //don't account for border height.
+                                win1.SetDimensions(workingArea.Height, workingArea.Width); //don't account for border height.
                                 win1.Init();
                                 wins.Add(win1);
                                 wins.ElementAt(iter).Left = workingArea.X;
@@ -157,9 +157,10 @@ namespace andyScreenSaver
                         var win1 = new Window1();
                         var workingArea = s.Bounds;
                         win1.WindowStyle = WindowStyle.None;
-                        win1.setDimensions(workingArea.Height, workingArea.Width); //don't account for border height.
+                        win1.SetDimensions(workingArea.Height, workingArea.Width); //don't account for border height.
+                        win1.DisableScreensaverMode();
                         win1.Init();
-                        win1.disableActions();
+                        
                         wins.Add(win1);
                         wins.ElementAt(iter).Left = workingArea.X;
                         wins.ElementAt(iter).Width = workingArea.Width;

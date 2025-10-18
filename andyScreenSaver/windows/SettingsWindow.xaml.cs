@@ -73,7 +73,7 @@ namespace andyScreenSaver
             set.quality = comboBox3.SelectedIndex;
             set.speed_s = Convert.ToInt32(slider1.Value);
             set.load_all = (bool)cbAlwaysLoadAllGalleries.IsChecked;
-            set.showInfo = (bool)cbShowInfo.IsChecked;
+            set.showImageCaptions = (bool)cbShowInfo.IsChecked;
             set.gridHeight = int.Parse(gridHeight.Text);
             set.gridWidth = int.Parse(gridWidth.Text);
             set.borderThickness = int.Parse(BorderThickness.Text);
@@ -127,7 +127,7 @@ namespace andyScreenSaver
                 groupBox1.IsEnabled = true;
             }
 
-            cbShowInfo.IsChecked = _engine.settings.showInfo;
+            cbShowInfo.IsChecked = _engine.settings.showImageCaptions;
         }
 
         // Allow global shutdown hook to stop engine/tracker
@@ -334,9 +334,9 @@ namespace andyScreenSaver
 
             Window1 win = new Window1();
 
-            win.setDimensions(333, 200);
+            win.SetDimensions(333, 200);
             win.Init();
-            win.disableActions();
+            win.DisableScreensaverMode();
 
             win.WindowState = WindowState.Normal;
             win.WindowStyle = WindowStyle.SingleBorderWindow;

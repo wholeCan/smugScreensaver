@@ -7,7 +7,9 @@ namespace SMEngine
     {
         public long? UptimeSeconds { get; set; }
         // Add more note fields over time as needed
+        public string? version { get; set; }
 
+        public long? imageCounter {  get; set; } 
         internal string ToJson()
         {
             var sb = new StringBuilder();
@@ -19,7 +21,22 @@ namespace SMEngine
                 if (!first) sb.Append(',');
                 first = false;
                 sb.Append("\"uptimeSeconds\":").Append(UptimeSeconds.Value);
+
+              
             }
+        
+            if (version != null)  //todo, figure out why receiver isn't able to process this.
+            {
+                if (!first) sb.Append(',');
+                first = false;
+                sb.Append($"\"version\":\"{version}\"");
+            }
+            if (imageCounter != null)
+            {
+                if (!first) sb.Append(',');
+                sb.Append($"\"imageCounter\":\"{imageCounter}\"");
+            }
+            
 
             sb.Append('}');
             return sb.ToString();

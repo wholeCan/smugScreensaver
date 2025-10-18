@@ -29,11 +29,8 @@ namespace SMEngine
                 msg.AppendLine("Images: " + engine.ImageDictionary.Values.Count(v => v != null && !v.IsVideo));
                 msg.AppendLine("Videos: " + engine.ImageDictionary.Values.Count(v => v != null && v.IsVideo));
             }
-            lock (CSMEngine.AllAlbums)
-            {
-                msg.AppendLine("Albums: " + CSMEngine.AllAlbums.Count);
-            }
-            msg.AppendLine("Images shown: " + CSMEngine.ImageCounter);
+            msg.AppendLine("Albums: " + engine.AllAlbums.Count);
+            msg.AppendLine("Images shown: " + engine.ImageCounter);
             msg.AppendLine("Video muted: " + engine.isDefaultMute().ToString());
             msg.AppendLine("Images deduped: " + engine.PlayedImages.Count);
             msg.AppendLine("Queue depth: " + engine.qSize);

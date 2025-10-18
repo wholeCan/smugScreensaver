@@ -1,20 +1,22 @@
-﻿/** 
+/**
  * Original work by Andrew Holkan
  * Date: 2/1/2013
  * Contact info: aholkan@gmail.com
- * 
+ *
  * 5/2018:  Updating API
  *  Adding caption to image
  *  allowing screensaver to timeout after set time.
- *  
- *  9/8/2019:  pretty stable, doing so me code cleanup.
- *  
+ *
+ *  9/8/2019:  pretty stable, doing some code cleanup.
+ *
  *  2/26/2022: major refactor of smEngine and everything else to upgrade to smugmug 2.0 api
+ *
+ *  2025: Refactored for better separation of concerns, readability, and maintainability
  * **/
 
 using andyScreenSaver.windows.Helpers;
+using andyScreenSaver.windows.Services;
 using LibVLCSharp.Shared;
-using SMEngine;
 using System;
 using System.Configuration;
 using System.Diagnostics;
@@ -26,163 +28,437 @@ using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
-using System.Windows.Media.Imaging;
-using System.Windows.Media.Media3D;
-using static SMEngine.CSMEngine;
 using System.Windows.Media;
-
+using System.Windows.Media.Imaging;
+using static SMEngine.CSMEngine;
 
 #nullable enable
 
 namespace andyScreenSaver
 {
-
     public partial class Window1 : Window
     {
-        private Vector3D zoomDelta;
-        private int myHeight = 0;
-        private int myWidth = 0;
-        const bool doSmartStart = true;
-        public void setDimensions(int _myHeight, int _myWidth)
+        #region Constants
+        private const bool DoSmartStart = true;
+        private const int DefaultMaxMouseMoves = 100;
+        private const int DefaultMouseResetTimeMs = 500;
+        private const int DefaultCursorHideSeconds = 3;
+        #endregion
+
+        #region Fields - Core Services
+        private SMEngine.CSMEngine? _engine;
+        private ImageUpdateService? _imageUpdateService;
+        private ScreensaverStateManager _stateManager;
+        private MouseActivityMonitor _mouseMonitor;
+        #endregion
+
+        #region Fields - Layout & Rendering
+        private LayoutHelper? _layoutHelper;
+        private TilePlacementService? _tilePlacement;
+        private TileRenderer? _tileRenderer;
+        private listManager? _listManager;
+        #endregion
+
+        #region Fields - Grid Configuration
+        private int _gridWidth = 5;
+        private int _gridHeight = 4;
+        private int _borderWidth = 5;
+        private int[] _imageCounterArray = Array.Empty<int>();
+        #endregion
+
+        #region Fields - Window Dimensions
+        private int _windowHeight;
+        private int _windowWidth;
+        #endregion
+
+        #region Fields - State & Timing
+        private DateTime _lastUpdate = DateTime.Now;
+        private Cursor? _savedCursor;
+        private Task? _loginTask;
+        private int _restartCounter;
+        #endregion
+
+        #region Properties
+        public SMEngine.CSMEngine Engine
         {
-            MyHeight = _myHeight;
-            MyWidth = _myWidth;
+            get => _engine ?? throw new InvalidOperationException("Engine not initialized");
+            private set => _engine = value;
         }
-        private SMEngine.CSMEngine _engine;
-        ThreadStart? ts = null;
-        Thread? threadImageUpdate = null;
-        static bool running = true;
-        bool screensaverModeDisabled = false;
-        
-        int gridWidth = 5;  //these are replaced by setting menu.
-        int gridHeight = 4;
-        int borderWidth = 5;//see config file for setting.
 
-        private LayoutHelper _layoutHelper;
-        private TilePlacementService _tilePlacement;
-        private TileRenderer _tileRenderer;
-
-        // Async loop state (Option A)
-        private CancellationTokenSource? _imageLoopCts;
-        private Task? _imageLoopTask;
-        private AsyncManualResetEvent _pauseGate = new AsyncManualResetEvent(initialState: true);
-
-        public void disableActions()
+        private int WindowHeight
         {
-            ScreensaverModeDisabled = true;
-            Engine.IsScreensaver(ScreensaverModeDisabled);
-
-            Topmost = false;
-            Cursor = Cursors.Arrow;
+            get => _windowHeight;
+            set => _windowHeight = value;
         }
 
-        private BitmapImage? Bitmap2BitmapImage(System.Drawing.Bitmap bitmap)
+        private int WindowWidth
         {
-            try { return ImageUtils.BitmapToBitmapImage(bitmap); } catch (Exception ex) { LogError(ex, ex.Message); return null; }
+            get => _windowWidth;
+            set => _windowWidth = value;
         }
 
-        private void HideSetup()
+        private int GridWidth
         {
-            SetupRequired.Dispatcher.BeginInvoke(new Action(delegate ()
-                {
-                    SetupRequired.Visibility = System.Windows.Visibility.Hidden;
-                }));
+            get => _gridWidth;
+            set => _gridWidth = value;
         }
-        private DateTime lastUpdate = DateTime.Now;
 
-        private listManager lm;
-        static Bitmap ScaleImage(Bitmap originalImage, int desiredHeight)
+        private int GridHeight
         {
-            return ImageUtils.ScaleImage(originalImage, desiredHeight);
+            get => _gridHeight;
+            set => _gridHeight = value;
         }
 
-        private void shuffleImages()
-        {//12/30/23 - tbh, I don't know what this is really doing.
-            var tmp1 = hStack1.Children[0];
-            hStack1.Children.RemoveAt(0);
-            hStack1.Children.Add(tmp1);
-        }
-
-        bool statsEnabled = false;
-
-        private void LogMsg(string msg)
+        private int BorderWidth
         {
-            AppLogger.Log(msg);
+            get => _borderWidth;
+            set => _borderWidth = value;
         }
+        #endregion
 
-        private void LogError(Exception ex, string msg)
-        {
-            AppLogger.LogError(ex, msg);
-        }
-
-        private Double calculateImageHeight()
-        {
-            return _layoutHelper?.CalculateImageHeight() ?? 0d;
-        }
-
-        private Double calculatedImageWidth()
-        {
-            var width = _layoutHelper?.CalculateImageWidth() ?? 0d;
-            Debug.WriteLine($"calculated width: {width}");
-            return width;
-        }
+        #region Initialization
 
         public Window1()
         {
             InitializeComponent();
+            InitializeServices();
+            InitializeLibVLC();
+            LoadBorderWidthConfig();
+            AppOpenCloseLogger.logOpened();
+        }
+
+        private void InitializeServices()
+        {
+            _stateManager = new ScreensaverStateManager();
+            _mouseMonitor = new MouseActivityMonitor(DefaultMaxMouseMoves, DefaultMouseResetTimeMs);
+        }
+
+        private void InitializeLibVLC()
+        {
             try
             {
-                Core.Initialize(); // LibVLCSharp initialization 
-                                   //only needed for show, not config.
+                Core.Initialize();
             }
             catch (Exception ex)
             {
-                LogError(ex, ex.Message);
+                AppLogger.LogError(ex, "LibVLCSharp initialization failed: " + ex.Message);
             }
-            var borderWidth = 0;
-            int.TryParse(ConfigurationSettings.AppSettings["BorderWidth"], out borderWidth);
-            AppOpenCloseLogger.logOpened();
+        }
 
-            // Initialize helpers if null
-            _layoutHelper ??= new LayoutHelper(
-                () => MyWidth,
-                () => MyHeight,
+        private void LoadBorderWidthConfig()
+        {
+            if (int.TryParse(ConfigurationSettings.AppSettings["BorderWidth"], out int borderWidth))
+            {
+                _borderWidth = borderWidth;
+            }
+        }
+
+        public void Init()
+        {
+            InitializeEngine();
+            if (!_stateManager.ScreensaverModeDisabled) { 
+               InitializeMouseCursorThread();
+            }
+            InitializeImageGrid();
+            SetupWindowBehavior();
+            ScheduleDailyTasks();
+        }
+
+        private void InitializeEngine()
+        {
+            if (_engine != null)
+            {
+                AppOpenCloseLogger.uptimeCheckpoint(_engine.getUptime(), _engine.getRuntimeStatsInfo(false));
+            }
+
+            var workArea = SystemParameters.WorkArea;
+            _engine = new SMEngine.CSMEngine(true, "andyScreenSaver");
+            _engine.setScreenDimensions(workArea.Width, workArea.Height);
+            _engine.IsScreensaver(false);
+            _engine.fireException += ShowException;
+
+            GridHeight = _engine.settings.gridHeight;
+            GridWidth = _engine.settings.gridWidth;
+
+            StartLoginTask();
+        }
+
+        private void StartLoginTask()
+        {
+            try
+            {
+                _loginTask = Task.Run(() => LoginSmugmug());
+            }
+            catch (Exception ex)
+            {
+                AppLogger.LogError(ex, $"Failed to start login task: {ex.Message}");
+            }
+        }
+
+        private void InitializeMouseCursorThread()
+        {
+            var mouseThread = new Thread(MouseCursorResetLoop)
+            {
+                IsBackground = true
+            };
+            //do i want this?
+
+            if (!_stateManager.ScreensaverModeDisabled)
+            {
+                mouseThread.Start(this);
+            }
+        }
+
+        private void InitializeImageGrid()
+        {
+            _listManager = new listManager(GridWidth * GridHeight);
+            _tilePlacement = new TilePlacementService(_listManager, () => GridWidth, () => GridHeight);
+            _imageCounterArray = new int[GridHeight * GridWidth];
+
+            InitializeLayoutHelpers();
+            LoadInitialImages();
+        }
+
+        private void InitializeLayoutHelpers()
+        {
+            _layoutHelper = new LayoutHelper(
+                () => WindowWidth,
+                () => WindowHeight,
                 () => GridWidth,
                 () => GridHeight,
                 () => BorderWidth
             );
-            _tileRenderer ??= new TileRenderer(
-                () => calculatedImageWidth(),
-                () => calculateImageHeight(),
-                (m) => LogMsg(m)
+
+            _tileRenderer = new TileRenderer(
+                () => _layoutHelper?.CalculateImageWidth() ?? 0d,
+                () => _layoutHelper?.CalculateImageHeight() ?? 0d,
+                (m) => AppLogger.Log(m)
             );
         }
 
-        private void UpdateLayoutAndExpiredBanner()
+        private void LoadInitialImages()
         {
-            hStack1.Dispatcher.BeginInvoke(new Action(delegate ()
+            var storageDirectory = GetImageStorageLocation();
+            EnsureStorageDirectoryExists(storageDirectory);
+
+            TileGridBuilder.BuildGrid(
+                imageGrid,
+                GridWidth,
+                GridHeight,
+                _engine?.settings.borderThickness ?? 0,
+                imageIndex => GetInitialTileImage(imageIndex, storageDirectory)
+            );
+        }
+
+        private void SetupWindowBehavior()
+        {
+            if (!Debugger.IsAttached)
+            {
+                Topmost = true;
+            }
+            //do i want this?
+            if (!_stateManager.ScreensaverModeDisabled)
+            {
+                Cursor = Cursors.None;
+                _savedCursor = Cursor;
+                _mouseMonitor.Reset();
+            }
+        }
+
+        private void ScheduleDailyTasks()
+        {
+            TaskScheduler.Instance.ScheduleTask(
+                hour: 2,
+                min: 15,
+                intervalInMinutes: 24.0 * 60.0,
+                task: () =>
                 {
-                    TileGridBuilder.SetImageHeights(hStack1, calculateImageHeight());
-                    if (Engine.screensaverExpired())
-                    {
-                        ShowMsg(
-                            DateTime.Now.ToShortTimeString() +
-                            ": Slide show is stopped until " +
-                            (Engine.settings.startTime / 100).ToString() +
-                            ":" +
-                            (Engine.settings.startTime % 100).ToString("00") +
-                            " - press <left> or <right> arrow to wake up.",
-                            false
-                        );
-                    }
-                }));
+                    AppLogger.Log("Scheduled task execution");
+                    RepullAlbums();
+                });
+        }
+
+        #endregion
+
+        #region Window Lifecycle
+
+        public void SetDimensions(int height, int width)
+        {
+            WindowHeight = height;
+            WindowWidth = width;
+        }
+
+        public void DisableScreensaverMode()
+        {
+            _stateManager.ScreensaverModeDisabled = true;
+            _engine?.IsScreensaver(_stateManager.ScreensaverModeDisabled);
+            Topmost = false;
+            Cursor = Cursors.Arrow;
+        }
+
+        private void Shutdown()
+        {
+            _imageUpdateService?.Stop();
+            Application.Current.Shutdown();
+        }
+
+        #endregion
+
+        #region Image Update Logic
+
+        private void LoginSmugmug()
+        {
+            try
+            {
+                if (_engine == null) return;
+                _engine.login(_engine.getCode());
+                StartImageUpdateService();
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show("Invalid login, shutting down!");
+                AppLogger.LogError(ex, "Login failed: " + ex.Message);
+            }
+        }
+
+        private void StartImageUpdateService()
+        {
+            _imageUpdateService?.Dispose();
+            _imageUpdateService = new ImageUpdateService(
+                updateAction: () => Task.Run(() => UpdateImage()),
+                calculateDelayMs: ComputeSleepMilliseconds,
+                logError: AppLogger.LogError
+            );
+            _imageUpdateService.Start();
+        }
+
+        private void UpdateImage()
+        {
+            try
+            {
+                UpdateLayoutAndExpiredBanner();
+
+                if (!IsLoggedIn())
+                {
+                    ShowSetupRequiredBanner();
+                    return;
+                }
+
+                var image = TryGetNextImage();
+                if (image == null)
+                {
+                    HandleNoImageAvailable();
+                    return;
+                }
+
+                PlaceImageOnGrid(image);
+                ShowStatsIfEnabled();
+            }
+            catch (Exception ex)
+            {
+                AppLogger.LogError(ex, "UpdateImage failed: " + ex.Message);
+            }
+
+            _lastUpdate = DateTime.Now;
+        }
+
+        private void PlaceImageOnGrid(ImageSet imageSet)
+        {
+            imageGrid.Dispatcher.Invoke(System.Windows.Threading.DispatcherPriority.Normal, new Action(() =>
+            {
+                SetImage(imageSet);
+            }));
+        }
+
+        private void SetImage(ImageSet imageSet)
+        {
+            try
+            {
+                if (imageSet?.Bitmap == null || _tilePlacement == null) return;
+
+                var (randWidth, randHeight) = _tilePlacement.PickNextCell();
+                var scaledBitmap = ScaleImageToFit(imageSet.Bitmap);
+
+                if (_engine?.settings.showImageCaptions == true)
+                {
+                    ValidateBitmap(scaledBitmap);
+                    RenderImageWithCaption(imageSet, scaledBitmap, randWidth, randHeight);
+                }
+                else
+                {
+                    RenderImageWithoutCaption(imageSet, scaledBitmap, randWidth, randHeight);
+                }
+
+                _tilePlacement.MarkPlaced(randWidth, randHeight);
+                CacheImageIfFirstTime(scaledBitmap, randWidth, randHeight);
+            }
+            catch (Exception ex)
+            {
+                AppLogger.LogError(ex, "SetImage failed: " + ex.Message);
+            }
+        }
+
+        private Bitmap ScaleImageToFit(Bitmap bitmap)
+        {
+            var targetHeight = Convert.ToInt32(_layoutHelper?.CalculateImageHeight() ?? 0);
+            return ImageUtils.ScaleImage(bitmap, targetHeight);
+        }
+
+        private void ValidateBitmap(Bitmap bitmap)
+        {
+            if (bitmap.Height == 0)
+            {
+                AppLogger.LogError(new Exception("Empty bitmap"), "Bitmap has zero height");
+            }
+        }
+
+        private void RenderImageWithCaption(ImageSet imageSet, Bitmap bitmap, int gridX, int gridY)
+        {
+            var captionText = CaptionBuilder.Build(imageSet);
+
+            if (!imageSet.IsVideo && _engine?.settings.showImageCaptions == true)
+            {
+                ImageUtils.AddCaption(captionText, ref bitmap);
+                //replace the imageset with the captioned image.
+                imageSet.Bitmap = bitmap;
+                
+            }
+
+            var border = GetGridBorder(gridX, gridY);
+            var image = border.Child as indexableImage;
+
+            if (imageSet.IsVideo)
+            {
+                var overlayText = _engine?.settings.showImageCaptions == true ? captionText : string.Empty;
+                _tileRenderer?.RenderSync(border, image, imageSet, overlayText, _engine?.isDefaultMute() ?? false);
+            }
+            else
+            {
+                _ = _tileRenderer?.RenderAsync(border, image, imageSet, _engine?.isDefaultMute() ?? false);
+               //_tileRenderer?.RenderSync(border, image, imageSet, captionText, true);
+            }
+        }
+
+        private void RenderImageWithoutCaption(ImageSet imageSet, Bitmap bitmap, int gridX, int gridY)
+        {
+            var border = GetGridBorder(gridX, gridY);
+            var image = border.Child as indexableImage;
+
+            if (imageSet.IsVideo)
+            {
+                _tileRenderer?.RenderSync(border, image, imageSet, string.Empty, _engine?.isDefaultMute() ?? false);
+            }
+            else
+            {
+                _ = _tileRenderer?.RenderAsync(border, image, imageSet, _engine?.isDefaultMute() ?? false);
+            }
         }
 
         private ImageSet? TryGetNextImage()
         {
             try
             {
-                return Engine.getImage();
+                return _engine?.getImage();
             }
             catch (Exception ex)
             {
@@ -194,310 +470,231 @@ namespace andyScreenSaver
             }
         }
 
+        private int ComputeSleepMilliseconds()
+        {
+            var elapsedMs = (int)DateTime.Now.Subtract(_lastUpdate).TotalMilliseconds;
+            var targetMs = (int)((_engine?.settings.speed_s ?? 5) * 1000);
+            var remaining = targetMs - elapsedMs;
+            return remaining > 0 ? remaining : 0;
+        }
+
+        #endregion
+
+        #region UI Updates
+
+        private void UpdateLayoutAndExpiredBanner()
+        {
+            imageGrid.Dispatcher.BeginInvoke(new Action(() =>
+            {
+                TileGridBuilder.SetImageHeights(imageGrid, _layoutHelper?.CalculateImageHeight() ?? 0);
+
+                if (_engine?.screensaverExpired() == true)
+                {
+                    ShowExpirationMessage();
+                }
+            }));
+        }
+
+        private void ShowExpirationMessage()
+        {
+            var startHour = (_engine?.settings.startTime ?? 0) / 100;
+            var startMinute = (_engine?.settings.startTime ?? 0) % 100;
+            var message = $"{DateTime.Now.ToShortTimeString()}: Slide show is stopped until {startHour}:{startMinute:00} - press <left> or <right> arrow to wake up.";
+            ShowMessage(message, false);
+        }
+
         private void ShowSetupRequiredBanner()
         {
-            SetupRequired.Dispatcher.BeginInvoke(new Action(delegate ()
+            SetupRequired.Dispatcher.BeginInvoke(new Action(() =>
             {
-                SetupRequired.Visibility = System.Windows.Visibility.Visible;
-                SetupRequired.Content = "Setup required!  Go to the screensaver menu.";
+                SetupRequired.Visibility = Visibility.Visible;
+                SetupRequired.Content = "Setup required! Go to the screensaver menu.";
+            }));
+        }
+
+        private void HideSetupBanner()
+        {
+            SetupRequired.Dispatcher.BeginInvoke(new Action(() =>
+            {
+                SetupRequired.Visibility = Visibility.Hidden;
             }));
         }
 
         private void HandleNoImageAvailable()
         {
-            SetupRequired.Dispatcher.BeginInvoke(new Action(delegate ()
+            SetupRequired.Dispatcher.BeginInvoke(new Action(() =>
             {
-                SetupRequired.Visibility = System.Windows.Visibility.Visible;
+                SetupRequired.Visibility = Visibility.Visible;
                 SetupRequired.Content = "No data presently available, trying again...";
-                shuffleImages();
             }));
         }
 
-        private void HandleImageAvailable(bool blackImagePlaced)
+        private void ShowStatsIfEnabled()
         {
-            if (!blackImagePlaced && !Engine.screensaverExpired())
+            if (_stateManager.StatsEnabled && _engine != null && !(_engine.screensaverExpired()))
             {
-                ShowStats();
+                ShowMessage(_engine.getRuntimeStatsInfo(), true);
+            }
+            else 
+            {
+                ShowMessage(null, false);
             }
         }
 
-        private (bool run, ImageSet? image) ProcessPlacement(bool run, ImageSet? image)
+        private void ShowMessage(string? message, bool showStats)
         {
-            bool localRun = run;
-            ImageSet? localImage = image;
-            hStack1.Dispatcher.Invoke(System.Windows.Threading.DispatcherPriority.Normal, new Action(delegate ()
-            {
-                SetImage(ref localRun, ref localImage);
-            }));
-            return (localRun, localImage);
+            UiMessageHelper.ShowMessage(SetupRequired, _stateManager.IsPaused, message, showStats);
         }
 
-        private void CollapseSetupBannerIfAppropriate(bool run, bool blackImagePlaced)
+        public void ShowException(string msg)
         {
-            if (run && !Engine.settings.showInfo && !blackImagePlaced)
-            {
-                SetupRequired.Dispatcher.BeginInvoke(new Action(delegate ()
-                {
-                    SetupRequired.Visibility = System.Windows.Visibility.Collapsed;
-                }));
-            }
+            AppLogger.LogError(new Exception("Engine exception raised"), msg);
         }
 
-        private bool IsLoggedIn()
+        #endregion
+
+        #region User Input Handlers
+
+        private void Window_KeyDown(object sender, KeyEventArgs e)
         {
-            return Engine.getLogin().login != string.Empty;
-        }
-
-        private void UpdateImage()
-        {
-            try
+            switch (e.Key)
             {
-                UpdateLayoutAndExpiredBanner();
-
-                bool run = false;
-                bool blackImagePlaced = false;
-                ImageSet? image = TryGetNextImage();
-
-                if (!IsLoggedIn())
-                {
-                    ShowSetupRequiredBanner();
-                }
-                else
-                {
-                    if (image == null)
-                    {
-                        HandleNoImageAvailable();
-                    }
-                    else
-                    {
-                        HandleImageAvailable(blackImagePlaced);
-                    }
-
-                    (run, image) = ProcessPlacement(run, image);
-                }
-
-                CollapseSetupBannerIfAppropriate(run, blackImagePlaced);
-            }
-            catch (Exception ex)
-            {
-                LogError(ex, ex.Message);
-            }
-        }
-
-        private void ShowStats()
-        {
-            if (StatsEnabled)
-            {
-                ShowMsg(Engine.getRuntimeStatsInfo(), true);
-            }
-            else
-            {
-                ShowMsg(null, false);
-            }
-        }
-
-        private void SetImage(ref bool run, ref ImageSet s)
-        {
-            try
-            {
-                if (s != null)
-                {
-                    run = true;
-                    var cell = _tilePlacement.PickNextCell();
-                    var randWidth = cell.Item1;
-                    var randHeight = cell.Item2;
-
-                    Bitmap bmyImage2;
-                    if (s != null && s.Bitmap != null)
-                    {
-                        s.Bitmap = (Bitmap)ScaleImage(s.Bitmap, Convert.ToInt32(calculateImageHeight()));
-                        bmyImage2 = s.Bitmap;
-                        
-                        if (Engine.settings.showInfo)
-                        {
-                            if (bmyImage2.Height == 0)
-                            {
-                                LogError(new Exception("empty bmp"), "empty bmp");
-                            }
-                            
-                            setImageCaption(ref s, ref bmyImage2, randWidth, randHeight);
-                        }
-                    }
-                }
-            }
-            catch (Exception e)
-            {
-                LogError(e,e.Message);
-            }
-        }
-
-        private void setImageCaption(ref SMEngine.CSMEngine.ImageSet s, ref Bitmap targetBitmapImage, int randWidth, int randHeight)
-        {
-            try
-            {
-                string captionText = CaptionBuilder.Build(s);
-                if (! s.IsVideo)
-                {
-                    // Only bake caption into photos when showInfo is enabled
-                    if (Engine.settings.showInfo)
-                    {
-                        ImageUtils.AddCaption(captionText, ref targetBitmapImage);
-                    }
-                }
-            }
-            catch (Exception ex)
-            {
-                LogError(ex, $"Problem setting caption {ex.Message}");
-            }
-
-            var border = GetGridBorder(randWidth, randHeight);
-            var image = border.Child as indexableImage;
-
-            // Render based on media type
-            if (s.IsVideo)
-            {
-                // Only show overlay when showInfo is enabled
-                var text = Engine.settings.showInfo ? CaptionBuilder.Build(s) : string.Empty;
-                _tileRenderer.RenderSync(border, image, s, text, Engine.isDefaultMute());
-            }
-            else
-            {
-                _ = _tileRenderer.RenderAsync(border, image, s, Engine.isDefaultMute());
-            }
-
-            _tilePlacement.MarkPlaced(randWidth, randHeight);
-            CacheImageIfFirstTime(targetBitmapImage, randWidth, randHeight);
-        }
-
-        private string BuildCaptionText(SMEngine.CSMEngine.ImageSet s)
-        {
-            return CaptionBuilder.Build(s);
-        }
-
-        private Border GetGridBorder(int randWidth, int randHeight)
-        {
-            return TileGridBuilder.GetBorderAt(hStack1, randWidth, randHeight);
-        }
-
-
-
-
-
-        private void CacheImageIfFirstTime(Bitmap targetBitmapImage, int randWidth, int randHeight)
-        {
-            int imageIndex = randWidth + (randHeight * GridWidth);
-            if (ImageCounterArray[imageIndex] == 0)
-            {
-                try
-                {
-                    var tmp = new Bitmap(targetBitmapImage);
-                    var fileName = getImageStorageLoc() + @"\" + imageIndex + @".jpg";
-                    if (File.Exists(fileName) && DoSmartStart)
-                        File.Delete(fileName);
-
-                    if (DoSmartStart)
-                        tmp.Save(fileName, ImageFormat.Jpeg);
-                }
-                catch (Exception ex)
-                {
-                    LogError(ex, $"Problem setting image {ex.Message}");
-                }
-                ImageCounterArray[imageIndex]++;
-            }
-        }
-
-        private void SafeUpdateImage()
-        {
-            try
-            {
-                UpdateImage();
-            }
-            catch (Exception ex)
-            {
-                LogError(ex, "updateImage failed: " + ex.Message);
-            }
-        }
-
-        private int ComputeSleepMilliseconds()
-        {
-            var elapsedMs = (int)DateTime.Now.Subtract(LastUpdate).TotalMilliseconds;
-            var targetMs = (int)(Engine.settings.speed_s * 1000);
-            var remaining = targetMs - elapsedMs;
-            return remaining > 0 ? remaining : 0;
-        }
-
-        private async Task ImageUpdateLoopAsync(CancellationToken token)
-        {
-            Running = true;
-            while (!token.IsCancellationRequested && Running)
-            {
-                try
-                {
-                    await _pauseGate.WaitAsync(token).ConfigureAwait(false);
-                    await Task.Run(() => UpdateImage(), token).ConfigureAwait(false);
-                }
-                catch (OperationCanceledException)
-                {
+                case Key.Left:
+                case Key.Right:
+                    _engine?.resetExpiredImageCollection();
+                    UpdateImage();
                     break;
-                }
-                catch (Exception ex)
-                {
-                    LogError(ex, "updateImage failed: " + ex.Message);
-                }
 
-                // pacing outside finally
-                var remaining = ComputeSleepMilliseconds();
-                if (remaining > 0)
-                {
-                    try { await Task.Delay(remaining, token).ConfigureAwait(false); } catch (OperationCanceledException) { break; }
-                }
-                LastUpdate = DateTime.Now;
+                case Key.M:
+                    _engine?.toggleDefaultMute();
+                    _tileRenderer?.ApplyGlobalMute(this, _engine?.isDefaultMute() ?? false);
+                    break;
+
+                case Key.S:
+                    _stateManager.ToggleStats();
+                    ShowStatsIfEnabled();
+                    break;
+
+                case Key.P:
+                case Key.Space:
+                    TogglePauseSlideshow();
+                    break;
+
+                case Key.Enter:
+                    ReloadScreen();
+                    break;
+
+                case Key.R:
+                    RepullAlbums();
+                    break;
+
+                case Key.W:
+                    ToggleWindowMode();
+                    break;
+
+                case Key.U:
+                    if (Keyboard.IsKeyDown(Key.LeftCtrl))
+                    {
+                        DoUpgrade();
+                    }
+                    break;
+
+                case Key.Escape:
+                case Key.Q:
+                    Shutdown();
+                    break;
+
+                default:
+                    if (!_stateManager.ScreensaverModeDisabled)
+                    {
+                        Shutdown();
+                    }
+                    break;
             }
         }
 
-        private void StartImageLoop()
+        private void Window_MouseDown(object sender, MouseButtonEventArgs e)
         {
-            StopImageLoop();
-            _imageLoopCts = new CancellationTokenSource();
-            _imageLoopTask = ImageUpdateLoopAsync(_imageLoopCts.Token);
+            // Reserved for future use
         }
 
-        private async void StopImageLoop()
+        private void Window_MouseMove(object sender, MouseEventArgs e)
         {
-            try
+            if (!_stateManager.ScreensaverModeDisabled)
             {
-                _imageLoopCts?.Cancel();
-                if (_imageLoopTask != null)
+                if (_mouseMonitor.RecordMouseMove())
                 {
-                    try { await _imageLoopTask.ConfigureAwait(false); } catch { /* ignore */ }
+                    Shutdown();
                 }
             }
-            finally
+            else
             {
-                _imageLoopTask = null;
-                _imageLoopCts?.Dispose();
-                _imageLoopCts = null;
+                Cursor = _savedCursor ?? Cursors.Arrow;
             }
         }
 
-        Cursor myCursor;
-
-        private void LoginSmugmug()
+        private void Image1_MouseUp(object sender, MouseButtonEventArgs e)
         {
-            try
+            if (IsClickFromVideo(e))
             {
-                Engine.login(Engine.getCode());
-            }
-            catch (Exception)
-            {
-                MessageBox.Show("Invalid login, shutting down!");
+                e.Handled = true;
                 return;
             }
 
-            StartImageLoop();
+            UpdateImage();
         }
 
-        private void ToggleScreen()
+        private void Window_MouseRightButtonUp(object sender, MouseButtonEventArgs e)
+        {
+            // Reserved for future use
+        }
+
+        private void Window_SizeChanged_1(object sender, SizeChangedEventArgs e)
+        {
+            WindowWidth = Convert.ToInt32(e.NewSize.Width);
+            WindowHeight = Convert.ToInt32(e.NewSize.Height);
+            UpdateImage();
+        }
+
+        private void Window_Closed(object sender, EventArgs e)
+        {
+            AppLogger.Log("Closing application");
+            try
+            {
+                _engine?.shutdown();
+                _imageUpdateService?.Dispose();
+            }
+            catch (Exception ex)
+            {
+                AppLogger.LogError(ex, "Error during shutdown: " + ex.Message);
+            }
+
+            if (_engine != null)
+            {
+                AppOpenCloseLogger.logClosed(_engine.getUptime(), _engine.getRuntimeStatsInfo(false));
+            }
+        }
+
+        #endregion
+
+        #region UI Actions
+
+        private void TogglePauseSlideshow()
+        {
+            if (_stateManager.IsPaused)
+            {
+                _imageUpdateService?.Resume();
+            }
+            else
+            {
+                _imageUpdateService?.Pause();
+            }
+
+            _stateManager.TogglePause();
+            ShowStatsIfEnabled();
+        }
+
+        private void ToggleWindowMode()
         {
             if (WindowStyle == WindowStyle.SingleBorderWindow)
             {
@@ -511,65 +708,121 @@ namespace andyScreenSaver
                 ResizeMode = ResizeMode.CanResizeWithGrip;
             }
         }
-        bool isPaused = false;
-        private void TogglePauseSlideshow()
+
+        private void ReloadScreen()
         {
-            if (isPaused)
+            _engine?.resetExpiredImageCollection();
+            var totalImages = _gridHeight * _gridWidth;
+
+            for (int i = 0; i < totalImages * 1.5; i++)
             {
-                _pauseGate.Set();
+                UpdateImage();
+            }
+        }
+
+        private void RepullAlbums()
+        {
+            AppLogger.Log("Reloading library");
+            InitializeEngine();
+            if (_engine != null)
+            {
+                _engine.RestartCounter = ++_restartCounter;
+            }
+        }
+
+        private void DoUpgrade()
+        {
+            var upgradeManager = UpgradeManager.Instance;
+
+            if (!upgradeManager.ReadyForUpgrade)
+            {
+                Debug.WriteLine("Already upgraded");
+                return;
+            }
+
+            var result = MessageBox.Show(
+                "Do you want to continue with installing a new version?",
+                "Upgrade confirmation",
+                MessageBoxButton.YesNo,
+                MessageBoxImage.Question
+            );
+
+            if (result == MessageBoxResult.Yes)
+            {
+                MessageBox.Show("After installation, please restart the application");
+                Debug.WriteLine("Starting upgrade");
+                upgradeManager.PerformUpgrade();
+                Application.Current.Shutdown();
             }
             else
             {
-                _pauseGate.Reset();
+                Debug.WriteLine("Deleting tmp installer");
+                upgradeManager.deleteCurrentInstaller();
             }
-            isPaused = !isPaused;
-            ShowStats();
         }
 
-        private void Doshutdown()
+        #endregion
+
+        #region Helper Methods
+
+        private bool IsLoggedIn()
         {
-            MyCursor = Cursor;
-            StopImageLoop();
-            Application.Current.Shutdown();
+            return _engine?.getLogin().login != string.Empty;
         }
 
-        private void InitEngine(bool? forceStart = false)
+        private Border GetGridBorder(int gridX, int gridY)
         {
-            if (Engine != null)
-            {
-                AppOpenCloseLogger.uptimeCheckpoint(Engine.getUptime(), Engine.getRuntimeStatsInfo(false));
-            }
-            var w = System.Windows.SystemParameters.WorkArea.Width;
-            var h = System.Windows.SystemParameters.WorkArea.Height;
+            return TileGridBuilder.GetBorderAt(imageGrid, gridX, gridY);
+        }
 
-            if (Engine == null || forceStart == true)
+        private void CacheImageIfFirstTime(Bitmap bitmap, int gridX, int gridY)
+        {
+            int imageIndex = gridX + (gridY * GridWidth);
+
+            if (_imageCounterArray[imageIndex] == 0)
             {
-                Engine = new SMEngine.CSMEngine(true, "andyScreenSaver");
-                Engine.setScreenDimensions(w, h);
+                try
                 {
-                    GridHeight = Engine.settings.gridHeight;
-                    GridWidth = Engine.settings.gridWidth;
+                    var fileName = Path.Combine(GetImageStorageLocation(), $"{imageIndex}.jpg");
 
-                    Engine.fireException += ShowException;
-                    try
+                    if (File.Exists(fileName) && DoSmartStart)
                     {
-                        Task = new Task(() => { LoginSmugmug(); });
-                        Task.Start();
+                        File.Delete(fileName);
                     }
-                    catch (Exception ex)
+
+                    if (DoSmartStart)
                     {
-                        LogError(ex, $"Invalid connection {ex.Message}");
+                        using var temp = new Bitmap(bitmap);
+                        temp.Save(fileName, ImageFormat.Jpeg);
                     }
+
+                    _imageCounterArray[imageIndex]++;
+                }
+                catch (Exception ex)
+                {
+                    AppLogger.LogError(ex, $"Failed to cache image: {ex.Message}");
                 }
             }
         }
 
-
-        int[] imageCounterArray;
-        private string getImageStorageLoc()
+        private string GetImageStorageLocation()
         {
-            var storageDirectory = Environment.GetFolderPath(Environment.SpecialFolder.CommonPictures) + @"\SmugAndy\";
-            return storageDirectory;
+            return Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.CommonPictures), "SmugAndy");
+        }
+
+        private void EnsureStorageDirectoryExists(string directory)
+        {
+            try
+            {
+                if (!Directory.Exists(directory) && DoSmartStart)
+                {
+                    Directory.CreateDirectory(directory);
+                }
+            }
+            catch (Exception ex)
+            {
+                AppLogger.LogError(ex, $"Failed to create storage directory: {ex.Message}");
+            }
         }
 
         private BitmapImage GetInitialTileImage(int imageIndex, string storageDirectory)
@@ -578,327 +831,65 @@ namespace andyScreenSaver
             return InitialImageProvider.Build(imageIndex, storageDirectory, DoSmartStart, fallback);
         }
 
-        static void MouseCursorResetMethod(object state)
-        {
-            Debug.WriteLine($"Thread execution to hide mouse run at: {DateTime.Now}");
-            {
-                for (; ; )
-                {
-                    try
-                    {
-                        (state as Window1).Dispatcher.BeginInvoke(new Action(delegate ()
-                        {
-                            var secondsToHideCursor = 3;
-                            DateTime laterTime = (state as Window1).getLastMouseMove().AddSeconds(secondsToHideCursor); 
-                            if (DateTime.Now > laterTime)
-                            {
-                                Mouse.SetCursor(Cursors.None);
-                            }
-                        }));
-                    }catch (Exception)
-                    {
-                        Debug.WriteLine("thread err 239d");
-                    }
-                    Thread.Sleep(100);
-                }
-            }
-        }
-
-
-        public void Init()
-
-        {
-
-            InitEngine();
-            Engine.IsScreensaver(false);
-
-            Thread mouseThreadWithParameters = new Thread(new ParameterizedThreadStart(MouseCursorResetMethod));
-            mouseThreadWithParameters.IsBackground = true;
-            mouseThreadWithParameters.Start(this);
-
-            Lm = new listManager(GridWidth * GridHeight);
-            _tilePlacement = new TilePlacementService(Lm, () => GridWidth, () => GridHeight);
-            ImageCounterArray = new int[GridHeight * GridWidth];
-
-            for (var i = 0; i < GridHeight * GridWidth - 1; i++)
-            {
-                ImageCounterArray[i] = 0;
-            }
-
-            var storageDirectory = getImageStorageLoc();
-            try
-            {
-                if (!Directory.Exists(storageDirectory) && DoSmartStart)
-                {
-                    Directory.CreateDirectory(storageDirectory);
-                }
-            }
-            catch (Exception ex)
-            {
-                LogError(ex, ex.Message);
-            }
-
-            TileGridBuilder.BuildGrid(
-                hStack1,
-                GridWidth,
-                GridHeight,
-                Engine.settings.borderThickness,
-                imageIndex => GetInitialTileImage(imageIndex, storageDirectory),
-                MyHeight / GridHeight - (BorderWidth / GridHeight)
-            );
-
-            if (!System.Diagnostics.Debugger.IsAttached)
-            {
-                Topmost = true;
-            }
-            Cursor = Cursors.None;
-
-            var temporaryCursor = this.Cursor;
-            this.Cursor = Cursors.Arrow;
-
-
-            ScreensaverModeDisabled = false;
-            MyCursor = Cursor;
-
-            LastMouseMove = DateTime.Now;
-            TotalMouseMoves = 0;
-
-            /*
-            // On each WheelMouse change, we zoom in/out a particular % of the original distance
-            const double ZoomPctEachWheelChange = 0.02;
-            ZoomDelta = Vector3D.Multiply(ZoomPctEachWheelChange, camMain.LookDirection);
-            */
-            this.Cursor = temporaryCursor;
-
-            TaskScheduler.Instance.ScheduleTask(2, 15, 24.0 * 60.0,  //run at 2:15a daily
-               () =>
-               {
-                   LogMsg("Scheduled task execution");
-                   repullAlbums();
-               });
-
-        }
-
-        int restartCounter = 0;
-        private void repullAlbums()
-        {
-            LogMsg("reloading library!!!");
-            InitEngine(true);
-            Engine.RestartCounter = ++restartCounter;
-        }
-        public DateTime getLastMouseMove()
-        {
-            return lastMouseMove;
-        }
-
-        private void Window_MouseDown(object sender, MouseButtonEventArgs e)
-        {
-            if (!screensaverModeDisabled)
-            {
-            }
-        }
-        private void Window_KeyDown(object sender, KeyEventArgs e)
-        {
-            switch (e.Key)
-            {
-                case Key.LeftCtrl:
-                    break;
-                case Key.Left:
-                case Key.Right:
-                    Engine.resetExpiredImageCollection();
-                    UpdateImage();
-                    break;
-                case Key.M:
-                    Engine.toggleDefaultMute();
-                    // apply global mute/unmute to all videos immediately
-                    _tileRenderer?.ApplyGlobalMute(this, Engine.isDefaultMute());
-                    break;
-                case Key.S:
-                    StatsEnabled = !StatsEnabled;
-                    if (StatsEnabled)
-                    {
-                        ShowMsg(Engine.getRuntimeStatsInfo(), true);
-                    }
-                    else ShowMsg(null, false);
-                    break;
-                case Key.Escape:
-                case Key.Q:
-                    Doshutdown();
-                    break;
-                case Key.W:
-                    ToggleScreen();
-                    break;
-                case Key.U:
-                    if (Keyboard.IsKeyDown(Key.LeftCtrl)) { DoUpgrade(); }
-                    break;
-                case Key.R:
-                    repullAlbums();
-                    break;
-                case Key.Enter:
-                    ReloadScreen();
-                    break;
-                case Key.P:
-                case Key.Space:
-                    TogglePauseSlideshow();
-                    break;
-                default:
-                    if (!screensaverModeDisabled)
-                    {
-                        Doshutdown();
-                    }
-                    break;
-            }
-        }
-
-        private void ReloadScreen()
-        {
-            Engine.resetExpiredImageCollection();
-            var totalImages = gridHeight * gridWidth;
-            for (int i = 0; i < totalImages*1.5; i++)
-                UpdateImage();
-        }
-
-        private void DoUpgrade()
-        {
-            var upgradeManager = UpgradeManager.Instance;
-            
-            if (!upgradeManager.ReadyForUpgrade)
-            {
-                Debug.WriteLine("already upgraded");
-            }
-            else
-            {
-                Debug.WriteLine("upgrade query to user");
-                MessageBoxResult result = System.Windows.MessageBox.Show(
-                    "Do you want to continue with installing a new version?",
-                    "Upgrade confirmation",
-                    MessageBoxButton.YesNo,
-                    MessageBoxImage.Question
-                    );
-                if (result == MessageBoxResult.Yes)
-                {
-                    System.Windows.MessageBox.Show("After installation, please restart the application");
-                    Debug.WriteLine("starting upgrade");
-                    upgradeManager.PerformUpgrade();
-                    
-                    Application.Current.Shutdown();
-
-                } 
-                else
-                {
-                    Debug.WriteLine("Deleting tmp installer");
-                    upgradeManager.deleteCurrentInstaller();
-                }
-            }
-        }
-
-        private void ShowMsg(string? msg, bool showStatsIsSet)
-        {
-            UiMessageHelper.ShowMessage(SetupRequired, isPaused, msg, showStatsIsSet);
-        }
-        public void ShowException(String msg)
-        {
-            LogError(new Exception("showException raised"), msg);
-        }
-
-        
-
-        public Vector3D ZoomDelta { get => zoomDelta; set => zoomDelta = value; }
-        public int MyHeight { get => myHeight; set => myHeight = value; }
-        public int MyWidth { get => myWidth; set => myWidth = value; }
-
-        public static bool DoSmartStart => doSmartStart;
-
-        public CSMEngine Engine { get => _engine; set => _engine = value; }
-        public ThreadStart ThreadStartImageUpdate { get => ts; set => ts = value; }
-        public Thread ThreadImageUpdate { get => threadImageUpdate; set => threadImageUpdate = value; }
-        public static bool Running { get => running; set => running = value; }
-        public bool ScreensaverModeDisabled { get => screensaverModeDisabled; set => screensaverModeDisabled = value; }
-        public int GridWidth { get => gridWidth; set => gridWidth = value; }
-        public int GridHeight { get => gridHeight; set => gridHeight = value; }
-        public int BorderWidth { get => borderWidth; set => borderWidth = value; }
-        public DateTime LastUpdate { get => lastUpdate; set => lastUpdate = value; }
-        public listManager Lm { get => lm; set => lm = value; }
-        public bool StatsEnabled { get => statsEnabled; set => statsEnabled = value; }
-        public Cursor MyCursor { get => myCursor; set => myCursor = value; }
-        public Task Task { get => task; set => task = value; }
-        public int[] ImageCounterArray { get => imageCounterArray; set => imageCounterArray = value; }
-        public DateTime LastMouseMove { get => lastMouseMove; set => lastMouseMove = value; }
-        public long TotalMouseMoves { get => totalMouseMoves; set => totalMouseMoves = value; }
-        public long MaxMouseMoves { get => maxMouseMoves; set => maxMouseMoves = value; }
-
-
-        private DateTime lastMouseMove;
-        private long totalMouseMoves;
-        private long maxMouseMoves = 100;
-        private Task? task = null;
-
-        private void Window_MouseMove(object sender, MouseEventArgs e)
-        {
-            var resetTime = LastMouseMove.AddMilliseconds(500);
-            if (!screensaverModeDisabled)
-            {
-                if (DateTime.Now < resetTime)
-                {
-                    TotalMouseMoves++;
-                    if (TotalMouseMoves > MaxMouseMoves)
-                    {
-                        Doshutdown();
-                    }
-                }
-                else
-                {
-                    TotalMouseMoves = 0;
-                }
-            }
-            else
-            {
-                this.Cursor = MyCursor;
-            }
-            LastMouseMove = DateTime.Now;
-        }
-
-        private void Window_Closed(object sender, EventArgs e)
-        {
-            LogMsg("Closing");
-            try { Engine?.shutdown(); } catch { }
-            AppOpenCloseLogger.logClosed(Engine.getUptime(), Engine.getRuntimeStatsInfo(false));
-        }
-
-        private void Image1_MouseUp(object sender, MouseButtonEventArgs e)
-        {
-            // Ignore clicks that originate from a video tile; those toggle mute inside TileRenderer
-            if (ClickOriginatedFromVideo(e))
-            {
-                e.Handled = true;
-                return;
-            }
-            UpdateImage();
-        }
-        private void Window_SizeChanged_1(object sender, SizeChangedEventArgs e)
-        {
-            MyWidth = Convert.ToInt32(e.NewSize.Width);
-            MyHeight = Convert.ToInt32(e.NewSize.Height);
-            UpdateImage();
-        }
-        private void Window_MouseRightButtonUp(object sender, MouseButtonEventArgs e)
-        {
-        }
-
-        private bool ClickOriginatedFromVideo(MouseEventArgs e)
+        private bool IsClickFromVideo(MouseEventArgs e)
         {
             try
             {
-                var d = e.OriginalSource as DependencyObject;
-                while (d != null)
+                var dependencyObject = e.OriginalSource as DependencyObject;
+                while (dependencyObject != null)
                 {
-                    if (d is LibVLCSharp.WPF.VideoView)
+                    if (dependencyObject is LibVLCSharp.WPF.VideoView)
+                    {
                         return true;
-                    d = VisualTreeHelper.GetParent(d);
+                    }
+                    dependencyObject = VisualTreeHelper.GetParent(dependencyObject);
                 }
             }
-            catch { }
+            catch
+            {
+                // Ignore errors during tree traversal
+            }
+
             return false;
         }
+
+        public DateTime GetLastMouseMove()
+        {
+            return _mouseMonitor.LastMouseMove;
+        }
+
+        #endregion
+
+        #region Background Threads
+
+        private static void MouseCursorResetLoop(object? state)
+        {
+            Debug.WriteLine($"Mouse cursor hide thread started at: {DateTime.Now}");
+
+            var window = state as Window1;
+            if (window == null) return;
+
+            while (true)
+            {
+                try
+                {
+                    window.Dispatcher.BeginInvoke(new Action(() =>
+                    {
+                        if (window._mouseMonitor.ShouldHideCursor(DefaultCursorHideSeconds))
+                        {
+                            Mouse.SetCursor(Cursors.None);
+                        }
+                    }));
+                }
+                catch (Exception ex)
+                {
+                    Debug.WriteLine($"Mouse cursor thread error: {ex.Message}");
+                }
+
+                Thread.Sleep(100);
+            }
+        }
+
+        #endregion
     }
 }

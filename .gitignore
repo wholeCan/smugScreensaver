@@ -13,6 +13,8 @@
 SMEngine/Constants.cs
 # User-specific files (MonoDevelop/Xamarin Studio)
 *.userprefs
+.claude/settings.local.json
+andyScreenSaver/.claude/settings.local.json
 
 # Mono auto generated files
 mono_crash.*
