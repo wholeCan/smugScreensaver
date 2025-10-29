@@ -11,6 +11,7 @@
         public int borderThickness;
         public int startTime = 8;
         public int stopTime = 23;
+        public bool allowVideoToFinish = true;
         public CSettings()
         {
             quality = 2;
@@ -22,6 +23,7 @@
             borderThickness = 0;
             startTime = 8;
             stopTime = 23;
+            allowVideoToFinish = true;
         }
     }
 
