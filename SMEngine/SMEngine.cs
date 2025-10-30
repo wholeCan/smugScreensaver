@@ -897,6 +897,34 @@ namespace SMEngine
         {
             return defaultMute;
         }
+
+        /// <summary>
+        /// Toggles whether videos should be allowed to finish playing before being replaced.
+        /// When enabled (true), videos will continue playing even if a new image update is triggered.
+        /// When disabled (false), videos will be immediately replaced with the next image.
+        /// </summary>
+        public void ToggleVideoCompletion()
+        {
+            settings.allowVideoToFinish = !settings.allowVideoToFinish;
+        }
+
+        /// <summary>
+        /// Gets the current video completion mode setting.
+        /// </summary>
+        public bool IsVideoCompletionEnabled()
+        {
+            return settings.allowVideoToFinish;
+        }
+
+        /// <summary>
+        /// Sets the video completion mode directly.
+        /// </summary>
+        /// <param name="enabled">True to allow videos to finish, false to replace immediately</param>
+        public void SetVideoCompletion(bool enabled)
+        {
+            settings.allowVideoToFinish = enabled;
+        }
+
         public void resetExpiredImageCollection()
         {
             if (Expired)

@@ -260,7 +260,7 @@ namespace andyScreenSaver.windows.Helpers
             }
         }
 
-        public void RenderSync(Border border, indexableImage image, SMEngine.CSMEngine.ImageSet s, string overlayText, bool defaultMute)
+        public void RenderSync(Border border, indexableImage image, SMEngine.CSMEngine.ImageSet s, string overlayText, bool defaultMute, bool allowVideoToFinish = true)
         {
             if (border == null || s == null) return;
 
@@ -274,6 +274,28 @@ namespace andyScreenSaver.windows.Helpers
                         _log($"Blocked non-SmugMug video source: {s.VideoSource}");
                         return;
                     }
+
+                    // If allowVideoToFinish is enabled, check if a video is currently playing
+                    if (allowVideoToFinish)
+                    {
+                        // Check for playing video in direct child
+                        if (border.Child is VideoView existingVv && existingVv.MediaPlayer != null && existingVv.MediaPlayer.IsPlaying)
+                        {
+                            _log($"allowVideoToFinish: skipping video replacement, one is still playing");
+                            return;
+                        }
+                        // Check for playing video in grid container
+                        if (border.Child is Grid existingContainer)
+                        {
+                            var playingVideo = existingContainer.Children.OfType<VideoView>().FirstOrDefault(v => v.MediaPlayer != null && v.MediaPlayer.IsPlaying);
+                            if (playingVideo != null)
+                            {
+                                _log($"allowVideoToFinish: skipping video replacement in grid, one is still playing");
+                                return;
+                            }
+                        }
+                    }
+
                     // Stop and dispose any previous video in either direct child or container
                     if (border.Child is VideoView oldVv && oldVv.MediaPlayer != null)
                     {
@@ -355,7 +377,7 @@ namespace andyScreenSaver.windows.Helpers
             });
         }
 
-        public async Task RenderAsync(Border border, indexableImage image, SMEngine.CSMEngine.ImageSet s, bool defaultMute)
+        public async Task RenderAsync(Border border, indexableImage image, SMEngine.CSMEngine.ImageSet s, bool defaultMute, bool allowVideoToFinish = true)
         {
             if (border == null || s == null) return;
 
@@ -368,20 +390,25 @@ namespace andyScreenSaver.windows.Helpers
                 }
                 await border.Dispatcher.InvokeAsync(() =>
                 {
-                    // If a video is already playing and allowed to finish, skip
-                    if (border.Child is Grid existingContainer)
+                    // If allowVideoToFinish is enabled, check if a video is already playing and skip replacement
+                    if (allowVideoToFinish)
                     {
-                        var playing = existingContainer.Children.OfType<VideoView>().FirstOrDefault(v => v.MediaPlayer != null && v.MediaPlayer.IsPlaying);
-                        if (playing != null)
+                        // Check for playing video in grid container
+                        if (border.Child is Grid existingContainer)
                         {
-                            _log($"skipping video in grid, still playing");
+                            var playing = existingContainer.Children.OfType<VideoView>().FirstOrDefault(v => v.MediaPlayer != null && v.MediaPlayer.IsPlaying);
+                            if (playing != null)
+                            {
+                                _log($"allowVideoToFinish: skipping video in grid, still playing");
+                                return;
+                            }
+                        }
+                        // Check for playing video in direct child
+                        if (border.Child is VideoView existingVv && existingVv.MediaPlayer != null && existingVv.MediaPlayer.IsPlaying)
+                        {
+                            _log($"allowVideoToFinish: skipping video, still playing");
                             return;
                         }
-                    }
-                    if (border.Child is VideoView existingVv && existingVv.MediaPlayer != null && existingVv.MediaPlayer.IsPlaying)
-                    {
-                        _log($"skipping video, still playing");
-                        return;
                     }
 
                     // Stop and dispose any old video

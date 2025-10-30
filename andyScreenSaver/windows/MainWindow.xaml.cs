@@ -430,11 +430,11 @@ namespace andyScreenSaver
             if (imageSet.IsVideo)
             {
                 var overlayText = _engine?.settings.showImageCaptions == true ? captionText : string.Empty;
-                _tileRenderer?.RenderSync(border, image, imageSet, overlayText, _engine?.isDefaultMute() ?? false);
+                _tileRenderer?.RenderSync(border, image, imageSet, overlayText, _engine?.isDefaultMute() ?? false, _engine?.settings.allowVideoToFinish ?? true);
             }
             else
             {
-                _ = _tileRenderer?.RenderAsync(border, image, imageSet, _engine?.isDefaultMute() ?? false);
+                _ = _tileRenderer?.RenderAsync(border, image, imageSet, _engine?.isDefaultMute() ?? false, _engine?.settings.allowVideoToFinish ?? true);
                //_tileRenderer?.RenderSync(border, image, imageSet, captionText, true);
             }
         }
@@ -446,11 +446,11 @@ namespace andyScreenSaver
 
             if (imageSet.IsVideo)
             {
-                _tileRenderer?.RenderSync(border, image, imageSet, string.Empty, _engine?.isDefaultMute() ?? false);
+                _tileRenderer?.RenderSync(border, image, imageSet, string.Empty, _engine?.isDefaultMute() ?? false, _engine?.settings.allowVideoToFinish ?? true);
             }
             else
             {
-                _ = _tileRenderer?.RenderAsync(border, image, imageSet, _engine?.isDefaultMute() ?? false);
+                _ = _tileRenderer?.RenderAsync(border, image, imageSet, _engine?.isDefaultMute() ?? false, _engine?.settings.allowVideoToFinish ?? true);
             }
         }
 
