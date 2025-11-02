@@ -654,7 +654,7 @@ namespace andyScreenSaver
         {
             WindowWidth = Convert.ToInt32(e.NewSize.Width);
             WindowHeight = Convert.ToInt32(e.NewSize.Height);
-            UpdateImage();
+            UpdateLayoutAndExpiredBanner();
         }
 
         private void Window_Closed(object sender, EventArgs e)
