@@ -949,11 +949,6 @@ namespace SMEngine
                 }
             }
 
-            lock (_imageCounterLock)
-            {
-                _imageCounter++;
-            }
-
             if (!screensaverExpired())
             {
                 b.Bitmap = BitmapImage2Bitmap(b.BitmapImage);
@@ -963,6 +958,46 @@ namespace SMEngine
                 b.Bitmap = getBlackImagePixel();
             }
             return b;
+        }
+
+        /// <summary>
+        /// Increments the image counter to track displayed images.
+        /// Should be called after an image/video is successfully rendered/displayed.
+        /// </summary>
+        public void IncrementImageCounter()
+        {
+            try
+            {
+                lock (_imageCounterLock)
+                {
+                    _imageCounter++;
+                }
+            }
+            catch (Exception ex)
+            {
+                doException($"Error incrementing image counter: {ex.Message}");
+            }
+        }
+
+        /// <summary>
+        /// Returns an image/video back to the queue for later display.
+        /// Used when RenderSync skips rendering due to a video still playing.
+        /// </summary>
+        public void ReturnImageToQueue(ImageSet imageSet)
+        {
+            if (imageSet == null) return;
+            try
+            {
+                lock (_imageQueueLock)
+                {
+                    _imageQueue.Enqueue(imageSet);
+                    logMsg($"Re-enqueued image: {imageSet.Name ?? "unknown"}, Queue depth: {_imageQueue.Count}");
+                }
+            }
+            catch (Exception ex)
+            {
+                doException($"Error re-enqueueing image: {ex.Message}");
+            }
         }
 
         public System.Drawing.Bitmap getBlackImagePixel()

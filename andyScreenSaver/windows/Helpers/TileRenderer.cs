@@ -15,14 +15,17 @@ namespace andyScreenSaver.windows.Helpers
         private readonly Func<double> _calcWidth;
         private readonly Func<double> _calcHeight;
         private readonly Action<string> _log;
+        private readonly SMEngine.CSMEngine _engine;
 
         public TileRenderer(Func<double> calculateWidth,
                             Func<double> calculateHeight,
-                            Action<string> log)
+                            Action<string> log,
+                            SMEngine.CSMEngine engine)
         {
             _calcWidth = calculateWidth ?? throw new ArgumentNullException(nameof(calculateWidth));
             _calcHeight = calculateHeight ?? throw new ArgumentNullException(nameof(calculateHeight));
             _log = log ?? (_ => { });
+            _engine = engine ?? throw new ArgumentNullException(nameof(engine));
         }
 
         private static bool IsTrustedSmugMugUrl(string? url)
@@ -282,6 +285,7 @@ namespace andyScreenSaver.windows.Helpers
                         if (border.Child is VideoView existingVv && existingVv.MediaPlayer != null && existingVv.MediaPlayer.IsPlaying)
                         {
                             _log($"allowVideoToFinish: skipping video replacement, one is still playing");
+                            _engine.ReturnImageToQueue(s);
                             return;
                         }
                         // Check for playing video in grid container
@@ -291,6 +295,7 @@ namespace andyScreenSaver.windows.Helpers
                             if (playingVideo != null)
                             {
                                 _log($"allowVideoToFinish: skipping video replacement in grid, one is still playing");
+                                _engine.ReturnImageToQueue(s);
                                 return;
                             }
                         }
@@ -374,6 +379,9 @@ namespace andyScreenSaver.windows.Helpers
                 }
 
                 border.Child = container;
+
+                // Increment counter only after successful render
+                _engine.IncrementImageCounter();
             });
         }
 
@@ -400,6 +408,7 @@ namespace andyScreenSaver.windows.Helpers
                             if (playing != null)
                             {
                                 _log($"allowVideoToFinish: skipping video in grid, still playing");
+                                _engine.ReturnImageToQueue(s);
                                 return;
                             }
                         }
@@ -407,6 +416,7 @@ namespace andyScreenSaver.windows.Helpers
                         if (border.Child is VideoView existingVv && existingVv.MediaPlayer != null && existingVv.MediaPlayer.IsPlaying)
                         {
                             _log($"allowVideoToFinish: skipping video, still playing");
+                            _engine.ReturnImageToQueue(s);
                             return;
                         }
                     }
@@ -459,6 +469,9 @@ namespace andyScreenSaver.windows.Helpers
                     UpdateAudioIndicatorOnContainer(container, audioOn: !mediaPlayer.Mute);
 
                     border.Child = container;
+
+                    // Increment counter only after successful render
+                    _engine.IncrementImageCounter();
                 });
                 return;
             }
@@ -506,6 +519,9 @@ namespace andyScreenSaver.windows.Helpers
                 targetImg.MaxHeight = _calcHeight();
                 targetImg.Width = _calcWidth();
                 targetImg.Source = ImageUtils.BitmapToBitmapImage(s.Bitmap);
+
+                // Increment counter only after successful render
+                _engine.IncrementImageCounter();
             });
         }
     }

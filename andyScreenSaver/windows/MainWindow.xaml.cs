@@ -232,7 +232,8 @@ namespace andyScreenSaver
             _tileRenderer = new TileRenderer(
                 () => _layoutHelper?.CalculateImageWidth() ?? 0d,
                 () => _layoutHelper?.CalculateImageHeight() ?? 0d,
-                (m) => AppLogger.Log(m)
+                (m) => AppLogger.Log(m),
+                Engine
             );
         }
 

@@ -49,6 +49,7 @@ namespace SMEngine
                 msg.AppendLine("Menu:");
                 msg.AppendLine("\ts: show or hide stats");
                 msg.AppendLine("\tw: toggle window controls");
+                msg.AppendLine("\tm: toggle mute");
                 msg.AppendLine("\tr: reload library");
                 msg.AppendLine("\tCtrl+U: upgrade app");
                 msg.AppendLine("\tEnter: refresh all images");
