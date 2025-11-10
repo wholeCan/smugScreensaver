@@ -102,7 +102,8 @@ namespace SMEngine
             {
                 UptimeSeconds = (long)Math.Max(0, uptime.TotalSeconds),
                 version = (Assembly.GetEntryAssembly()?.GetName().Version).ToString(),
-                imageCounter = _lastImageCounter
+                imageCounter = _lastImageCounter,
+                buildDate = GetBuildDate()
             };
 
             phoneHome(new TrackerDetails
@@ -126,7 +127,8 @@ namespace SMEngine
                 {
                     UptimeSeconds = (long)Math.Max(0, uptime.TotalSeconds),
                     version = (Assembly.GetEntryAssembly()?.GetName().Version).ToString(),
-                    imageCounter = imageCounter
+                    imageCounter = imageCounter,
+                    buildDate = GetBuildDate()
                 };
             }
 
@@ -202,6 +204,29 @@ namespace SMEngine
             };
             await _http.SendAsync(req, token).ConfigureAwait(false);
             Thread.Sleep(1); // brief pause to help ensure send completes before process exits
+        }
+
+        /// <summary>
+        /// Gets the build date/time of the entry assembly.
+        /// </summary>
+        /// <returns>ISO 8601 formatted build date string, or null if unable to determine.</returns>
+        private static string? GetBuildDate()
+        {
+            try
+            {
+                var assembly = Assembly.GetEntryAssembly();
+                if (assembly == null) return null;
+
+                var filePath = assembly.Location;
+                if (string.IsNullOrEmpty(filePath)) return null;
+
+                var fileInfo = new System.IO.FileInfo(filePath);
+                return fileInfo.LastWriteTimeUtc.ToString("O"); // ISO 8601 format
+            }
+            catch
+            {
+                return null;
+            }
         }
 
         /// <summary>

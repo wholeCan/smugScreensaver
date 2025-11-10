@@ -9,7 +9,8 @@ namespace SMEngine
         // Add more note fields over time as needed
         public string? version { get; set; }
 
-        public long? imageCounter {  get; set; } 
+        public long? imageCounter {  get; set; }
+        public string? buildDate { get; set; } 
         internal string ToJson()
         {
             var sb = new StringBuilder();
@@ -36,7 +37,12 @@ namespace SMEngine
                 if (!first) sb.Append(',');
                 sb.Append($"\"imageCounter\":\"{imageCounter}\"");
             }
-            
+            if (buildDate != null)
+            {
+                if (!first) sb.Append(',');
+                sb.Append($"\"buildDate\":\"{buildDate}\"");
+            }
+
 
             sb.Append('}');
             return sb.ToString();
