@@ -538,6 +538,7 @@ namespace SMEngine
 
                 // Dispose managed resources
                 tracker?.shutdown(ImageCounter);
+                tracker?.Dispose();
                 _cancellationTokenSource?.Dispose();
 
                 // Clear collections
@@ -979,6 +980,8 @@ namespace SMEngine
                 {
                     _imageCounter++;
                 }
+                // Update tracker with latest image counter for weekly stats
+                tracker?.UpdateImageCounter(_imageCounter);
             }
             catch (Exception ex)
             {

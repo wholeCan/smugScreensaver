@@ -5,6 +5,7 @@ using System.Reflection;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
+using System.Timers;
 
 
 namespace SMEngine
@@ -21,6 +22,9 @@ namespace SMEngine
         // Session state used for shutdown
         private string _username, _host, _appname;
         private static DateTime? _startTime;
+        private DateTime? _lastWeeklyUpdate;
+        private System.Timers.Timer _weeklyUpdateTimer;
+        private long _lastImageCounter = 0;
 
         private static string getEndpoint()
         {
@@ -45,10 +49,71 @@ namespace SMEngine
         public Tracker(TrackerDetails details)
         {
             Setup(details);
+            StartWeeklyUpdateTimer();
         }
 
-        public Tracker()
+        //unused
+        private Tracker()
         {
+            StartWeeklyUpdateTimer();
+        }
+
+        private void StartWeeklyUpdateTimer()
+        {
+            // Timer interval: 1 hour (in milliseconds) - check weekly status every hour
+            const double timerIntervalMs = 60 * 60 * 1000; // 1 hour
+
+            _weeklyUpdateTimer = new System.Timers.Timer(timerIntervalMs)
+            {
+                AutoReset = true,
+                Enabled = true
+            };
+            _weeklyUpdateTimer.Elapsed += OnWeeklyUpdateTimerElapsed;
+        }
+
+        private void OnWeeklyUpdateTimerElapsed(object sender, ElapsedEventArgs e)
+        {
+            // Check if a week has passed since last update
+            if (_lastWeeklyUpdate == null || (DateTime.Now - _lastWeeklyUpdate.GetValueOrDefault()).TotalDays >= 7)
+            {
+                SendWeeklyUpdate();
+            }
+        }
+
+        /// <summary>
+        /// Updates the image counter for use in weekly statistics.
+        /// Should be called periodically (e.g., when images are displayed).
+        /// </summary>
+        public void UpdateImageCounter(long imageCounter)
+        {
+            _lastImageCounter = imageCounter;
+        }
+
+        private void SendWeeklyUpdate()
+        {
+            if (_startTime == null || string.IsNullOrEmpty(_appname) || string.IsNullOrEmpty(_username) || string.IsNullOrEmpty(_host))
+            {
+                // Not yet initialized, skip this update
+                return;
+            }
+
+            var uptime = DateTime.Now - _startTime.GetValueOrDefault();
+            var notes = new TrackerNotes
+            {
+                UptimeSeconds = (long)Math.Max(0, uptime.TotalSeconds),
+                version = (Assembly.GetEntryAssembly()?.GetName().Version).ToString(),
+                imageCounter = _lastImageCounter
+            };
+
+            phoneHome(new TrackerDetails
+            {
+                AppName = _appname,
+                Host = _host,
+                Username = _username,
+                Notes = notes
+            });
+
+            _lastWeeklyUpdate = DateTime.Now;
         }
 
         public void shutdown(long imageCounter)
@@ -137,6 +202,15 @@ namespace SMEngine
             };
             await _http.SendAsync(req, token).ConfigureAwait(false);
             Thread.Sleep(1); // brief pause to help ensure send completes before process exits
+        }
+
+        /// <summary>
+        /// Disposes the tracker resources, including the weekly update timer.
+        /// </summary>
+        public void Dispose()
+        {
+            _weeklyUpdateTimer?.Stop();
+            _weeklyUpdateTimer?.Dispose();
         }
     }
 
