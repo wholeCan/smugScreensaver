@@ -206,7 +206,8 @@ namespace SMEngine
         {
 
             _appName = appname;
-            
+           
+
             _imageQueue = new Queue<ImageSet>();
             GalleryTable = new System.Data.DataTable();
             _imageDictionary = new Dictionary<string, ImageSet>();  //image id, and url
@@ -216,6 +217,8 @@ namespace SMEngine
             _allAlbums = new List<Album>();
             Settings = new CSettings();
             Login = new loginInfo();
+
+         
 
             loadConfiguration();
             if (doStart)
@@ -553,7 +556,7 @@ namespace SMEngine
             _disposed = true;
         }
 
-        private Tracker tracker = new Tracker();
+        private static Tracker tracker = null;
 
         private async Task LoadAlbumsAsync(string userNickName = null)
         {
@@ -575,7 +578,11 @@ namespace SMEngine
                     _appName =  IsConfigurationMode ? "slideshowConfig" : "andyScreenSaver";//Assembly.GetExecutingAssembly().GetName().Name;
                 }
                 var appName = _appName;
-                tracker.setup(new TrackerDetails { AppName = appName, Host = Dns.GetHostName(), Username = User.NickName });
+
+                if (tracker == null)
+                {
+                    tracker = new Tracker(new TrackerDetails { AppName = _appName, Host = Dns.GetHostName(), Username = User.NickName });
+                }
 
                 var albums = await Api.GetAlbums(User, Debug_limit);
                 logMsg("returned albums: " + albums.Count());

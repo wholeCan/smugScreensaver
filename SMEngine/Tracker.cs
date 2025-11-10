@@ -20,7 +20,7 @@ namespace SMEngine
 
         // Session state used for shutdown
         private string _username, _host, _appname;
-        private DateTime _startTime;
+        private static DateTime? _startTime;
 
         private static string getEndpoint()
         {
@@ -29,17 +29,26 @@ namespace SMEngine
         }
 
         // Initialize details and send an initial phoneHome
-        public void setup(TrackerDetails details)
+        private void Setup(TrackerDetails details)
         {
-            if (details == null) return;
+            if (details == null)
+                return;
             _username = details.Username;
             _host = details.Host;
             _appname = details.AppName;
-            if (_startTime == default(DateTime))
-            {
-                _startTime = DateTime.Now;
-            }
+
+            _startTime ??= DateTime.Now;
+
             phoneHome(details);
+        }
+
+        public Tracker(TrackerDetails details)
+        {
+            Setup(details);
+        }
+
+        public Tracker()
+        {
         }
 
         public void shutdown(long imageCounter)
@@ -47,7 +56,7 @@ namespace SMEngine
             TrackerNotes notes = null;
             if (_startTime != default(DateTime))
             {
-                var uptime = DateTime.Now - _startTime;
+                var uptime = DateTime.Now - _startTime.GetValueOrDefault();
                 notes = new TrackerNotes
                 {
                     UptimeSeconds = (long)Math.Max(0, uptime.TotalSeconds),
