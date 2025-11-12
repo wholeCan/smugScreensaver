@@ -559,6 +559,14 @@ namespace SMEngine
 
         private static Tracker tracker = null;
 
+        /// <summary>
+        /// Gets the tracker instance (persists across engine reinitializations).
+        /// </summary>
+        public static Tracker GetTracker()
+        {
+            return tracker;
+        }
+
         private async Task LoadAlbumsAsync(string userNickName = null)
         {
             try

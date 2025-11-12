@@ -89,6 +89,15 @@ namespace SMEngine
             _lastImageCounter = imageCounter;
         }
 
+        /// <summary>
+        /// Retrieves the last image counter value.
+        /// Used to restore the counter when the engine is reinitialized.
+        /// </summary>
+        public long GetLastImageCounter()
+        {
+            return _lastImageCounter;
+        }
+
         private void SendWeeklyUpdate()
         {
             if (_startTime == null || string.IsNullOrEmpty(_appname) || string.IsNullOrEmpty(_username) || string.IsNullOrEmpty(_host))

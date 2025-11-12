@@ -171,11 +171,25 @@ namespace andyScreenSaver
                 AppOpenCloseLogger.uptimeCheckpoint(_engine.getUptime(), _engine.getRuntimeStatsInfo(false));
             }
 
+            // Store the image counter before creating new engine
+            long previousImageCounter = 0;
+            var tracker = SMEngine.CSMEngine.GetTracker();
+            if (tracker != null)
+            {
+                previousImageCounter = tracker.GetLastImageCounter();
+            }
+
             var workArea = SystemParameters.WorkArea;
             _engine = new SMEngine.CSMEngine(true, "andyScreenSaver");
             _engine.setScreenDimensions(workArea.Width, workArea.Height);
             _engine.IsScreensaver(false);
             _engine.fireException += ShowException;
+
+            // Restore the image counter to the new engine
+            if (previousImageCounter > 0)
+            {
+                _engine.ImageCounter = previousImageCounter;
+            }
 
             GridHeight = _engine.settings.gridHeight;
             GridWidth = _engine.settings.gridWidth;
