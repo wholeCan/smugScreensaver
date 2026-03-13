@@ -3,6 +3,7 @@ using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Net;
+using System.Threading;
 using System.Threading.Tasks;
 using System.Windows.Media.Imaging;
 using SmugMug.NET;
@@ -27,6 +28,25 @@ namespace SMEngine
 
         public static BitmapImage DownloadImage(CSMEngine engine, string url)
         {
+            const int maxAttempts = 2;
+            const int retryDelayMs = 2000;
+
+            BitmapImage result = null;
+            for (int attempt = 0; attempt < maxAttempts; attempt++)
+            {
+                if (attempt > 0)
+                {
+                    engine.doException($"DownloadImage attempt {attempt} failed, retrying: {url}");
+                    Thread.Sleep(retryDelayMs);
+                }
+                result = AttemptDownload(engine, url);
+                if (result != null) break;
+            }
+            return result;
+        }
+
+        private static BitmapImage AttemptDownload(CSMEngine engine, string url)
+        {
             var bytesToRead = 2500;
             var image = new BitmapImage();
             try
@@ -34,7 +54,7 @@ namespace SMEngine
                 if (url != null)
                 {
                     var request = WebRequest.Create(new Uri(url, UriKind.Absolute));
-                    request.Timeout = -1;
+                    request.Timeout = 30000; // 30 seconds
                     try
                     {
                         var response = (HttpWebResponse)request.GetResponse();
@@ -63,8 +83,10 @@ namespace SMEngine
                         image.EndInit();
                         memoryStream.Dispose();
                     }
-                    catch
+                    catch (Exception ex)
                     {
+                        engine.doException("DownloadImage inner exception for " + url + ": " + ex.Message);
+                        Debug.WriteLine(ex.Message);
                         return null;
                     }
                 }
