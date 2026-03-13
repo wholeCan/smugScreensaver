@@ -22,7 +22,7 @@ namespace SMEngine
             {
                 while (!token.IsCancellationRequested && _engine.Running)
                 {
-                    if (_engine.qSize < CSMEngine.MinQ && _engine.qSize < CSMEngine.MaximumQ)
+                    if (_engine.qSize < CSMEngine.MinQ && _engine.qSize < _engine.MaximumQ)
                     {
                         try
                         {

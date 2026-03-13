@@ -34,6 +34,7 @@ namespace SMEngine
             msg.AppendLine("Video muted: " + engine.isDefaultMute().ToString());
             msg.AppendLine("Images deduped: " + engine.PlayedImages.Count);
             msg.AppendLine("Queue depth: " + engine.qSize);
+            msg.AppendLine("Queue max: " + engine.MaximumQ + " (" + engine.AvailableMemoryMB + " MB free)");
             msg.AppendLine("Image size: " + engine.Settings.quality);
             msg.AppendLine("Time between images: " + engine.getTimeSinceLast());
             msg.AppendLine("Exceptions raised: " + engine.ExceptionsRaised);

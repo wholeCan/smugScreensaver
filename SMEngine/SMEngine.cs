@@ -36,8 +36,43 @@ namespace SMEngine
         private readonly Queue<ImageSet> _imageQueue;
         private readonly object _imageQueueLock = new object();        
 
-        private const int maximumQ = 20;   //window, only download if q is less than max and greater than min.
+        private const int absoluteMaxQ = 20;  // upper bound; reduced dynamically under memory pressure
+        private const int absoluteMinQ = 5;   // floor when memory is low
         private const int minQ = 2; //2, to allow some time to download albums before getting to 0.
+
+        private static readonly PerformanceCounter _availableMemoryCounter = CreateMemoryCounter();
+        private static long _cachedAvailableMemoryMB = long.MaxValue;
+        private static DateTime _lastMemoryCheck = DateTime.MinValue;
+        private static readonly TimeSpan _memoryCheckInterval = TimeSpan.FromSeconds(5);
+
+        private static PerformanceCounter CreateMemoryCounter()
+        {
+            try { return new PerformanceCounter("Memory", "Available MBytes", readOnly: true); }
+            catch { return null; }
+        }
+
+        private static long GetAvailableMemoryMB()
+        {
+            if (DateTime.Now - _lastMemoryCheck < _memoryCheckInterval)
+                return _cachedAvailableMemoryMB;
+            try
+            {
+                if (_availableMemoryCounter != null)
+                    _cachedAvailableMemoryMB = (long)_availableMemoryCounter.NextValue();
+            }
+            catch { }
+            _lastMemoryCheck = DateTime.Now;
+            return _cachedAvailableMemoryMB;
+        }
+
+        private static int GetDynamicMaxQueue()
+        {
+            var availableMB = GetAvailableMemoryMB();
+            if (availableMB > 1000) return absoluteMaxQ;   // >1 GB free  → 20
+            if (availableMB > 500)  return 15;             // >500 MB free → 15
+            if (availableMB > 250)  return 10;             // >250 MB free → 10
+            return absoluteMinQ;                           // low memory   → 5
+        }
         private volatile bool running = false;
 
 
@@ -667,7 +702,8 @@ namespace SMEngine
 
         public Queue<ImageSet> ImageQueue => _imageQueue;
 
-        public static int MaximumQ => maximumQ;
+        public int MaximumQ => GetDynamicMaxQueue();
+        public long AvailableMemoryMB => GetAvailableMemoryMB();
 
         public static int MinQ => minQ;
 
