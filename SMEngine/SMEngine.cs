@@ -879,7 +879,7 @@ namespace SMEngine
                 {
                     using var outStream = new MemoryStream();
                     var enc = new BmpBitmapEncoder();
-                    enc.Frames.Add(BitmapFrame.Create(bitmapImage));
+                    enc.Frames.Add(BitmapFrame.Create(bitmapImage, null, null, null));
                     enc.Save(outStream);
                     bitmap = new System.Drawing.Bitmap(outStream);
                     outStream.Close();

@@ -211,6 +211,18 @@ namespace andyScreenSaver.windows.Helpers
             catch { }
         }
 
+        // Detach MediaPlayer on UI thread first, then stop/dispose on background thread
+        // to avoid deadlock where VLC tries to marshal back to a blocked UI thread.
+        private static void DisposeVideoView(VideoView vv)
+        {
+            if (vv == null) return;
+            var mp = vv.MediaPlayer;
+            vv.MediaPlayer = null;
+            if (mp != null)
+                _ = Task.Run(() => { try { mp.Stop(); } catch { } try { mp.Dispose(); } catch { } });
+            try { vv.Dispose(); } catch { }
+        }
+
         public void ApplyGlobalMute(DependencyObject root, bool mute)
         {
             if (root == null) return;
@@ -304,24 +316,15 @@ namespace andyScreenSaver.windows.Helpers
                     }
 
                     // Stop and dispose any previous video in either direct child or container
-                    if (border.Child is VideoView oldVv && oldVv.MediaPlayer != null)
+                    if (border.Child is VideoView oldVv)
                     {
-                        try { oldVv.MediaPlayer.Stop(); } catch { }
-                        try { oldVv.MediaPlayer.Dispose(); } catch { }
-                        try { oldVv.Dispose(); } catch { }
+                        DisposeVideoView(oldVv);
                         border.Child = null;
                     }
                     else if (border.Child is Grid g)
                     {
                         foreach (var child in g.Children)
-                        {
-                            if (child is VideoView vv && vv.MediaPlayer != null)
-                            {
-                                try { vv.MediaPlayer.Stop(); } catch { }
-                                try { vv.MediaPlayer.Dispose(); } catch { }
-                                try { vv.Dispose(); } catch { }
-                            }
-                        }
+                            if (child is VideoView vv) DisposeVideoView(vv);
                         border.Child = null;
                     }
 
@@ -445,24 +448,15 @@ namespace andyScreenSaver.windows.Helpers
                     }
 
                     // Stop and dispose any old video
-                    if (border.Child is VideoView oldVv && oldVv.MediaPlayer != null)
+                    if (border.Child is VideoView oldVv)
                     {
-                        try { oldVv.MediaPlayer.Stop(); } catch { }
-                        try { oldVv.MediaPlayer.Dispose(); } catch { }
-                        try { oldVv.Dispose(); } catch { }
+                        DisposeVideoView(oldVv);
                         border.Child = null;
                     }
                     else if (border.Child is Grid g)
                     {
                         foreach (var child in g.Children)
-                        {
-                            if (child is VideoView vv && vv.MediaPlayer != null)
-                            {
-                                try { vv.MediaPlayer.Stop(); } catch { }
-                                try { vv.MediaPlayer.Dispose(); } catch { }
-                                try { vv.Dispose(); } catch { }
-                            }
-                        }
+                            if (child is VideoView vv) DisposeVideoView(vv);
                         border.Child = null;
                     }
 
@@ -525,11 +519,9 @@ namespace andyScreenSaver.windows.Helpers
 
                 indexableImage targetImg = image;
 
-                if (border.Child is VideoView oldVv && oldVv.MediaPlayer != null)
+                if (border.Child is VideoView oldVv)
                 {
-                    try { oldVv.MediaPlayer.Stop(); } catch { }
-                    try { oldVv.MediaPlayer.Dispose(); } catch { }
-                    try { oldVv.Dispose(); } catch { }
+                    DisposeVideoView(oldVv);
                     border.Child = null;
                     targetImg = new indexableImage();
                     border.Child = targetImg;
@@ -537,14 +529,7 @@ namespace andyScreenSaver.windows.Helpers
                 else if (border.Child is Grid gridWithVideo && gridWithVideo.Children.OfType<VideoView>().Any())
                 {
                     foreach (var child in gridWithVideo.Children)
-                    {
-                        if (child is VideoView vv && vv.MediaPlayer != null)
-                        {
-                            try { vv.MediaPlayer.Stop(); } catch { }
-                            try { vv.MediaPlayer.Dispose(); } catch { }
-                            try { vv.Dispose(); } catch { }
-                        }
-                    }
+                        if (child is VideoView vv) DisposeVideoView(vv);
                     border.Child = null;
                     targetImg = new indexableImage();
                     border.Child = targetImg;

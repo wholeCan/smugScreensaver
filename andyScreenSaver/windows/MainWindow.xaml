@@ -6,7 +6,7 @@
         ResizeMode="NoResize"
         WindowStyle="None"
         MouseDown="Window_MouseDown"
-        KeyDown="Window_KeyDown"
+        PreviewKeyDown="Window_KeyDown"
         Background="Black"
         Height="333"
         MouseMove="Window_MouseMove"

@@ -611,6 +611,7 @@ namespace andyScreenSaver
                     break;
 
                 case Key.Enter:
+                    e.Handled = true;
                     ReloadScreen();
                     break;
 
