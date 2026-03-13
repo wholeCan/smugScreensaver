@@ -358,6 +358,27 @@ namespace andyScreenSaver.windows.Helpers
                 }
                 else
                 {
+                    // Guard: don't replace a playing video with a still image
+                    if (allowVideoToFinish)
+                    {
+                        if (border.Child is Grid existingContainer)
+                        {
+                            var playingVideo = existingContainer.Children.OfType<VideoView>().FirstOrDefault(v => v.MediaPlayer != null && v.MediaPlayer.IsPlaying);
+                            if (playingVideo != null)
+                            {
+                                _log($"allowVideoToFinish: skipping image replacement, video still playing");
+                                _engine.ReturnImageToQueue(s);
+                                return;
+                            }
+                        }
+                        if (border.Child is VideoView existingVv && existingVv.MediaPlayer != null && existingVv.MediaPlayer.IsPlaying)
+                        {
+                            _log($"allowVideoToFinish: skipping image replacement, video still playing");
+                            _engine.ReturnImageToQueue(s);
+                            return;
+                        }
+                    }
+
                     // Ensure an image exists
                     indexableImage targetImg = null;
                     if (border.Child is indexableImage existingImg)
@@ -481,6 +502,27 @@ namespace andyScreenSaver.windows.Helpers
             // Render photo: ensure the child is an indexableImage
             await border.Dispatcher.InvokeAsync(() =>
             {
+                // Guard: don't replace a playing video with a still image
+                if (allowVideoToFinish)
+                {
+                    if (border.Child is Grid existingContainer)
+                    {
+                        var playingVideo = existingContainer.Children.OfType<VideoView>().FirstOrDefault(v => v.MediaPlayer != null && v.MediaPlayer.IsPlaying);
+                        if (playingVideo != null)
+                        {
+                            _log($"allowVideoToFinish: skipping image replacement, video still playing");
+                            _engine.ReturnImageToQueue(s);
+                            return;
+                        }
+                    }
+                    if (border.Child is VideoView existingVv && existingVv.MediaPlayer != null && existingVv.MediaPlayer.IsPlaying)
+                    {
+                        _log($"allowVideoToFinish: skipping image replacement, video still playing");
+                        _engine.ReturnImageToQueue(s);
+                        return;
+                    }
+                }
+
                 indexableImage targetImg = image;
 
                 if (border.Child is VideoView oldVv && oldVv.MediaPlayer != null)
