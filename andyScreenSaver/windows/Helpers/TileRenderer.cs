@@ -12,7 +12,7 @@ namespace andyScreenSaver.windows.Helpers
 {
     internal sealed class TileRenderer
     {
-        private static readonly LibVLC _sharedLibVLC = new LibVLC();
+        private static readonly LibVLC _sharedLibVLC = new LibVLC("--no-keyboard-events", "--no-mouse-events");
 
         private readonly Func<double> _calcWidth;
         private readonly Func<double> _calcHeight;
