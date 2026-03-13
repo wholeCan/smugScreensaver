@@ -12,6 +12,8 @@ namespace andyScreenSaver.windows.Helpers
 {
     internal sealed class TileRenderer
     {
+        private static readonly LibVLC _sharedLibVLC = new LibVLC();
+
         private readonly Func<double> _calcWidth;
         private readonly Func<double> _calcHeight;
         private readonly Action<string> _log;
@@ -323,8 +325,7 @@ namespace andyScreenSaver.windows.Helpers
                         border.Child = null;
                     }
 
-                    var libVLC = new LibVLC();
-                    var mediaPlayer = new LibVLCSharp.Shared.MediaPlayer(libVLC) { Mute = defaultMute };
+                    var mediaPlayer = new LibVLCSharp.Shared.MediaPlayer(_sharedLibVLC) { Mute = defaultMute };
                     var videoView = new VideoView
                     {
                         MediaPlayer = mediaPlayer,
@@ -333,7 +334,8 @@ namespace andyScreenSaver.windows.Helpers
                         HorizontalAlignment = HorizontalAlignment.Center,
                         VerticalAlignment = VerticalAlignment.Center
                     };
-                    mediaPlayer.Play(new Media(libVLC, s.VideoSource, FromType.FromLocation));
+                    using (var media = new Media(_sharedLibVLC, s.VideoSource, FromType.FromLocation))
+                        mediaPlayer.Play(media);
                     mediaPlayer.EncounteredError += (sender, e) =>
                     {
                         _log($"Error encountered playing video {s.VideoSource} {e.ToString()}");
@@ -445,8 +447,7 @@ namespace andyScreenSaver.windows.Helpers
 
                     // Create container and video
                     var container = new Grid { ClipToBounds = true };
-                    var libVLC = new LibVLC();
-                    var mediaPlayer = new LibVLCSharp.Shared.MediaPlayer(libVLC) { Mute = defaultMute };
+                    var mediaPlayer = new LibVLCSharp.Shared.MediaPlayer(_sharedLibVLC) { Mute = defaultMute };
                     var videoView = new VideoView
                     {
                         MediaPlayer = mediaPlayer,
@@ -455,7 +456,8 @@ namespace andyScreenSaver.windows.Helpers
                         HorizontalAlignment = HorizontalAlignment.Center,
                         VerticalAlignment = VerticalAlignment.Center
                     };
-                    mediaPlayer.Play(new Media(libVLC, s.VideoSource, FromType.FromLocation));
+                    using (var media = new Media(_sharedLibVLC, s.VideoSource, FromType.FromLocation))
+                        mediaPlayer.Play(media);
                     mediaPlayer.EncounteredError += (sender, e) =>
                     {
                         _log($"Error encountered playing video {s.VideoSource} {e.ToString()}");
@@ -519,6 +521,8 @@ namespace andyScreenSaver.windows.Helpers
                 targetImg.MaxHeight = _calcHeight();
                 targetImg.Width = _calcWidth();
                 targetImg.Source = ImageUtils.BitmapToBitmapImage(s.Bitmap);
+                s.Bitmap?.Dispose();
+                s.Bitmap = null;
 
                 // Increment counter only after successful render
                 _engine.IncrementImageCounter();

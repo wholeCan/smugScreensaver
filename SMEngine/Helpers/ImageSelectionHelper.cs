@@ -34,12 +34,15 @@ namespace SMEngine
                         {
                             engine.PlayedImages.Add(key, element);
                         }
-                        var image = ImageLoader.DownloadImage(engine, element.ImageURL);
-                        if (image == null)
+                        if (!element.IsVideo)
                         {
-                            throw new Exception("image returned is null: " + element.ImageURL);
+                            var image = ImageLoader.DownloadImage(engine, element.ImageURL);
+                            if (image == null)
+                            {
+                                throw new Exception("image returned is null: " + element.ImageURL);
+                            }
+                            imageSet.BitmapImage = image;
                         }
-                        imageSet.BitmapImage = image;
                         imageSet.Name = element.Name;
                         imageSet.AlbumTitle = element.AlbumTitle;
                         imageSet.ImageURL = element.ImageURL;

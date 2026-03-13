@@ -59,7 +59,9 @@ namespace SMEngine
                         image.BeginInit();
                         memoryStream.Seek(0, SeekOrigin.Begin);
                         image.StreamSource = memoryStream;
+                        image.CacheOption = System.Windows.Media.Imaging.BitmapCacheOption.OnLoad;
                         image.EndInit();
+                        memoryStream.Dispose();
                     }
                     catch
                     {

@@ -965,14 +965,15 @@ namespace SMEngine
                 }
             }
 
-            if (!screensaverExpired())
-            {
-                b.Bitmap = BitmapImage2Bitmap(b.BitmapImage);
-            }
-            else
+            if (screensaverExpired())
             {
                 b.Bitmap = getBlackImagePixel();
             }
+            else if (!b.IsVideo)
+            {
+                b.Bitmap = BitmapImage2Bitmap(b.BitmapImage);
+            }
+            b.BitmapImage = null; // release WPF image; GDI bitmap now owns the data
             return b;
         }
 

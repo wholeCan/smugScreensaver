@@ -389,10 +389,25 @@ namespace andyScreenSaver
         {
             try
             {
-                if (imageSet?.Bitmap == null || _tilePlacement == null) return;
+                if (imageSet == null || _tilePlacement == null) return;
+                if (!imageSet.IsVideo && imageSet.Bitmap == null) return;
 
                 var (randWidth, randHeight) = _tilePlacement.PickNextCell();
-                var scaledBitmap = ScaleImageToFit(imageSet.Bitmap);
+
+                if (imageSet.IsVideo)
+                {
+                    if (_engine?.settings.showImageCaptions == true)
+                        RenderImageWithCaption(imageSet, null, randWidth, randHeight);
+                    else
+                        RenderImageWithoutCaption(imageSet, null, randWidth, randHeight);
+                    _tilePlacement.MarkPlaced(randWidth, randHeight);
+                    return;
+                }
+
+                var originalBitmap = imageSet.Bitmap;
+                var scaledBitmap = ScaleImageToFit(originalBitmap);
+                originalBitmap.Dispose();
+                imageSet.Bitmap = scaledBitmap;
 
                 if (_engine?.settings.showImageCaptions == true)
                 {
