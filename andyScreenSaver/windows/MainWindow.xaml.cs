@@ -76,6 +76,7 @@ namespace andyScreenSaver
         private Cursor? _savedCursor;
         private Task? _loginTask;
         private int _restartCounter;
+        private System.Windows.Media.Imaging.BitmapSource? _lastRemovedImageSource = null;
         #endregion
 
         #region Properties
@@ -385,6 +386,27 @@ namespace andyScreenSaver
             }));
         }
 
+        private void ShowPreviousImage()
+        {
+            if (_lastRemovedImageSource == null) return;
+            var source = _lastRemovedImageSource;
+            _lastRemovedImageSource = null;
+            imageGrid.Dispatcher.Invoke(System.Windows.Threading.DispatcherPriority.Normal, new Action(() =>
+            {
+                if (_tilePlacement == null) return;
+                var (x, y) = _tilePlacement.PickNextCell();
+                var border = GetGridBorder(x, y);
+                if (border.Child is indexableImage img)
+                    img.Source = source;
+                else
+                {
+                    var newImg = new indexableImage { Source = source, Stretch = System.Windows.Media.Stretch.Uniform };
+                    border.Child = newImg;
+                }
+                _tilePlacement.MarkPlaced(x, y);
+            }));
+        }
+
         private void SetImage(ImageSet imageSet)
         {
             try
@@ -456,6 +478,8 @@ namespace andyScreenSaver
 
             var border = GetGridBorder(gridX, gridY);
             var image = border.Child as indexableImage;
+            if (!imageSet.IsVideo && image?.Source is System.Windows.Media.Imaging.BitmapSource oldSource)
+                _lastRemovedImageSource = oldSource;
 
             if (imageSet.IsVideo)
             {
@@ -473,6 +497,8 @@ namespace andyScreenSaver
         {
             var border = GetGridBorder(gridX, gridY);
             var image = border.Child as indexableImage;
+            if (!imageSet.IsVideo && image?.Source is System.Windows.Media.Imaging.BitmapSource oldSource)
+                _lastRemovedImageSource = oldSource;
 
             if (imageSet.IsVideo)
             {
@@ -589,10 +615,17 @@ namespace andyScreenSaver
         {
             switch (e.Key)
             {
-                case Key.Left:
                 case Key.Right:
                     _engine?.resetExpiredImageCollection();
                     UpdateImage();
+                    break;
+
+                case Key.Left:
+                    _engine?.resetExpiredImageCollection();
+                    if (_lastRemovedImageSource != null)
+                        ShowPreviousImage();
+                    else
+                        UpdateImage();
                     break;
 
                 case Key.M:
