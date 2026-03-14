@@ -77,6 +77,7 @@ namespace andyScreenSaver
         private Task? _loginTask;
         private int _restartCounter;
         private System.Windows.Media.Imaging.BitmapSource? _lastRemovedImageSource = null;
+        private (int X, int Y)? _lastRemovedCell = null;
         #endregion
 
         #region Properties
@@ -390,11 +391,20 @@ namespace andyScreenSaver
         {
             if (_lastRemovedImageSource == null) return;
             var source = _lastRemovedImageSource;
+            var savedCell = _lastRemovedCell;
             _lastRemovedImageSource = null;
+            _lastRemovedCell = null;
             imageGrid.Dispatcher.Invoke(System.Windows.Threading.DispatcherPriority.Normal, new Action(() =>
             {
                 if (_tilePlacement == null) return;
-                var (x, y) = _tilePlacement.PickNextCell();
+                int x, y;
+                if (savedCell.HasValue)
+                    (x, y) = (savedCell.Value.X, savedCell.Value.Y);
+                else
+                {
+                    var next = _tilePlacement.PickNextCell();
+                    (x, y) = (next.Item1, next.Item2);
+                }
                 var border = GetGridBorder(x, y);
                 if (border.Child is indexableImage img)
                     img.Source = source;
@@ -479,7 +489,10 @@ namespace andyScreenSaver
             var border = GetGridBorder(gridX, gridY);
             var image = border.Child as indexableImage;
             if (!imageSet.IsVideo && image?.Source is System.Windows.Media.Imaging.BitmapSource oldSource)
+            {
                 _lastRemovedImageSource = oldSource;
+                _lastRemovedCell = (gridX, gridY);
+            }
 
             if (imageSet.IsVideo)
             {
@@ -498,7 +511,10 @@ namespace andyScreenSaver
             var border = GetGridBorder(gridX, gridY);
             var image = border.Child as indexableImage;
             if (!imageSet.IsVideo && image?.Source is System.Windows.Media.Imaging.BitmapSource oldSource)
+            {
                 _lastRemovedImageSource = oldSource;
+                _lastRemovedCell = (gridX, gridY);
+            }
 
             if (imageSet.IsVideo)
             {
