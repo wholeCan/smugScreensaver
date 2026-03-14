@@ -39,11 +39,15 @@ namespace SMEngine
             msg.AppendLine("Time between images: " + engine.getTimeSinceLast());
             msg.AppendLine("Exceptions raised: " + engine.ExceptionsRaised);
             msg.AppendLine("Reloaded albums: " + engine.RestartCounter + " times.");
-            msg.AppendLine("Memory: " + System.Diagnostics.Process.GetCurrentProcess().WorkingSet64 / (1024 * 1024));
-            msg.AppendLine("Peak memory: " + System.Diagnostics.Process.GetCurrentProcess().PeakPagedMemorySize64 / (1024 * 1024));
-            msg.AppendLine("Peak virtual memory: " + System.Diagnostics.Process.GetCurrentProcess().PeakVirtualMemorySize64 / (1024 * 1024));
+            var proc = System.Diagnostics.Process.GetCurrentProcess();
+            msg.AppendLine("Memory: " + proc.WorkingSet64 / (1024 * 1024) + " MB  Peak: " + proc.PeakPagedMemorySize64 / (1024 * 1024) + " MB  Peak virtual: " + proc.PeakVirtualMemorySize64 / (1024 * 1024) + " MB");
             msg.AppendLine("Schedule: " + engine.Settings.startTime.ToString() + " - " + engine.Settings.stopTime.ToString());
             msg.AppendLine("Version: " + (Assembly.GetEntryAssembly()?.GetName().Version).ToString());
+#if DEBUG
+            msg.AppendLine("Build: Debug");
+#else
+            msg.AppendLine("Build: Release");
+#endif
             msg.AppendLine("Built: " + engine.RetrieveLinkerTimestamp());
             if (showMenu)
             {
