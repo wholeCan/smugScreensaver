@@ -1,6 +1,7 @@
 using System;
 using System.Linq;
 using System.Security.Cryptography;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace SMEngine
@@ -8,7 +9,7 @@ namespace SMEngine
     internal static class ImageSelectionHelper
     {
         // Centralized random image selection + hydration logic
-        public static CSMEngine.ImageSet TryGetRandomImage(CSMEngine engine)
+        public static CSMEngine.ImageSet TryGetRandomImage(CSMEngine engine, CancellationToken cancellationToken = default)
         {
             engine.checkLogin(engine.Envelope);
             var imageSet = new CSMEngine.ImageSet();
@@ -36,7 +37,7 @@ namespace SMEngine
                         }
                         if (!element.IsVideo)
                         {
-                            var image = ImageLoader.DownloadImage(engine, element.ImageURL);
+                            var image = ImageLoader.DownloadImage(engine, element.ImageURL, cancellationToken);
                             if (image == null)
                             {
                                 throw new Exception("image returned is null: " + element.ImageURL);

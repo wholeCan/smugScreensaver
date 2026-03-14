@@ -770,7 +770,7 @@ namespace SMEngine
                         {
                             if (!screensaverExpired())  //new test, ensuring not pulling image while asleep
                             {
-                                var imageSet = getRandomImage();
+                                var imageSet = getRandomImage(cancellationToken);
                                 if (imageSet != null && refillQueue)
                                 {
                                     lock (_imageQueueLock)
@@ -792,6 +792,10 @@ namespace SMEngine
                                     break;
                                 }
                             }
+                        }
+                        catch (OperationCanceledException)
+                        {
+                            break;
                         }
                         catch (Exception ex)
                         {
@@ -1138,17 +1142,19 @@ namespace SMEngine
             IsLoadingAlbums1 = true;
             AllAlbums = new List<Album>();
             PlayedImages = new Dictionary<string, ImageSet>();
+            var cancellationToken = _cancellationTokenSource.Token;
             try
             {
                 while (Loggedin == false)
                 {// I don't think I really want to do this. what if running app, we would probably want to start up config.
-                    Thread.Sleep(100); //waiting for login to complete.
+                    if (cancellationToken.WaitHandle.WaitOne(100)) return;
                 }
                 if (checkLogin(Envelope))
                 {
 
                     foreach (var username in fetchUsersToLoad())
                     {
+                        cancellationToken.ThrowIfCancellationRequested();
                         if (username == @"MY_NAME")
                         {
                             LoadAlbumsAsync().GetAwaiter().GetResult();
@@ -1183,11 +1189,15 @@ namespace SMEngine
                         sw.Start();
                         Parallel.ForEach(
                             shuffledAlbums,
-                               new ParallelOptions { MaxDegreeOfParallelism = 4 },
+                               new ParallelOptions { MaxDegreeOfParallelism = 4, CancellationToken = cancellationToken },
                             a =>
                           {
 
-                              if (getFolder(a).Contains("Surveilance"))
+                              if (cancellationToken.IsCancellationRequested)
+                              {
+                                  return;
+                              }
+                              else if (getFolder(a).Contains("Surveilance"))
                               {
                                   logMsg("Throwing out surveilance");
                               }
@@ -1226,6 +1236,7 @@ namespace SMEngine
                         {
                             for (int i = 0; i < GalleryTable.Rows.Count; i++)
                             {
+                                cancellationToken.ThrowIfCancellationRequested();
                                 var cat = GalleryTable.Rows[i].ItemArray[0].ToString();
                                 var gal = GalleryTable.Rows[i].ItemArray[1].ToString();
                                 lock (_allAlbumsLock)
@@ -1243,6 +1254,10 @@ namespace SMEngine
                     }
                 }
             }
+            catch (OperationCanceledException)
+            {
+                logMsg("loadAllImages cancelled.");
+            }
             catch (Exception ex)
             {
                 doException(ex.Message);
@@ -1257,9 +1272,9 @@ namespace SMEngine
 
         }
 
-        private ImageSet getRandomImage()
+        private ImageSet getRandomImage(System.Threading.CancellationToken cancellationToken = default)
         {
-            return ImageSelectionHelper.TryGetRandomImage(this);
+            return ImageSelectionHelper.TryGetRandomImage(this, cancellationToken);
         }
         public void doException(string msg)
         {

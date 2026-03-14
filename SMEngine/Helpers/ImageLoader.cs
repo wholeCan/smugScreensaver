@@ -26,7 +26,7 @@ namespace SMEngine
             }
         }
 
-        public static BitmapImage DownloadImage(CSMEngine engine, string url)
+        public static BitmapImage DownloadImage(CSMEngine engine, string url, CancellationToken cancellationToken = default)
         {
             const int maxAttempts = 2;
             const int retryDelayMs = 2000;
@@ -34,18 +34,20 @@ namespace SMEngine
             BitmapImage result = null;
             for (int attempt = 0; attempt < maxAttempts; attempt++)
             {
+                cancellationToken.ThrowIfCancellationRequested();
                 if (attempt > 0)
                 {
                     engine.doException($"DownloadImage attempt {attempt} failed, retrying: {url}");
-                    Thread.Sleep(retryDelayMs);
+                    cancellationToken.WaitHandle.WaitOne(retryDelayMs);
+                    cancellationToken.ThrowIfCancellationRequested();
                 }
-                result = AttemptDownload(engine, url);
+                result = AttemptDownload(engine, url, cancellationToken);
                 if (result != null) break;
             }
             return result;
         }
 
-        private static BitmapImage AttemptDownload(CSMEngine engine, string url)
+        private static BitmapImage AttemptDownload(CSMEngine engine, string url, CancellationToken cancellationToken = default)
         {
             var bytesToRead = 2500;
             var image = new BitmapImage();
@@ -55,41 +57,53 @@ namespace SMEngine
                 {
                     var request = WebRequest.Create(new Uri(url, UriKind.Absolute));
                     request.Timeout = 30000; // 30 seconds
-                    try
+                    using (cancellationToken.Register(() => request.Abort()))
                     {
-                        var response = (HttpWebResponse)request.GetResponse();
-                        if (response.StatusCode != HttpStatusCode.OK)
+                        try
                         {
-                            throw new Exception("image not returned: " + url);
+                            cancellationToken.ThrowIfCancellationRequested();
+                            var response = (HttpWebResponse)request.GetResponse();
+                            if (response.StatusCode != HttpStatusCode.OK)
+                            {
+                                throw new Exception("image not returned: " + url);
+                            }
+                            var responseStream = response.GetResponseStream();
+                            var reader = new BinaryReader(responseStream);
+                            var memoryStream = new MemoryStream();
+                            var bytebuffer = new byte[bytesToRead];
+                            var bytesRead = reader.Read(bytebuffer, 0, bytesToRead);
+                            var sw = new Stopwatch();
+                            sw.Start();
+                            while (bytesRead > 0)
+                            {
+                                memoryStream.Write(bytebuffer, 0, bytesRead);
+                                bytesRead = reader.Read(bytebuffer, 0, bytesToRead);
+                            }
+                            sw.Stop();
+                            Debug.WriteLine($"Get Image {url} took: {sw.ElapsedMilliseconds}ms.");
+                            image.BeginInit();
+                            memoryStream.Seek(0, SeekOrigin.Begin);
+                            image.StreamSource = memoryStream;
+                            image.CacheOption = System.Windows.Media.Imaging.BitmapCacheOption.OnLoad;
+                            image.EndInit();
+                            memoryStream.Dispose();
                         }
-                        var responseStream = response.GetResponseStream();
-                        var reader = new BinaryReader(responseStream);
-                        var memoryStream = new MemoryStream();
-                        var bytebuffer = new byte[bytesToRead];
-                        var bytesRead = reader.Read(bytebuffer, 0, bytesToRead);
-                        var sw = new Stopwatch();
-                        sw.Start();
-                        while (bytesRead > 0)
+                        catch (WebException) when (cancellationToken.IsCancellationRequested)
                         {
-                            memoryStream.Write(bytebuffer, 0, bytesRead);
-                            bytesRead = reader.Read(bytebuffer, 0, bytesToRead);
+                            throw new OperationCanceledException(cancellationToken);
                         }
-                        sw.Stop();
-                        Debug.WriteLine($"Get Image {url} took: {sw.ElapsedMilliseconds}ms.");
-                        image.BeginInit();
-                        memoryStream.Seek(0, SeekOrigin.Begin);
-                        image.StreamSource = memoryStream;
-                        image.CacheOption = System.Windows.Media.Imaging.BitmapCacheOption.OnLoad;
-                        image.EndInit();
-                        memoryStream.Dispose();
-                    }
-                    catch (Exception ex)
-                    {
-                        engine.doException("DownloadImage inner exception for " + url + ": " + ex.Message);
-                        Debug.WriteLine(ex.Message);
-                        return null;
+                        catch (Exception ex)
+                        {
+                            engine.doException("DownloadImage inner exception for " + url + ": " + ex.Message);
+                            Debug.WriteLine(ex.Message);
+                            return null;
+                        }
                     }
                 }
+            }
+            catch (OperationCanceledException)
+            {
+                throw;
             }
             catch (WebException ex)
             {
