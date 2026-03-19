@@ -60,6 +60,43 @@ namespace andyScreenSaver.windows.Helpers
             return Math.Max(10, cellHeight * (pct / 100.0));
         }
 
+        // Returns the font size for a VLC marquee, accounting for letterboxing/pillarboxing.
+        // videoWidth/Height are the source video dimensions (0 if unknown — falls back to cellHeight).
+        //
+        // VLC marquee Size is in source video pixels (the filter runs pre-display-scaling).
+        // To get a font that appears N display pixels tall, we need N * (sourceHeight / displayedHeight)
+        // source pixels, where displayedHeight is the rendered video area in display-pixel space.
+        private static int ComputeMarqueeFontSize(uint videoWidth, uint videoHeight, double cellWidth, double cellHeight)
+        {
+            if (videoWidth > 0 && videoHeight > 0)
+            {
+                double videoAspect = (double)videoWidth / videoHeight;
+                double cellAspect = cellWidth / cellHeight;
+                // Letterboxed: video wider than cell — rendered height is less than cellHeight.
+                // Pillarboxed/exact: video height fills the cell.
+                double displayedHeight = videoAspect > cellAspect ? cellWidth / videoAspect : cellHeight;
+                double desiredDisplayPx = GetCaptionFontSize(displayedHeight);
+                // Scale to source-pixel space so it appears the right size after display scaling.
+                return (int)Math.Max(10, desiredDisplayPx * videoHeight / displayedHeight);
+            }
+            return (int)GetCaptionFontSize(cellHeight);
+        }
+
+        // Applies VLC marquee once playback starts and actual video dimensions are known.
+        // The Playing event fires on a VLC thread; VLC docs say not to call back into libvlc
+        // from within an event handler, so the actual API calls are dispatched via Task.Run.
+        private void ScheduleMarqueeOnPlay(LibVLCSharp.Shared.MediaPlayer mp, string text, double cellWidth, double cellHeight)
+        {
+            EventHandler<EventArgs> handler = null;
+            handler = (_, __) =>
+            {
+                mp.Playing -= handler;
+                uint vw = 0, vh = 0; mp.Size(0, ref vw, ref vh);
+                _ = Task.Run(() => ApplyVlcMarquee(mp, text, ComputeMarqueeFontSize(vw, vh, cellWidth, cellHeight)));
+            };
+            mp.Playing += handler;
+        }
+
         private static Border BuildOverlay(string text, Func<double> calcWidth, Func<double> calcHeight)
         {
             var overlay = new Border
@@ -104,7 +141,7 @@ namespace andyScreenSaver.windows.Helpers
             return indicator;
         }
 
-        private void ApplyVlcMarquee(LibVLCSharp.Shared.MediaPlayer mp, string text)
+        private static void ApplyVlcMarquee(LibVLCSharp.Shared.MediaPlayer mp, string text, int fontSize)
         {
             try
             {
@@ -113,7 +150,7 @@ namespace andyScreenSaver.windows.Helpers
                 mp.SetMarqueeInt(VideoMarqueeOption.Color, 0xFFFFFF);
                 mp.SetMarqueeInt(VideoMarqueeOption.Opacity, 180);
                 mp.SetMarqueeInt(VideoMarqueeOption.Position, 9); // bottom-left
-                mp.SetMarqueeInt(VideoMarqueeOption.Size, (int)GetCaptionFontSize(_calcHeight()));
+                mp.SetMarqueeInt(VideoMarqueeOption.Size, fontSize);
                 mp.SetMarqueeInt(VideoMarqueeOption.Timeout, 0);
             }
             catch { }
@@ -153,9 +190,12 @@ namespace andyScreenSaver.windows.Helpers
                     {
                         // Video: use VLC marquee (WPF Z-index cannot overlay a native HWND).
                         // Call off the UI thread to avoid deadlock with VLC's video output thread.
+                        // Read cell dims on UI thread; video dims are read on the Task thread (already playing).
                         var capturedMp = vv.MediaPlayer;
+                        var cw = _calcWidth();
+                        var ch = _calcHeight();
                         if (show && !string.IsNullOrEmpty(overlayText))
-                            _ = Task.Run(() => ApplyVlcMarquee(capturedMp, overlayText));
+                            _ = Task.Run(() => { uint vw = 0, vh = 0; capturedMp.Size(0, ref vw, ref vh); ApplyVlcMarquee(capturedMp, overlayText, ComputeMarqueeFontSize(vw, vh, cw, ch)); });
                         else
                             _ = Task.Run(() => { try { capturedMp.SetMarqueeInt(VideoMarqueeOption.Enable, 0); } catch { } });
                     }
@@ -257,8 +297,9 @@ namespace andyScreenSaver.windows.Helpers
                         if (vv?.MediaPlayer != null)
                         {
                             var capturedMp = vv.MediaPlayer;
-                            var capturedSize = (int)GetCaptionFontSize(_calcHeight());
-                            _ = Task.Run(() => { try { capturedMp.SetMarqueeInt(VideoMarqueeOption.Size, capturedSize); } catch { } });
+                            var cw = _calcWidth();
+                            var ch = _calcHeight();
+                            _ = Task.Run(() => { try { uint vw = 0, vh = 0; capturedMp.Size(0, ref vw, ref vh); capturedMp.SetMarqueeInt(VideoMarqueeOption.Size, ComputeMarqueeFontSize(vw, vh, cw, ch)); } catch { } });
                         }
 
                         // Rebuild WPF overlay with current geometry
@@ -404,11 +445,10 @@ namespace andyScreenSaver.windows.Helpers
                     // initial indicator state (Mute defaults to true)
                     UpdateAudioIndicatorOnContainer(container, audioOn: !mediaPlayer.Mute);
 
-                    // VLC marquee renders inside the video pipeline, bypassing the WPF airspace problem.
-                    // Must be called off the UI thread — VLC's video output thread can post WM messages
-                    // to the HWND during marquee updates, which deadlocks if the UI thread is inside Invoke.
+                    // Defer marquee until Playing fires so we know the actual video dimensions.
+                    // Font size is computed from the real rendered area, accounting for letterboxing.
                     if (!string.IsNullOrEmpty(overlayText))
-                        _ = Task.Run(() => ApplyVlcMarquee(mediaPlayer, overlayText));
+                        ScheduleMarqueeOnPlay(mediaPlayer, overlayText, _calcWidth(), _calcHeight());
                 }
                 else
                 {
@@ -541,11 +581,10 @@ namespace andyScreenSaver.windows.Helpers
                     // Increment counter only after successful render
                     _engine.IncrementImageCounter();
 
-                    // VLC marquee must be applied off the UI thread — VLC's video output thread can
-                    // post WM messages to the HWND during marquee updates, deadlocking if the UI
-                    // thread is currently inside InvokeAsync.
+                    // Defer marquee until Playing fires so we know the actual video dimensions.
+                    // Font size is computed from the real rendered area, accounting for letterboxing.
                     if (!string.IsNullOrEmpty(overlayText))
-                        _ = Task.Run(() => ApplyVlcMarquee(mediaPlayer, overlayText));
+                        ScheduleMarqueeOnPlay(mediaPlayer, overlayText, _calcWidth(), _calcHeight());
                 });
                 return;
             }
