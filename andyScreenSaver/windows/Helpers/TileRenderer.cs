@@ -1,6 +1,8 @@
 using LibVLCSharp.Shared;
 using LibVLCSharp.WPF;
 using System;
+using System.Configuration;
+using System.Globalization;
 using System.Linq;
 using System.Threading.Tasks;
 using System.Windows;
@@ -49,6 +51,15 @@ namespace andyScreenSaver.windows.Helpers
             }
         }
 
+        private static double GetCaptionFontSize(double cellHeight)
+        {
+            double pct = 3.5;
+            var raw = ConfigurationManager.AppSettings["captionFontPercent"];
+            if (double.TryParse(raw, NumberStyles.Any, CultureInfo.InvariantCulture, out double parsed) && parsed > 0)
+                pct = parsed;
+            return Math.Max(10, cellHeight * (pct / 100.0));
+        }
+
         private static Border BuildOverlay(string text, Func<double> calcWidth, Func<double> calcHeight)
         {
             var overlay = new Border
@@ -67,7 +78,7 @@ namespace andyScreenSaver.windows.Helpers
             {
                 Text = text ?? string.Empty,
                 Foreground = Brushes.White,
-                FontSize = Math.Max(10, calcHeight() * 0.045),
+                FontSize = GetCaptionFontSize(calcHeight()),
                 TextWrapping = TextWrapping.Wrap,
                 MaxWidth = calcWidth() * 0.9
             };
@@ -93,19 +104,19 @@ namespace andyScreenSaver.windows.Helpers
             return indicator;
         }
 
-        private static Grid BuildOverlayHostForVideo(VideoView vv)
+        private void ApplyVlcMarquee(LibVLCSharp.Shared.MediaPlayer mp, string text)
         {
-            var host = new Grid
+            try
             {
-                Width = vv.Width,
-                Height = vv.Height,
-                HorizontalAlignment = vv.HorizontalAlignment,
-                VerticalAlignment = vv.VerticalAlignment,
-                IsHitTestVisible = false,
-                Tag = "CaptionOverlayHost"
-            };
-            Panel.SetZIndex(host, int.MaxValue);
-            return host;
+                mp.SetMarqueeInt(VideoMarqueeOption.Enable, 1);
+                mp.SetMarqueeString(VideoMarqueeOption.Text, text);
+                mp.SetMarqueeInt(VideoMarqueeOption.Color, 0xFFFFFF);
+                mp.SetMarqueeInt(VideoMarqueeOption.Opacity, 180);
+                mp.SetMarqueeInt(VideoMarqueeOption.Position, 9); // bottom-left
+                mp.SetMarqueeInt(VideoMarqueeOption.Size, (int)GetCaptionFontSize(_calcHeight()));
+                mp.SetMarqueeInt(VideoMarqueeOption.Timeout, 0);
+            }
+            catch { }
         }
 
         private static void RemoveExistingOverlay(Grid container)
@@ -137,22 +148,21 @@ namespace andyScreenSaver.windows.Helpers
             {
                 if (border.Child is Grid container)
                 {
-                    RemoveExistingOverlay(container);
-                    if (show && !string.IsNullOrEmpty(overlayText))
+                    var vv = container.Children.OfType<VideoView>().FirstOrDefault();
+                    if (vv?.MediaPlayer != null)
                     {
-                        // Try to find the video to size the host correctly
-                        var vv = container.Children.OfType<VideoView>().FirstOrDefault();
-                        if (vv != null)
-                        {
-                            var host = BuildOverlayHostForVideo(vv);
-                            host.Children.Add(BuildOverlay(overlayText, _calcWidth, _calcHeight));
-                            container.Children.Add(host);
-                        }
+                        // Video: use VLC marquee (WPF Z-index cannot overlay a native HWND)
+                        if (show && !string.IsNullOrEmpty(overlayText))
+                            ApplyVlcMarquee(vv.MediaPlayer, overlayText);
                         else
-                        {
-                            // Fallback: add overlay directly to container
+                            vv.MediaPlayer.SetMarqueeInt(VideoMarqueeOption.Enable, 0);
+                    }
+                    else
+                    {
+                        // Image: use WPF overlay
+                        RemoveExistingOverlay(container);
+                        if (show && !string.IsNullOrEmpty(overlayText))
                             container.Children.Add(BuildOverlay(overlayText, _calcWidth, _calcHeight));
-                        }
                     }
                 }
             });
@@ -221,6 +231,46 @@ namespace andyScreenSaver.windows.Helpers
             if (mp != null)
                 _ = Task.Run(() => { try { mp.Stop(); } catch { } try { mp.Dispose(); } catch { } });
             try { vv.Dispose(); } catch { }
+        }
+
+        public void UpdateOverlaySizes(DependencyObject root)
+        {
+            if (root == null) return;
+            WalkAndUpdateSizes(root);
+        }
+
+        private void WalkAndUpdateSizes(DependencyObject d)
+        {
+            int count = VisualTreeHelper.GetChildrenCount(d);
+            for (int i = 0; i < count; i++)
+            {
+                try
+                {
+                    var child = VisualTreeHelper.GetChild(d, i);
+                    if (child is Grid container)
+                    {
+                        // Update VLC marquee size for any playing video
+                        var vv = container.Children.OfType<VideoView>().FirstOrDefault();
+                        if (vv?.MediaPlayer != null)
+                        {
+                            try { vv.MediaPlayer.SetMarqueeInt(VideoMarqueeOption.Size, (int)GetCaptionFontSize(_calcHeight())); }
+                            catch { }
+                        }
+
+                        // Rebuild WPF overlay with current geometry
+                        var overlay = container.Children.OfType<Border>()
+                            .FirstOrDefault(b => (b.Tag as string) == "CaptionOverlay");
+                        if (overlay?.Child is TextBlock tb && !string.IsNullOrEmpty(tb.Text))
+                        {
+                            var text = tb.Text;
+                            container.Children.Remove(overlay);
+                            container.Children.Add(BuildOverlay(text, _calcWidth, _calcHeight));
+                        }
+                    }
+                    WalkAndUpdateSizes(child);
+                }
+                catch { }
+            }
         }
 
         public void ApplyGlobalMute(DependencyObject root, bool mute)
@@ -350,14 +400,9 @@ namespace andyScreenSaver.windows.Helpers
                     // initial indicator state (Mute defaults to true)
                     UpdateAudioIndicatorOnContainer(container, audioOn: !mediaPlayer.Mute);
 
-                    // Overlay over the video area
-                    RemoveExistingOverlay(container);
+                    // VLC marquee renders inside the video pipeline, bypassing the WPF airspace problem
                     if (!string.IsNullOrEmpty(overlayText))
-                    {
-                        var host = BuildOverlayHostForVideo(videoView);
-                        host.Children.Add(BuildOverlay(overlayText, _calcWidth, _calcHeight));
-                        container.Children.Add(host);
-                    }
+                        ApplyVlcMarquee(mediaPlayer, overlayText);
                 }
                 else
                 {
@@ -411,7 +456,7 @@ namespace andyScreenSaver.windows.Helpers
             });
         }
 
-        public async Task RenderAsync(Border border, indexableImage image, SMEngine.CSMEngine.ImageSet s, bool defaultMute, bool allowVideoToFinish = true)
+        public async Task RenderAsync(Border border, indexableImage image, SMEngine.CSMEngine.ImageSet s, string overlayText, bool defaultMute, bool allowVideoToFinish = true)
         {
             if (border == null || s == null) return;
 
@@ -485,6 +530,10 @@ namespace andyScreenSaver.windows.Helpers
                     // initial indicator state
                     UpdateAudioIndicatorOnContainer(container, audioOn: !mediaPlayer.Mute);
 
+                    // VLC marquee renders inside the video pipeline, bypassing the WPF airspace problem
+                    if (!string.IsNullOrEmpty(overlayText))
+                        ApplyVlcMarquee(mediaPlayer, overlayText);
+
                     border.Child = container;
 
                     // Increment counter only after successful render
@@ -493,7 +542,7 @@ namespace andyScreenSaver.windows.Helpers
                 return;
             }
 
-            // Render photo: ensure the child is an indexableImage
+            // Render photo
             await border.Dispatcher.InvokeAsync(() =>
             {
                 // Guard: don't replace a playing video with a still image
@@ -517,39 +566,26 @@ namespace andyScreenSaver.windows.Helpers
                     }
                 }
 
-                indexableImage targetImg = image;
-
+                // Dispose any existing video
                 if (border.Child is VideoView oldVv)
-                {
                     DisposeVideoView(oldVv);
-                    border.Child = null;
-                    targetImg = new indexableImage();
-                    border.Child = targetImg;
-                }
-                else if (border.Child is Grid gridWithVideo && gridWithVideo.Children.OfType<VideoView>().Any())
-                {
-                    foreach (var child in gridWithVideo.Children)
+                else if (border.Child is Grid g)
+                    foreach (var child in g.Children)
                         if (child is VideoView vv) DisposeVideoView(vv);
-                    border.Child = null;
-                    targetImg = new indexableImage();
-                    border.Child = targetImg;
-                }
-                else if (border.Child is indexableImage existingImg)
-                {
-                    targetImg = existingImg;
-                }
-                else if (border.Child == null)
-                {
-                    targetImg = new indexableImage();
-                    border.Child = targetImg;
-                }
+                border.Child = null;
 
-                // Size and assign image
+                var targetImg = image ?? new indexableImage();
                 targetImg.MaxHeight = _calcHeight();
                 targetImg.Width = _calcWidth();
                 targetImg.Source = ImageUtils.BitmapToBitmapImage(s.Bitmap);
                 s.Bitmap?.Dispose();
                 s.Bitmap = null;
+
+                var container = new Grid { ClipToBounds = true };
+                container.Children.Add(targetImg);
+                if (!string.IsNullOrEmpty(overlayText))
+                    container.Children.Add(BuildOverlay(overlayText, _calcWidth, _calcHeight));
+                border.Child = container;
 
                 // Increment counter only after successful render
                 _engine.IncrementImageCounter();

@@ -421,6 +421,9 @@ namespace SMEngine
         {
             int.TryParse(fetchKey("startTime"), out Settings.startTime);
             int.TryParse(fetchKey("stopTime"), out Settings.stopTime);
+            var muteStr = fetchKey("defaultMute");
+            if (!string.IsNullOrEmpty(muteStr))
+                bool.TryParse(muteStr, out defaultMute);
             loadGalleries();
             loadSettings();
         }

@@ -477,14 +477,7 @@ namespace andyScreenSaver
         private void RenderImageWithCaption(ImageSet imageSet, Bitmap bitmap, int gridX, int gridY)
         {
             var captionText = CaptionBuilder.Build(imageSet);
-
-            if (!imageSet.IsVideo && _engine?.settings.showImageCaptions == true)
-            {
-                ImageUtils.AddCaption(captionText, ref bitmap);
-                //replace the imageset with the captioned image.
-                imageSet.Bitmap = bitmap;
-                
-            }
+            var overlayText = _engine?.settings.showImageCaptions == true ? captionText : string.Empty;
 
             var border = GetGridBorder(gridX, gridY);
             var image = border.Child as indexableImage;
@@ -496,13 +489,11 @@ namespace andyScreenSaver
 
             if (imageSet.IsVideo)
             {
-                var overlayText = _engine?.settings.showImageCaptions == true ? captionText : string.Empty;
                 _tileRenderer?.RenderSync(border, image, imageSet, overlayText, _engine?.isDefaultMute() ?? false, _engine?.settings.allowVideoToFinish ?? true);
             }
             else
             {
-                _ = _tileRenderer?.RenderAsync(border, image, imageSet, _engine?.isDefaultMute() ?? false, _engine?.settings.allowVideoToFinish ?? true);
-               //_tileRenderer?.RenderSync(border, image, imageSet, captionText, true);
+                _ = _tileRenderer?.RenderAsync(border, image, imageSet, overlayText, _engine?.isDefaultMute() ?? false, _engine?.settings.allowVideoToFinish ?? true);
             }
         }
 
@@ -522,7 +513,7 @@ namespace andyScreenSaver
             }
             else
             {
-                _ = _tileRenderer?.RenderAsync(border, image, imageSet, _engine?.isDefaultMute() ?? false, _engine?.settings.allowVideoToFinish ?? true);
+                _ = _tileRenderer?.RenderAsync(border, image, imageSet, string.Empty, _engine?.isDefaultMute() ?? false, _engine?.settings.allowVideoToFinish ?? true);
             }
         }
 
@@ -559,6 +550,7 @@ namespace andyScreenSaver
             imageGrid.Dispatcher.BeginInvoke(new Action(() =>
             {
                 TileGridBuilder.SetImageHeights(imageGrid, _layoutHelper?.CalculateImageHeight() ?? 0);
+                _tileRenderer?.UpdateOverlaySizes(imageGrid);
 
                 if (_engine?.screensaverExpired() == true)
                 {
