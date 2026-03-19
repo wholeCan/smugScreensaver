@@ -151,11 +151,13 @@ namespace andyScreenSaver.windows.Helpers
                     var vv = container.Children.OfType<VideoView>().FirstOrDefault();
                     if (vv?.MediaPlayer != null)
                     {
-                        // Video: use VLC marquee (WPF Z-index cannot overlay a native HWND)
+                        // Video: use VLC marquee (WPF Z-index cannot overlay a native HWND).
+                        // Call off the UI thread to avoid deadlock with VLC's video output thread.
+                        var capturedMp = vv.MediaPlayer;
                         if (show && !string.IsNullOrEmpty(overlayText))
-                            ApplyVlcMarquee(vv.MediaPlayer, overlayText);
+                            _ = Task.Run(() => ApplyVlcMarquee(capturedMp, overlayText));
                         else
-                            vv.MediaPlayer.SetMarqueeInt(VideoMarqueeOption.Enable, 0);
+                            _ = Task.Run(() => { try { capturedMp.SetMarqueeInt(VideoMarqueeOption.Enable, 0); } catch { } });
                     }
                     else
                     {
@@ -249,12 +251,14 @@ namespace andyScreenSaver.windows.Helpers
                     var child = VisualTreeHelper.GetChild(d, i);
                     if (child is Grid container)
                     {
-                        // Update VLC marquee size for any playing video
+                        // Update VLC marquee size for any playing video.
+                        // Call off the UI thread to avoid deadlock with VLC's video output thread.
                         var vv = container.Children.OfType<VideoView>().FirstOrDefault();
                         if (vv?.MediaPlayer != null)
                         {
-                            try { vv.MediaPlayer.SetMarqueeInt(VideoMarqueeOption.Size, (int)GetCaptionFontSize(_calcHeight())); }
-                            catch { }
+                            var capturedMp = vv.MediaPlayer;
+                            var capturedSize = (int)GetCaptionFontSize(_calcHeight());
+                            _ = Task.Run(() => { try { capturedMp.SetMarqueeInt(VideoMarqueeOption.Size, capturedSize); } catch { } });
                         }
 
                         // Rebuild WPF overlay with current geometry
@@ -400,9 +404,11 @@ namespace andyScreenSaver.windows.Helpers
                     // initial indicator state (Mute defaults to true)
                     UpdateAudioIndicatorOnContainer(container, audioOn: !mediaPlayer.Mute);
 
-                    // VLC marquee renders inside the video pipeline, bypassing the WPF airspace problem
+                    // VLC marquee renders inside the video pipeline, bypassing the WPF airspace problem.
+                    // Must be called off the UI thread — VLC's video output thread can post WM messages
+                    // to the HWND during marquee updates, which deadlocks if the UI thread is inside Invoke.
                     if (!string.IsNullOrEmpty(overlayText))
-                        ApplyVlcMarquee(mediaPlayer, overlayText);
+                        _ = Task.Run(() => ApplyVlcMarquee(mediaPlayer, overlayText));
                 }
                 else
                 {
@@ -530,14 +536,16 @@ namespace andyScreenSaver.windows.Helpers
                     // initial indicator state
                     UpdateAudioIndicatorOnContainer(container, audioOn: !mediaPlayer.Mute);
 
-                    // VLC marquee renders inside the video pipeline, bypassing the WPF airspace problem
-                    if (!string.IsNullOrEmpty(overlayText))
-                        ApplyVlcMarquee(mediaPlayer, overlayText);
-
                     border.Child = container;
 
                     // Increment counter only after successful render
                     _engine.IncrementImageCounter();
+
+                    // VLC marquee must be applied off the UI thread — VLC's video output thread can
+                    // post WM messages to the HWND during marquee updates, deadlocking if the UI
+                    // thread is currently inside InvokeAsync.
+                    if (!string.IsNullOrEmpty(overlayText))
+                        _ = Task.Run(() => ApplyVlcMarquee(mediaPlayer, overlayText));
                 });
                 return;
             }
