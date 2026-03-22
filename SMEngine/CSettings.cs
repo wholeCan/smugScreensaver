@@ -1,4 +1,6 @@
-﻿namespace SMEngine
+﻿using System.Collections.Generic;
+
+namespace SMEngine
 {
     public class CSettings
     {
@@ -12,6 +14,7 @@
         public int startTime = 8;
         public int stopTime = 23;
         public bool allowVideoToFinish = true;
+        public List<string> excludedFolders = new List<string>();
         public CSettings()
         {
             quality = 2;

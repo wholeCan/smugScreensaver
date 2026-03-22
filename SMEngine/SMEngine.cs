@@ -424,6 +424,15 @@ namespace SMEngine
             var muteStr = fetchKey("defaultMute");
             if (!string.IsNullOrEmpty(muteStr))
                 bool.TryParse(muteStr, out defaultMute);
+
+            // Load excluded folder keywords from config
+            var excludedStr = fetchKey("ExcludedFolders");
+            if (!string.IsNullOrWhiteSpace(excludedStr))
+                Settings.excludedFolders = excludedStr.Split(',')
+                    .Select(s => s.Trim())
+                    .Where(s => s.Length > 0)
+                    .ToList();
+
             loadGalleries();
             loadSettings();
         }
@@ -1200,9 +1209,10 @@ namespace SMEngine
                               {
                                   return;
                               }
-                              else if (getFolder(a).Contains("Surveilance"))
+                              else if (Settings.excludedFolders.Any(kw =>
+                                  getFolder(a).IndexOf(kw, StringComparison.OrdinalIgnoreCase) >= 0))
                               {
-                                  logMsg("Throwing out surveilance");
+                                  logMsg($"Skipping excluded folder: {getFolder(a)}");
                               }
                               else
                               {
