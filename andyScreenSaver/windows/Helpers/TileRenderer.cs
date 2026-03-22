@@ -1,6 +1,7 @@
 using LibVLCSharp.Shared;
 using LibVLCSharp.WPF;
 using System;
+using System.Collections.Generic;
 using System.Configuration;
 using System.Globalization;
 using System.Linq;
@@ -15,6 +16,8 @@ namespace andyScreenSaver.windows.Helpers
     internal sealed class TileRenderer
     {
         private static readonly LibVLC _sharedLibVLC = new LibVLC("--no-keyboard-events", "--no-mouse-events");
+        private static readonly TimeSpan MaxDisplayDuration = TimeSpan.FromMinutes(20);
+        private readonly Dictionary<Border, DateTime> _cellDisplayStartTimes = new Dictionary<Border, DateTime>();
 
         private readonly Func<double> _calcWidth;
         private readonly Func<double> _calcHeight;
@@ -30,6 +33,20 @@ namespace andyScreenSaver.windows.Helpers
             _calcHeight = calculateHeight ?? throw new ArgumentNullException(nameof(calculateHeight));
             _log = log ?? (_ => { });
             _engine = engine ?? throw new ArgumentNullException(nameof(engine));
+        }
+
+        private bool HasContentExceededTimeout(Border border)
+        {
+            if (border == null) return false;
+            if (!_cellDisplayStartTimes.TryGetValue(border, out var startTime))
+                return false;
+            return DateTime.Now - startTime > MaxDisplayDuration;
+        }
+
+        private void RecordDisplayStartTime(Border border)
+        {
+            if (border == null) return;
+            _cellDisplayStartTimes[border] = DateTime.Now;
         }
 
         private static bool IsTrustedSmugMugUrl(string? url)
@@ -388,7 +405,7 @@ namespace andyScreenSaver.windows.Helpers
                     }
 
                     // If allowVideoToFinish is enabled, check if a video is currently playing
-                    if (allowVideoToFinish)
+                    if (allowVideoToFinish && !HasContentExceededTimeout(border))
                     {
                         // Check for playing video in direct child
                         if (border.Child is VideoView existingVv && existingVv.MediaPlayer != null && existingVv.MediaPlayer.IsPlaying)
@@ -408,6 +425,10 @@ namespace andyScreenSaver.windows.Helpers
                                 return;
                             }
                         }
+                    }
+                    else if (allowVideoToFinish && HasContentExceededTimeout(border))
+                    {
+                        _log($"Content in cell exceeded 20-minute timeout, forcing replacement");
                     }
 
                     // Stop and dispose any previous video in either direct child or container
@@ -496,6 +517,7 @@ namespace andyScreenSaver.windows.Helpers
                 }
 
                 border.Child = container;
+                RecordDisplayStartTime(border);
 
                 // Increment counter only after successful render
                 _engine.IncrementImageCounter();
@@ -516,7 +538,7 @@ namespace andyScreenSaver.windows.Helpers
                 await border.Dispatcher.InvokeAsync(() =>
                 {
                     // If allowVideoToFinish is enabled, check if a video is already playing and skip replacement
-                    if (allowVideoToFinish)
+                    if (allowVideoToFinish && !HasContentExceededTimeout(border))
                     {
                         // Check for playing video in grid container
                         if (border.Child is Grid existingContainer)
@@ -536,6 +558,10 @@ namespace andyScreenSaver.windows.Helpers
                             _engine.ReturnImageToQueue(s);
                             return;
                         }
+                    }
+                    else if (allowVideoToFinish && HasContentExceededTimeout(border))
+                    {
+                        _log($"Content in cell exceeded 20-minute timeout, forcing replacement");
                     }
 
                     // Stop and dispose any old video
@@ -577,6 +603,7 @@ namespace andyScreenSaver.windows.Helpers
                     UpdateAudioIndicatorOnContainer(container, audioOn: !mediaPlayer.Mute);
 
                     border.Child = container;
+                    RecordDisplayStartTime(border);
 
                     // Increment counter only after successful render
                     _engine.IncrementImageCounter();
@@ -593,7 +620,7 @@ namespace andyScreenSaver.windows.Helpers
             await border.Dispatcher.InvokeAsync(() =>
             {
                 // Guard: don't replace a playing video with a still image
-                if (allowVideoToFinish)
+                if (allowVideoToFinish && !HasContentExceededTimeout(border))
                 {
                     if (border.Child is Grid existingContainer)
                     {
@@ -611,6 +638,10 @@ namespace andyScreenSaver.windows.Helpers
                         _engine.ReturnImageToQueue(s);
                         return;
                     }
+                }
+                else if (allowVideoToFinish && HasContentExceededTimeout(border))
+                {
+                    _log($"Content in cell exceeded 20-minute timeout, forcing image replacement");
                 }
 
                 // Dispose any existing video
@@ -633,6 +664,7 @@ namespace andyScreenSaver.windows.Helpers
                 if (!string.IsNullOrEmpty(overlayText))
                     container.Children.Add(BuildOverlay(overlayText, _calcWidth, _calcHeight));
                 border.Child = container;
+                RecordDisplayStartTime(border);
 
                 // Increment counter only after successful render
                 _engine.IncrementImageCounter();
