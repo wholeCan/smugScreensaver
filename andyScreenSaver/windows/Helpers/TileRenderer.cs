@@ -15,7 +15,10 @@ namespace andyScreenSaver.windows.Helpers
 {
     internal sealed class TileRenderer
     {
-        private static readonly LibVLC _sharedLibVLC = new LibVLC("--no-keyboard-events", "--no-mouse-events");
+        private static readonly LibVLC _sharedLibVLC = new LibVLC(
+            "--no-keyboard-events", "--no-mouse-events",
+            "--freetype-background-color=0",       // black background behind marquee text
+            "--freetype-background-opacity=140");  // ~55% opaque, matching image caption style
         private static readonly TimeSpan MaxDisplayDuration = TimeSpan.FromMinutes(20);
         private readonly Dictionary<Border, DateTime> _cellDisplayStartTimes = new Dictionary<Border, DateTime>();
 
