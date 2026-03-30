@@ -34,7 +34,8 @@ namespace SMEngine
         private List<Album> _allAlbums;
         private readonly object _allAlbumsLock = new object();
         private readonly Queue<ImageSet> _imageQueue;
-        private readonly object _imageQueueLock = new object();        
+        private readonly object _imageQueueLock = new object();
+        private int _lastKnownAlbumCount = 0;  // Track album count from last load for change detection        
 
         private const int absoluteMaxQ = 20;  // upper bound; reduced dynamically under memory pressure
         private const int absoluteMinQ = 5;   // floor when memory is low
@@ -103,6 +104,64 @@ namespace SMEngine
         public void RePullAlbumsSafe()
         {
             rePullAlbums();
+        }
+
+        /// <summary>
+        /// Fetches the album list once into a temp variable. If the count has changed
+        /// since last load, swaps in the new albums and reloads images. Otherwise discards.
+        /// Returns true if a reload was triggered.
+        /// </summary>
+        public async Task<bool> CheckAndReloadIfChangedAsync()
+        {
+            try
+            {
+                if (!Loggedin || IsLoadingAlbums1)
+                {
+                    logMsg("Not logged in or already loading, skipping library change check");
+                    return false;
+                }
+
+                // Fetch fresh albums into a temp list — single API call
+                var tempAlbums = new List<Album>();
+                foreach (var username in fetchUsersToLoad())
+                {
+                    User currentUser = username == @"MY_NAME"
+                        ? await Api.GetAuthenticatedUser()
+                        : await Api.GetUser(username);
+
+                    if (currentUser != null)
+                    {
+                        var albums = await Api.GetAlbums(currentUser, Debug_limit);
+                        tempAlbums.AddRange(albums.Take(Debug_limit));
+                    }
+                }
+
+                logMsg($"Library change check: LastKnown={_lastKnownAlbumCount}, Fresh={tempAlbums.Count}");
+
+                if (tempAlbums.Count == _lastKnownAlbumCount)
+                {
+                    logMsg("No library changes detected - skipping reload");
+                    return false;
+                }
+
+                // Counts differ — swap in the fresh albums and reload images (no second API call)
+                logMsg("Library changes detected - reloading");
+                RestartCounter++;
+                PlayedImages = new Dictionary<string, ImageSet>();
+                lock (_allAlbumsLock)
+                {
+                    _allAlbums = tempAlbums;
+                    _lastKnownAlbumCount = tempAlbums.Count;
+                }
+                loadImagesFromAlbums();
+                return true;
+            }
+            catch (Exception ex)
+            {
+                doException($"Error checking library changes: {ex.Message}");
+                logMsg($"CheckAndReloadIfChangedAsync failed: {ex.Message}");
+                return false;
+            }
         }
 
         private Task SetupJobAsync()
@@ -1144,6 +1203,83 @@ namespace SMEngine
                 return isConfigurationMode;
             }
         }
+        private void loadImagesFromAlbums()
+        {
+            lock (_imageDictionary)
+            {
+                _imageDictionary.Clear();
+            }
+            var cancellationToken = _cancellationTokenSource.Token;
+            if (Settings.load_all)
+            {
+                List<Album> shuffledAlbums;
+                lock (_allAlbumsLock)
+                {
+                    lock (_randomLock)
+                    {
+                        shuffledAlbums = _allAlbums.OrderBy(x => _random.Next()).ToList();
+                    }
+                }
+
+                System.Diagnostics.Stopwatch sw = new System.Diagnostics.Stopwatch();
+                sw.Start();
+                Parallel.ForEach(
+                    shuffledAlbums,
+                       new ParallelOptions { MaxDegreeOfParallelism = 4, CancellationToken = cancellationToken },
+                    a =>
+                  {
+                      if (cancellationToken.IsCancellationRequested)
+                      {
+                          return;
+                      }
+                      else if (Settings.excludedFolders.Any(kw =>
+                          getFolder(a).IndexOf(kw, StringComparison.OrdinalIgnoreCase) >= 0))
+                      {
+                          logMsg($"Skipping excluded folder: {getFolder(a)}");
+                      }
+                      else
+                      {
+                          try
+                          {
+                              if (!IsConfigurationMode)
+                              {
+                                  LoadImagesAsync(a, false).GetAwaiter().GetResult();
+                              }
+                          }
+                          catch (Exception ex)
+                          {
+                              doException(ex.Message);
+                              logMsg($"Parallel loadImages failed: {ex.Message}");
+                          }
+                      }
+                  });
+
+                logMsg($"Time to load all albums: {sw.ElapsedMilliseconds} milliseconds");
+            }
+            else
+            {
+                //we are loading only selected albums, based on configuration!
+                Album a = null;
+                if (GalleryTable.Rows.Count > 0)
+                {
+                    for (int i = 0; i < GalleryTable.Rows.Count; i++)
+                    {
+                        cancellationToken.ThrowIfCancellationRequested();
+                        var cat = GalleryTable.Rows[i].ItemArray[0].ToString();
+                        var gal = GalleryTable.Rows[i].ItemArray[1].ToString();
+                        lock (_allAlbumsLock)
+                        {
+                            a = _allAlbums.FirstOrDefault(x => getFolder(x) == cat && x.Name == gal);
+                        }
+                        if (a != null)
+                        {
+                            LoadImagesAsync(a, false).GetAwaiter().GetResult();//load single album from gallery.
+                        }
+                    }
+                }
+            }
+        }
+
         private void loadAllImages()
         {
             if (IsLoadingAlbums1)
@@ -1163,7 +1299,6 @@ namespace SMEngine
                 }
                 if (checkLogin(Envelope))
                 {
-
                     foreach (var username in fetchUsersToLoad())
                     {
                         cancellationToken.ThrowIfCancellationRequested();
@@ -1177,94 +1312,7 @@ namespace SMEngine
                         }
                     }
 
-
-                    if (Settings.load_all)
-                    {
-                        var ary = getCategoriesAsync();
-                        List<string> shuffledCats;
-                        List<Album> shuffledAlbums;
-
-                        lock (_randomLock)
-                        {
-                            shuffledCats = ary.OrderBy(x => _random.Next()).ToList();
-                        }
-
-                        lock (_allAlbumsLock)
-                        {
-                            lock (_randomLock)
-                            {
-                                shuffledAlbums = _allAlbums.OrderBy(x => _random.Next()).ToList();
-                            }
-                        }
-
-                        System.Diagnostics.Stopwatch sw = new System.Diagnostics.Stopwatch();
-                        sw.Start();
-                        Parallel.ForEach(
-                            shuffledAlbums,
-                               new ParallelOptions { MaxDegreeOfParallelism = 4, CancellationToken = cancellationToken },
-                            a =>
-                          {
-
-                              if (cancellationToken.IsCancellationRequested)
-                              {
-                                  return;
-                              }
-                              else if (Settings.excludedFolders.Any(kw =>
-                                  getFolder(a).IndexOf(kw, StringComparison.OrdinalIgnoreCase) >= 0))
-                              {
-                                  logMsg($"Skipping excluded folder: {getFolder(a)}");
-                              }
-                              else
-                              {
-                                 // if (!screensaverExpired())
-                                  {
-                                      try
-                                      {
-                                          if (!IsConfigurationMode)
-                                          {
-                                              LoadImagesAsync(a, false).GetAwaiter().GetResult();
-                                          }
-                                      }
-                                      catch (Exception ex)
-                                      {
-                                          doException(ex.Message);
-                                          logMsg($"Parallel loadImages failed: {ex.Message}");
-                                      }
-                                  }
-                                  /*else
-                                  {
-                                      logMsg("Skipping loadImages - expired");
-                                  }
-                                  */
-                              }
-                          });
-
-                        logMsg($"Time to load all albums: {sw.ElapsedMilliseconds} milliseconds");
-                    }
-                    else
-                    {
-                        //we are loading only selected albums, based on configuration!
-                        Album a = null;
-                        if (GalleryTable.Rows.Count > 0)
-                        {
-                            for (int i = 0; i < GalleryTable.Rows.Count; i++)
-                            {
-                                cancellationToken.ThrowIfCancellationRequested();
-                                var cat = GalleryTable.Rows[i].ItemArray[0].ToString();
-                                var gal = GalleryTable.Rows[i].ItemArray[1].ToString();
-                                lock (_allAlbumsLock)
-                                {
-                                    a = _allAlbums.FirstOrDefault(x => getFolder(x) == cat && x.Name == gal);
-                                }
-                                if (a != null)
-                                {
-                                    LoadImagesAsync(a, false).GetAwaiter().GetResult();//load single album from gallery.
-                                }
-                            }
-                        }
-
-
-                    }
+                    loadImagesFromAlbums();
                 }
             }
             catch (OperationCanceledException)
@@ -1281,6 +1329,12 @@ namespace SMEngine
             finally
             {
                 IsLoadingAlbums1 = false;
+                // Save the current album count for change detection on next check
+                lock (_allAlbumsLock)
+                {
+                    _lastKnownAlbumCount = _allAlbums?.Count ?? 0;
+                    logMsg($"Saved album count for change detection: {_lastKnownAlbumCount}");
+                }
             }
 
         }

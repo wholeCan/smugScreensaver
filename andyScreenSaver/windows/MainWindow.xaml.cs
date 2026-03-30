@@ -290,8 +290,8 @@ namespace andyScreenSaver
                 intervalInMinutes: 24.0 * 60.0,
                 task: () =>
                 {
-                    AppLogger.Log("Scheduled task execution");
-                    RepullAlbums();
+                    AppLogger.Log("Scheduled task execution - checking for library changes");
+                    _engine?.CheckAndReloadIfChangedAsync().GetAwaiter().GetResult();
                 });
         }
 
