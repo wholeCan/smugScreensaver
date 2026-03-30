@@ -59,7 +59,11 @@ Section "Install Application" ;No components page, name is not important
 	File /r "${APP_RELEASE}\*.config"
 	File /r "${APP_RELEASE}\*.xml"
 
-	File /r "${APP_RELEASE}\libvlc*.*"
+	IfFileExists "$INSTDIR\libvlc.dll" vlc_exists vlc_missing
+	vlc_missing:
+		File /r "${APP_RELEASE}\libvlc*.*"
+	vlc_exists:
+		DetailPrint "VLC components already installed, skipping..."
 
 
 	; include Screensaver starter files
