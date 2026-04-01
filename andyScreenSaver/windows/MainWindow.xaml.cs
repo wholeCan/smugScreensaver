@@ -671,6 +671,10 @@ namespace andyScreenSaver
                     }
                     break;
 
+                case Key.T:
+                    SendTriggeredUpdate();
+                    break;
+
                 case Key.Escape:
                 case Key.Q:
                     Shutdown();
@@ -928,6 +932,15 @@ namespace andyScreenSaver
         public DateTime GetLastMouseMove()
         {
             return _mouseMonitor.LastMouseMove;
+        }
+
+        #endregion
+
+        #region Telemetry
+
+        private void SendTriggeredUpdate()
+        {
+            SMEngine.CSMEngine.GetTracker()?.SendTriggeredUpdate();
         }
 
         #endregion

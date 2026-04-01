@@ -10,7 +10,8 @@ namespace SMEngine
         public string? version { get; set; }
 
         public long? imageCounter {  get; set; }
-        public string? buildDate { get; set; } 
+        public string? buildDate { get; set; }
+        public string? triggeredBy { get; set; }
         internal string ToJson()
         {
             var sb = new StringBuilder();
@@ -40,9 +41,14 @@ namespace SMEngine
             if (buildDate != null)
             {
                 if (!first) sb.Append(',');
+                first = false;
                 sb.Append($"\"buildDate\":\"{buildDate}\"");
             }
-
+            if (triggeredBy != null)
+            {
+                if (!first) sb.Append(',');
+                sb.Append($"\"triggeredBy\":\"{triggeredBy}\"");
+            }
 
             sb.Append('}');
             return sb.ToString();

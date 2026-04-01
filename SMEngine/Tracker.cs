@@ -98,6 +98,30 @@ namespace SMEngine
             return _lastImageCounter;
         }
 
+        public void SendTriggeredUpdate()
+        {
+            if (_startTime == null || string.IsNullOrEmpty(_appname) || string.IsNullOrEmpty(_username) || string.IsNullOrEmpty(_host))
+                return;
+
+            var uptime = DateTime.Now - _startTime.GetValueOrDefault();
+            var notes = new TrackerNotes
+            {
+                UptimeSeconds = (long)Math.Max(0, uptime.TotalSeconds),
+                version = (Assembly.GetEntryAssembly()?.GetName().Version).ToString(),
+                imageCounter = _lastImageCounter,
+                buildDate = GetBuildDate(),
+                triggeredBy = "manual"
+            };
+
+            phoneHome(new TrackerDetails
+            {
+                AppName = _appname,
+                Host = _host,
+                Username = _username,
+                Notes = notes
+            });
+        }
+
         private void SendWeeklyUpdate()
         {
             if (_startTime == null || string.IsNullOrEmpty(_appname) || string.IsNullOrEmpty(_username) || string.IsNullOrEmpty(_host))
@@ -112,7 +136,8 @@ namespace SMEngine
                 UptimeSeconds = (long)Math.Max(0, uptime.TotalSeconds),
                 version = (Assembly.GetEntryAssembly()?.GetName().Version).ToString(),
                 imageCounter = _lastImageCounter,
-                buildDate = GetBuildDate()
+                buildDate = GetBuildDate(),
+                triggeredBy = "weekly-uptime"
             };
 
             phoneHome(new TrackerDetails
@@ -137,7 +162,8 @@ namespace SMEngine
                     UptimeSeconds = (long)Math.Max(0, uptime.TotalSeconds),
                     version = (Assembly.GetEntryAssembly()?.GetName().Version).ToString(),
                     imageCounter = imageCounter,
-                    buildDate = GetBuildDate()
+                    buildDate = GetBuildDate(),
+                    triggeredBy = "shutdown"
                 };
             }
 

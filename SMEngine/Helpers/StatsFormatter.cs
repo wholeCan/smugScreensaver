@@ -56,6 +56,7 @@ namespace SMEngine
                 msg.AppendLine("\tw: toggle window controls");
                 msg.AppendLine("\tm: toggle mute");
                 msg.AppendLine("\tr: reload library");
+                msg.AppendLine("\tt: send telemetry update");
                 msg.AppendLine("\tCtrl+U: upgrade app");
                 msg.AppendLine("\tEnter: refresh all images");
                 msg.AppendLine("\tp: pause slideshow");
