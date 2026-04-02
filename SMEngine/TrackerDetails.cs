@@ -7,5 +7,6 @@ namespace SMEngine
         public string Host { get; set; }
         public string Username { get; set; }
         public TrackerNotes Notes { get; set; }
+        public string? LaunchMode { get; set; }
     }
 }

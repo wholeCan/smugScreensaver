@@ -696,7 +696,7 @@ namespace SMEngine
 
                 if (tracker == null)
                 {
-                    tracker = new Tracker(new TrackerDetails { AppName = _appName, Host = Dns.GetHostName(), Username = User.NickName });
+                    tracker = new Tracker(new TrackerDetails { AppName = _appName, Host = Dns.GetHostName(), Username = User.NickName, LaunchMode = isScreensaver ? "screensaver" : "manual" });
                 }
 
                 var albums = await Api.GetAlbums(User, Debug_limit);

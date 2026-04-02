@@ -12,6 +12,7 @@ namespace SMEngine
         public long? imageCounter {  get; set; }
         public string? buildDate { get; set; }
         public string? triggeredBy { get; set; }
+        public string? startMode { get; set; }
         internal string ToJson()
         {
             var sb = new StringBuilder();
@@ -47,7 +48,13 @@ namespace SMEngine
             if (triggeredBy != null)
             {
                 if (!first) sb.Append(',');
+                first = false;
                 sb.Append($"\"triggeredBy\":\"{triggeredBy}\"");
+            }
+            if (startMode != null)
+            {
+                if (!first) sb.Append(',');
+                sb.Append($"\"startMode\":\"{startMode}\"");
             }
 
             sb.Append('}');

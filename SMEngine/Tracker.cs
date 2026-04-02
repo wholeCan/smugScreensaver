@@ -20,7 +20,7 @@ namespace SMEngine
         private const int TimeoutSeconds = 2;
 
         // Session state used for shutdown
-        private string _username, _host, _appname;
+        private string _username, _host, _appname, _launchMode;
         private static DateTime? _startTime;
         private DateTime? _lastWeeklyUpdate;
         private System.Timers.Timer _weeklyUpdateTimer;
@@ -40,6 +40,7 @@ namespace SMEngine
             _username = details.Username;
             _host = details.Host;
             _appname = details.AppName;
+            _launchMode = details.LaunchMode;
 
             _startTime ??= DateTime.Now;
 
@@ -110,7 +111,8 @@ namespace SMEngine
                 version = (Assembly.GetEntryAssembly()?.GetName().Version).ToString(),
                 imageCounter = _lastImageCounter,
                 buildDate = GetBuildDate(),
-                triggeredBy = "manual"
+                triggeredBy = "manual",
+                startMode = _launchMode
             };
 
             phoneHome(new TrackerDetails
@@ -137,7 +139,8 @@ namespace SMEngine
                 version = (Assembly.GetEntryAssembly()?.GetName().Version).ToString(),
                 imageCounter = _lastImageCounter,
                 buildDate = GetBuildDate(),
-                triggeredBy = "weekly-uptime"
+                triggeredBy = "weekly-uptime",
+                startMode = _launchMode
             };
 
             phoneHome(new TrackerDetails
@@ -163,7 +166,8 @@ namespace SMEngine
                     version = (Assembly.GetEntryAssembly()?.GetName().Version).ToString(),
                     imageCounter = imageCounter,
                     buildDate = GetBuildDate(),
-                    triggeredBy = "shutdown"
+                    triggeredBy = "shutdown",
+                    startMode = _launchMode
                 };
             }
 
