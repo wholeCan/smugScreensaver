@@ -15,6 +15,8 @@ Name "Andys Smugmug screensaver"
 ; The file to write
 OutFile "andysScreensaverInstaller_small.exe"
 
+SetCompressor zlib
+
 ; The default installation directory
 InstallDir $PROGRAMFILES32\andyScrSaver
 
@@ -53,15 +55,16 @@ Section "Install Application" ;No components page, name is not important
 
   
 
-  ; Put file there
-	File /r "${APP_RELEASE}\*.exe"
-	File /r "${APP_RELEASE}\*.dll"
+  ; Put file there (VLC libs excluded and handled separately below)
+	File /r /x "libvlc*" "${APP_RELEASE}\*.exe"
+	File /r /x "libvlc*" "${APP_RELEASE}\*.dll"
 	File /r "${APP_RELEASE}\*.config"
 	File /r "${APP_RELEASE}\*.xml"
 
 	IfFileExists "$INSTDIR\libvlc.dll" vlc_exists vlc_missing
 	vlc_missing:
-		File /r "${APP_RELEASE}\libvlc*.*"
+		DetailPrint "Installing VLC components..."
+		File /r "${APP_RELEASE}\libvlc*"
 	vlc_exists:
 		DetailPrint "VLC components already installed, skipping..."
 

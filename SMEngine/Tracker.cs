@@ -43,7 +43,15 @@ namespace SMEngine
             _launchMode = details.LaunchMode;
 
             _startTime ??= DateTime.Now;
+            _lastWeeklyUpdate = DateTime.Now;
 
+            details.Notes = new TrackerNotes
+            {
+                triggeredBy = "startup",
+                startMode = _launchMode,
+                version = (System.Reflection.Assembly.GetEntryAssembly()?.GetName().Version).ToString(),
+                buildDate = GetBuildDate()
+            };
             phoneHome(details);
         }
 
