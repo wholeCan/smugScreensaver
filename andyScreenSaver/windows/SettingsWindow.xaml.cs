@@ -33,6 +33,7 @@ namespace andyScreenSaver
         public async void initEngine()
         {
             _engine = new CSMEngine(true, "slideshowConfig");
+            _engine.SetLaunchMode("config");
             await this.Dispatcher.BeginInvoke(new Action(async delegate ()
             {
 
@@ -84,6 +85,7 @@ namespace andyScreenSaver
         private void btnClose_Click(object sender, RoutedEventArgs e)
         {
             saveSettings();
+            ShutdownEngine();
             this.Close();
         }
 

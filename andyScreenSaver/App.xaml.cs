@@ -82,7 +82,8 @@ namespace andyScreenSaver
                             sourceParams.Height = lpRect.Bottom - lpRect.Top;
 
                             winSaver.SetDimensions(sourceParams.Height, sourceParams.Width);
-                            winSaver.Init();//just added this.
+                            winSaver.Init();
+                            winSaver.SetEngineLaunchMode("preview");
                             sourceParams.Width = lpRect.Right - lpRect.Left;
                             sourceParams.ParentWindow = pPreviewHnd;
                             sourceParams.WindowStyle = (int)(WindowStyles.WS_VISIBLE | WindowStyles.WS_CHILD | WindowStyles.WS_CLIPCHILDREN);
@@ -158,9 +159,9 @@ namespace andyScreenSaver
                         var workingArea = s.Bounds;
                         win1.WindowStyle = WindowStyle.None;
                         win1.SetDimensions(workingArea.Height, workingArea.Width); //don't account for border height.
-                        win1.DisableScreensaverMode();
                         win1.Init();
-                        
+                        win1.DisableScreensaverMode();
+
                         wins.Add(win1);
                         wins.ElementAt(iter).Left = workingArea.X;
                         wins.ElementAt(iter).Width = workingArea.Width;

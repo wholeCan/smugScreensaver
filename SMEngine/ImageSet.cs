@@ -8,16 +8,16 @@ namespace SMEngine
 
     public partial class CSMEngine
     {
-        bool isScreensaver = false;
+        string _launchMode = "screensaver";
 
         public string getUptime()
         {
             return DateTime.Now.Subtract(_timeStarted).TotalHours.ToString("0.00");
         }
 
-        public void IsScreensaver(bool screensaverModeDisabled)
+        public void SetLaunchMode(string mode)
         {
-            isScreensaver = !screensaverModeDisabled;
+            _launchMode = mode;
         }
 
         public class ImageSet

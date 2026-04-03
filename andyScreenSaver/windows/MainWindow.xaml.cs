@@ -184,7 +184,6 @@ namespace andyScreenSaver
             var workArea = SystemParameters.WorkArea;
             _engine = new SMEngine.CSMEngine(true, "andyScreenSaver");
             _engine.setScreenDimensions(workArea.Width, workArea.Height);
-            _engine.IsScreensaver(false);
             _engine.fireException += ShowException;
 
             // Restore the image counter to the new engine
@@ -305,10 +304,12 @@ namespace andyScreenSaver
             WindowWidth = width;
         }
 
+        public void SetEngineLaunchMode(string mode) => _engine?.SetLaunchMode(mode);
+
         public void DisableScreensaverMode()
         {
             _stateManager.ScreensaverModeDisabled = true;
-            _engine?.IsScreensaver(_stateManager.ScreensaverModeDisabled);
+            _engine?.SetLaunchMode("manual");
             Topmost = false;
             Cursor = Cursors.Arrow;
         }
