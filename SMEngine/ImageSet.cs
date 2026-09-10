@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Drawing;
 using System.Windows.Media.Imaging;
+using Newtonsoft.Json;
 
 
 namespace SMEngine
@@ -32,7 +33,9 @@ namespace SMEngine
             private string name;
             private string imageURL;
 
+            [JsonIgnore]
             public Bitmap Bitmap { get => bitmap; set => bitmap = value; }
+            [JsonIgnore]
             public BitmapImage BitmapImage { get => bitmapImage; set => bitmapImage = value; }
             public string Caption { get => caption; set => caption = value; }
             public string AlbumTitle { get => albumTitle; set => albumTitle = value; }

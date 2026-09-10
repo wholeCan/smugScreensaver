@@ -800,6 +800,10 @@ namespace andyScreenSaver
         private void RepullAlbums()
         {
             AppLogger.Log("Reloading library");
+            // Manual reload should always go back to the network, not silently reuse the
+            // on-disk image cache (InitializeEngine creates a new engine whose first load
+            // would otherwise be treated as a fresh startup load and pick the cache back up).
+            _engine?.InvalidateImageDictionaryCache();
             InitializeEngine();
             if (_engine != null)
             {
