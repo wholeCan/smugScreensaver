@@ -40,6 +40,7 @@ namespace SMEngine
                             var image = ImageLoader.DownloadImage(engine, element.ImageURL, cancellationToken);
                             if (image == null)
                             {
+                                engine.RegisterCacheImageFailure();
                                 throw new Exception("image returned is null: " + element.ImageURL);
                             }
                             imageSet.BitmapImage = image;

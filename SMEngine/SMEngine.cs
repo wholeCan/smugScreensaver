@@ -1280,6 +1280,55 @@ namespace SMEngine
             }
         }
 
+        // Only the very first load of a run consults the on-disk cache; every subsequent
+        // reload (drain, daily change-check, cache-failure fallback) always goes to the network.
+        private bool _startupCacheChecked = false;
+        private bool _dictionaryLoadedFromCache = false;
+        private int _cacheImageDownloadFailures = 0;
+        private readonly object _cacheFailureLock = new object();
+        private static readonly TimeSpan CacheMaxAge = TimeSpan.FromDays(3);
+        private const int MaxCacheImageFailures = 10;
+
+        public bool DictionaryLoadedFromCache => _dictionaryLoadedFromCache;
+
+        /// <summary>
+        /// Deletes the on-disk image dictionary cache. Call this before a manual/explicit
+        /// "reload the library" action so the reload goes all the way to the network, the
+        /// same way it did before caching existed - even if a fresh CSMEngine instance is
+        /// about to be created (which would otherwise treat its first load as a startup load
+        /// and pick the cache back up).
+        /// </summary>
+        public void InvalidateImageDictionaryCache()
+        {
+            ImageDictionaryCache.Invalidate(_appName);
+        }
+
+        /// <summary>
+        /// Called when an image sourced from the on-disk cache fails to download (e.g. a stale
+        /// URL). Once too many of these accumulate, the cache is assumed bad: it's invalidated
+        /// and a full network reload is triggered so the app doesn't appear stuck.
+        /// </summary>
+        public void RegisterCacheImageFailure()
+        {
+            if (!_dictionaryLoadedFromCache) return;
+            int failures;
+            lock (_cacheFailureLock)
+            {
+                failures = ++_cacheImageDownloadFailures;
+            }
+            if (failures > MaxCacheImageFailures)
+            {
+                logMsg($"Too many cache-sourced image failures ({failures}); invalidating cache and reloading.");
+                _dictionaryLoadedFromCache = false;
+                lock (_cacheFailureLock) { _cacheImageDownloadFailures = 0; }
+                ImageDictionaryCache.Invalidate(_appName);
+                if (!IsLoadingAlbums1)
+                {
+                    Task.Factory.StartNew(() => RePullAlbumsSafe());
+                }
+            }
+        }
+
         private void loadAllImages()
         {
             if (IsLoadingAlbums1)
@@ -1291,6 +1340,8 @@ namespace SMEngine
             AllAlbums = new List<Album>();
             PlayedImages = new Dictionary<string, ImageSet>();
             var cancellationToken = _cancellationTokenSource.Token;
+            var isStartupLoad = !_startupCacheChecked;
+            _startupCacheChecked = true;
             try
             {
                 while (Loggedin == false)
@@ -1299,7 +1350,33 @@ namespace SMEngine
                 }
                 if (checkLogin(Envelope))
                 {
-                    foreach (var username in fetchUsersToLoad())
+                    var usernames = fetchUsersToLoad();
+
+                    if (isStartupLoad && !IsConfigurationMode)
+                    {
+                        var fingerprint = ImageDictionaryCache.ComputeFingerprint(Settings, GalleryTable, usernames);
+                        if (ImageDictionaryCache.TryLoad(_appName, fingerprint, CacheMaxAge, out var cachedImages, out var cachedPlayed, out var cachedAlbumCount))
+                        {
+                            lock (_imageDictionary)
+                            {
+                                _imageDictionary.Clear();
+                                foreach (var kvp in cachedImages) _imageDictionary[kvp.Key] = kvp.Value;
+                            }
+                            PlayedImages = cachedPlayed;
+                            _dictionaryLoadedFromCache = true;
+                            lock (_cacheFailureLock) { _cacheImageDownloadFailures = 0; }
+                            lock (_allAlbumsLock)
+                            {
+                                _lastKnownAlbumCount = cachedAlbumCount;
+                            }
+                            logMsg("Loaded image dictionary from cache; skipping network album load.");
+                            return;
+                        }
+                    }
+
+                    _dictionaryLoadedFromCache = false;
+
+                    foreach (var username in usernames)
                     {
                         cancellationToken.ThrowIfCancellationRequested();
                         if (username == @"MY_NAME")
@@ -1313,6 +1390,23 @@ namespace SMEngine
                     }
 
                     loadImagesFromAlbums();
+
+                    if (isStartupLoad && !IsConfigurationMode)
+                    {
+                        var fingerprint = ImageDictionaryCache.ComputeFingerprint(Settings, GalleryTable, usernames);
+                        Dictionary<string, ImageSet> imagesSnapshot, playedSnapshot;
+                        lock (_imageDictionary)
+                        {
+                            imagesSnapshot = new Dictionary<string, ImageSet>(_imageDictionary);
+                        }
+                        playedSnapshot = new Dictionary<string, ImageSet>(PlayedImages);
+                        int albumCountSnapshot;
+                        lock (_allAlbumsLock)
+                        {
+                            albumCountSnapshot = _allAlbums?.Count ?? 0;
+                        }
+                        ImageDictionaryCache.Save(_appName, fingerprint, imagesSnapshot, playedSnapshot, albumCountSnapshot);
+                    }
                 }
             }
             catch (OperationCanceledException)
@@ -1329,11 +1423,17 @@ namespace SMEngine
             finally
             {
                 IsLoadingAlbums1 = false;
-                // Save the current album count for change detection on next check
-                lock (_allAlbumsLock)
+                // Save the current album count for change detection on next check.
+                // Skipped when the dictionary came from the cache, since _allAlbums wasn't
+                // populated from the network in that case (_lastKnownAlbumCount was already
+                // restored from the cached value above).
+                if (!_dictionaryLoadedFromCache)
                 {
-                    _lastKnownAlbumCount = _allAlbums?.Count ?? 0;
-                    logMsg($"Saved album count for change detection: {_lastKnownAlbumCount}");
+                    lock (_allAlbumsLock)
+                    {
+                        _lastKnownAlbumCount = _allAlbums?.Count ?? 0;
+                        logMsg($"Saved album count for change detection: {_lastKnownAlbumCount}");
+                    }
                 }
             }
 
