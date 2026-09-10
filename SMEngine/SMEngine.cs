@@ -1280,9 +1280,10 @@ namespace SMEngine
             }
         }
 
-        // Only the very first load of a run consults the on-disk cache; every subsequent
-        // reload (drain, daily change-check, cache-failure fallback) always goes to the network.
-        private bool _startupCacheChecked = false;
+        // Every load (startup, exhaustion-triggered, etc.) checks the on-disk cache first and
+        // only hits the network if it's missing/expired/stale (fingerprint mismatch) or was
+        // explicitly invalidated (manual reload, cache-failure fallback). A network load, once
+        // it completes, refreshes the cache so later exhaustion reloads pick up the fresh set.
         private bool _dictionaryLoadedFromCache = false;
         private int _cacheImageDownloadFailures = 0;
         private readonly object _cacheFailureLock = new object();
@@ -1340,8 +1341,6 @@ namespace SMEngine
             AllAlbums = new List<Album>();
             PlayedImages = new Dictionary<string, ImageSet>();
             var cancellationToken = _cancellationTokenSource.Token;
-            var isStartupLoad = !_startupCacheChecked;
-            _startupCacheChecked = true;
             try
             {
                 while (Loggedin == false)
@@ -1352,7 +1351,7 @@ namespace SMEngine
                 {
                     var usernames = fetchUsersToLoad();
 
-                    if (isStartupLoad && !IsConfigurationMode)
+                    if (!IsConfigurationMode)
                     {
                         var fingerprint = ImageDictionaryCache.ComputeFingerprint(Settings, GalleryTable, usernames);
                         if (ImageDictionaryCache.TryLoad(_appName, fingerprint, CacheMaxAge, out var cachedImages, out var cachedPlayed, out var cachedAlbumCount))
@@ -1391,7 +1390,7 @@ namespace SMEngine
 
                     loadImagesFromAlbums();
 
-                    if (isStartupLoad && !IsConfigurationMode)
+                    if (!IsConfigurationMode)
                     {
                         var fingerprint = ImageDictionaryCache.ComputeFingerprint(Settings, GalleryTable, usernames);
                         Dictionary<string, ImageSet> imagesSnapshot, playedSnapshot;
