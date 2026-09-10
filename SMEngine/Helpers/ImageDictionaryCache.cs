@@ -12,18 +12,22 @@ namespace SMEngine
 {
     /// <summary>
     /// Persists the loaded image dictionary (and played-images set) to a local JSON file so
-    /// the app can skip re-fetching the album/image list from the network on every startup.
-    /// The cache is only ever consulted at startup; it is never refreshed in the background.
+    /// the app can skip re-fetching the album/image list from the network. Consulted at the
+    /// start of every load (startup or exhaustion-triggered); a network load only happens when
+    /// the cache is missing, expired, invalidated, or its fingerprint no longer matches the
+    /// current account/settings. Never refreshed in the background.
     /// </summary>
     internal static class ImageDictionaryCache
     {
         private class CacheEnvelope
         {
-            public DateTime CreatedUtc { get; set; }
-            public string Fingerprint { get; set; }
-            public int AlbumCount { get; set; }
-            public Dictionary<string, CSMEngine.ImageSet> Images { get; set; }
-            public Dictionary<string, CSMEngine.ImageSet> PlayedImages { get; set; }
+            // Order matters: streaming reads validate Fingerprint/CreatedUtc before ever
+            // touching Images/PlayedImages, so the cheap header fields must serialize first.
+            [JsonProperty(Order = 0)] public DateTime CreatedUtc { get; set; }
+            [JsonProperty(Order = 1)] public string Fingerprint { get; set; }
+            [JsonProperty(Order = 2)] public int AlbumCount { get; set; }
+            [JsonProperty(Order = 3)] public Dictionary<string, CSMEngine.ImageSet> Images { get; set; }
+            [JsonProperty(Order = 4)] public Dictionary<string, CSMEngine.ImageSet> PlayedImages { get; set; }
         }
 
         private static string GetCacheFilePath(string appName)
@@ -66,52 +70,121 @@ namespace SMEngine
         }
 
         /// <summary>
-        /// Attempts to load the cache. Returns false (with empty dictionaries) on any miss:
-        /// no file, unreadable/corrupt file, fingerprint mismatch, or expired age.
+        /// Attempts to load the cache, streaming entries directly into <paramref name="targetImages"/>
+        /// and <paramref name="targetPlayedImages"/> as they're parsed (one dictionary-lock per entry,
+        /// same as the network loader) rather than parsing the whole file into memory first and bulk-
+        /// copying it. This lets playback start as soon as the first few entries are read instead of
+        /// stalling until the entire cache file (which can be large) has been fully parsed.
+        /// Returns false on any miss: no file, unreadable/corrupt file, fingerprint mismatch, or expired
+        /// age - in which case neither target dictionary is touched.
         /// </summary>
         public static bool TryLoad(
             string appName,
             string fingerprint,
             TimeSpan maxAge,
-            out Dictionary<string, CSMEngine.ImageSet> images,
-            out Dictionary<string, CSMEngine.ImageSet> playedImages,
+            object dictionaryLock,
+            Dictionary<string, CSMEngine.ImageSet> targetImages,
+            Dictionary<string, CSMEngine.ImageSet> targetPlayedImages,
             out int albumCount)
         {
-            images = null;
-            playedImages = null;
             albumCount = 0;
             var path = GetCacheFilePath(appName);
+            if (!File.Exists(path)) return false;
+
             try
             {
-                if (!File.Exists(path)) return false;
-
-                var json = File.ReadAllText(path);
-                var envelope = JsonConvert.DeserializeObject<CacheEnvelope>(json);
-                if (envelope == null) return false;
-
-                if (envelope.Fingerprint != fingerprint)
+                using (var stream = File.OpenRead(path))
+                using (var streamReader = new StreamReader(stream))
+                using (var reader = new JsonTextReader(streamReader))
                 {
-                    logMsg("Image dictionary cache miss: fingerprint mismatch (settings/account changed).");
-                    return false;
-                }
+                    var serializer = JsonSerializer.CreateDefault();
+                    string readFingerprint = null;
+                    DateTime createdUtc = default;
+                    int imageCount = 0, playedCount = 0;
 
-                if (DateTime.UtcNow - envelope.CreatedUtc > maxAge)
-                {
-                    logMsg("Image dictionary cache miss: expired.");
-                    return false;
-                }
+                    while (reader.Read())
+                    {
+                        if (reader.TokenType != JsonToken.PropertyName) continue;
+                        var propertyName = (string)reader.Value;
+                        if (!reader.Read()) break; // advance to the value token
 
-                images = envelope.Images ?? new Dictionary<string, CSMEngine.ImageSet>();
-                playedImages = envelope.PlayedImages ?? new Dictionary<string, CSMEngine.ImageSet>();
-                albumCount = envelope.AlbumCount;
-                logMsg($"Image dictionary cache hit: {images.Count} images, {playedImages.Count} played, age {DateTime.UtcNow - envelope.CreatedUtc}.");
-                return true;
+                        switch (propertyName)
+                        {
+                            case nameof(CacheEnvelope.CreatedUtc):
+                                createdUtc = serializer.Deserialize<DateTime>(reader);
+                                break;
+                            case nameof(CacheEnvelope.Fingerprint):
+                                readFingerprint = (string)reader.Value;
+                                if (readFingerprint != fingerprint)
+                                {
+                                    logMsg("Image dictionary cache miss: fingerprint mismatch (settings/account changed).");
+                                    return false;
+                                }
+                                break;
+                            case nameof(CacheEnvelope.AlbumCount):
+                                albumCount = Convert.ToInt32(reader.Value);
+                                break;
+                            case nameof(CacheEnvelope.Images):
+                                if (readFingerprint == null || DateTime.UtcNow - createdUtc > maxAge)
+                                {
+                                    logMsg("Image dictionary cache miss: expired or malformed header.");
+                                    return false;
+                                }
+                                lock (dictionaryLock) { targetImages.Clear(); }
+                                imageCount = StreamEntriesInto(reader, serializer, dictionaryLock, targetImages);
+                                break;
+                            case nameof(CacheEnvelope.PlayedImages):
+                                playedCount = StreamEntriesInto(reader, serializer, dictionaryLock, targetPlayedImages);
+                                break;
+                        }
+                    }
+
+                    if (readFingerprint == null)
+                    {
+                        logMsg("Image dictionary cache miss: no fingerprint found in file.");
+                        return false;
+                    }
+
+                    logMsg($"Image dictionary cache hit: {imageCount} images, {playedCount} played, age {DateTime.UtcNow - createdUtc}.");
+                    return true;
+                }
             }
             catch (Exception ex)
             {
                 logMsg($"Image dictionary cache load failed, ignoring cache: {ex.Message}");
                 return false;
             }
+        }
+
+        /// <summary>
+        /// Reads a JSON object of the form { "key": {ImageSet}, ... } and adds each entry into
+        /// <paramref name="target"/> as it's parsed, taking <paramref name="dictionaryLock"/> only
+        /// for the duration of each individual add.
+        /// </summary>
+        private static int StreamEntriesInto(
+            JsonTextReader reader,
+            JsonSerializer serializer,
+            object dictionaryLock,
+            Dictionary<string, CSMEngine.ImageSet> target)
+        {
+            var count = 0;
+            if (reader.TokenType == JsonToken.Null) return count;
+            if (reader.TokenType != JsonToken.StartObject) { reader.Skip(); return count; }
+
+            while (reader.Read() && reader.TokenType != JsonToken.EndObject)
+            {
+                if (reader.TokenType != JsonToken.PropertyName) continue;
+                var key = (string)reader.Value;
+                if (!reader.Read()) break; // advance to the ImageSet object
+                var imageSet = serializer.Deserialize<CSMEngine.ImageSet>(reader);
+                if (imageSet == null) continue;
+                lock (dictionaryLock)
+                {
+                    target[key] = imageSet;
+                }
+                count++;
+            }
+            return count;
         }
 
         /// <summary>

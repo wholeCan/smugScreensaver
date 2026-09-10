@@ -1354,14 +1354,11 @@ namespace SMEngine
                     if (!IsConfigurationMode)
                     {
                         var fingerprint = ImageDictionaryCache.ComputeFingerprint(Settings, GalleryTable, usernames);
-                        if (ImageDictionaryCache.TryLoad(_appName, fingerprint, CacheMaxAge, out var cachedImages, out var cachedPlayed, out var cachedAlbumCount))
+                        // Streams entries directly into _imageDictionary/PlayedImages as they're
+                        // parsed (rather than parsing the whole file then bulk-copying), so playback
+                        // can start on the first few entries instead of waiting on the entire file.
+                        if (ImageDictionaryCache.TryLoad(_appName, fingerprint, CacheMaxAge, _imageDictionary, _imageDictionary, PlayedImages, out var cachedAlbumCount))
                         {
-                            lock (_imageDictionary)
-                            {
-                                _imageDictionary.Clear();
-                                foreach (var kvp in cachedImages) _imageDictionary[kvp.Key] = kvp.Value;
-                            }
-                            PlayedImages = cachedPlayed;
                             _dictionaryLoadedFromCache = true;
                             lock (_cacheFailureLock) { _cacheImageDownloadFailures = 0; }
                             lock (_allAlbumsLock)
@@ -1374,6 +1371,10 @@ namespace SMEngine
                     }
 
                     _dictionaryLoadedFromCache = false;
+                    // In case a corrupt/partial cache file streamed a few entries in before
+                    // failing partway through - loadImagesFromAlbums() clears _imageDictionary
+                    // itself, but PlayedImages needs a reset here too.
+                    PlayedImages = new Dictionary<string, ImageSet>();
 
                     foreach (var username in usernames)
                     {
