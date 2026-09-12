@@ -39,6 +39,9 @@ namespace SMEngine
             msg.AppendLine("Time between images: " + engine.getTimeSinceLast());
             msg.AppendLine("Exceptions raised: " + engine.ExceptionsRaised);
             msg.AppendLine("Reloaded albums: " + engine.RestartCounter + " times.");
+            msg.AppendLine("Image cache expires: " + (engine.CacheExpiresAtUtc.HasValue
+                ? engine.CacheExpiresAtUtc.Value.ToLocalTime().ToString("g")
+                : "none"));
             var proc = System.Diagnostics.Process.GetCurrentProcess();
             msg.AppendLine("Memory: " + proc.WorkingSet64 / (1024 * 1024) + " MB  Peak: " + proc.PeakPagedMemorySize64 / (1024 * 1024) + " MB  Peak virtual: " + proc.PeakVirtualMemorySize64 / (1024 * 1024) + " MB");
             msg.AppendLine("Schedule: " + engine.Settings.startTime.ToString() + " - " + engine.Settings.stopTime.ToString());

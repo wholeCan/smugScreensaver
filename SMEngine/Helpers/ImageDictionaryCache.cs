@@ -85,9 +85,11 @@ namespace SMEngine
             object dictionaryLock,
             Dictionary<string, CSMEngine.ImageSet> targetImages,
             Dictionary<string, CSMEngine.ImageSet> targetPlayedImages,
-            out int albumCount)
+            out int albumCount,
+            out DateTime createdUtc)
         {
             albumCount = 0;
+            createdUtc = default;
             var path = GetCacheFilePath(appName);
             if (!File.Exists(path)) return false;
 
@@ -99,7 +101,7 @@ namespace SMEngine
                 {
                     var serializer = JsonSerializer.CreateDefault();
                     string readFingerprint = null;
-                    DateTime createdUtc = default;
+                    DateTime readCreatedUtc = default;
                     int imageCount = 0, playedCount = 0;
 
                     while (reader.Read())
@@ -111,7 +113,7 @@ namespace SMEngine
                         switch (propertyName)
                         {
                             case nameof(CacheEnvelope.CreatedUtc):
-                                createdUtc = serializer.Deserialize<DateTime>(reader);
+                                readCreatedUtc = serializer.Deserialize<DateTime>(reader);
                                 break;
                             case nameof(CacheEnvelope.Fingerprint):
                                 readFingerprint = (string)reader.Value;
@@ -125,7 +127,7 @@ namespace SMEngine
                                 albumCount = Convert.ToInt32(reader.Value);
                                 break;
                             case nameof(CacheEnvelope.Images):
-                                if (readFingerprint == null || DateTime.UtcNow - createdUtc > maxAge)
+                                if (readFingerprint == null || DateTime.UtcNow - readCreatedUtc > maxAge)
                                 {
                                     logMsg("Image dictionary cache miss: expired or malformed header.");
                                     return false;
@@ -145,7 +147,8 @@ namespace SMEngine
                         return false;
                     }
 
-                    logMsg($"Image dictionary cache hit: {imageCount} images, {playedCount} played, age {DateTime.UtcNow - createdUtc}.");
+                    createdUtc = readCreatedUtc;
+                    logMsg($"Image dictionary cache hit: {imageCount} images, {playedCount} played, age {DateTime.UtcNow - readCreatedUtc}.");
                     return true;
                 }
             }
@@ -194,6 +197,7 @@ namespace SMEngine
         public static void Save(
             string appName,
             string fingerprint,
+            DateTime createdUtc,
             Dictionary<string, CSMEngine.ImageSet> images,
             Dictionary<string, CSMEngine.ImageSet> playedImages,
             int albumCount)
@@ -204,7 +208,7 @@ namespace SMEngine
             {
                 var envelope = new CacheEnvelope
                 {
-                    CreatedUtc = DateTime.UtcNow,
+                    CreatedUtc = createdUtc,
                     Fingerprint = fingerprint,
                     AlbumCount = albumCount,
                     Images = images ?? new Dictionary<string, CSMEngine.ImageSet>(),

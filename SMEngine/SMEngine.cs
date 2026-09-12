@@ -107,60 +107,37 @@ namespace SMEngine
         }
 
         /// <summary>
-        /// Fetches the album list once into a temp variable. If the count has changed
-        /// since last load, swaps in the new albums and reloads images. Otherwise discards.
+        /// Nightly maintenance check. Defers entirely to the image dictionary cache: if it's
+        /// still within its TTL, does nothing (no network call at all - the cache is trusted
+        /// as-is). Only once the cache has expired does this trigger a real reload, which goes
+        /// through the normal loadAllImages() path (login, album fetch, cache refresh).
         /// Returns true if a reload was triggered.
         /// </summary>
-        public async Task<bool> CheckAndReloadIfChangedAsync()
+        public Task<bool> CheckAndReloadIfChangedAsync()
         {
             try
             {
                 if (!Loggedin || IsLoadingAlbums1)
                 {
-                    logMsg("Not logged in or already loading, skipping library change check");
-                    return false;
+                    logMsg("Not logged in or already loading, skipping nightly cache check");
+                    return Task.FromResult(false);
                 }
 
-                // Fetch fresh albums into a temp list — single API call
-                var tempAlbums = new List<Album>();
-                foreach (var username in fetchUsersToLoad())
+                if (_cacheExpiresAtUtc.HasValue && DateTime.UtcNow < _cacheExpiresAtUtc.Value)
                 {
-                    User currentUser = username == @"MY_NAME"
-                        ? await Api.GetAuthenticatedUser()
-                        : await Api.GetUser(username);
-
-                    if (currentUser != null)
-                    {
-                        var albums = await Api.GetAlbums(currentUser, Debug_limit);
-                        tempAlbums.AddRange(albums.Take(Debug_limit));
-                    }
+                    logMsg($"Image cache still valid until {_cacheExpiresAtUtc.Value.ToLocalTime()}; skipping nightly reload.");
+                    return Task.FromResult(false);
                 }
 
-                logMsg($"Library change check: LastKnown={_lastKnownAlbumCount}, Fresh={tempAlbums.Count}");
-
-                if (tempAlbums.Count == _lastKnownAlbumCount)
-                {
-                    logMsg("No library changes detected - skipping reload");
-                    return false;
-                }
-
-                // Counts differ — swap in the fresh albums and reload images (no second API call)
-                logMsg("Library changes detected - reloading");
-                RestartCounter++;
-                PlayedImages = new Dictionary<string, ImageSet>();
-                lock (_allAlbumsLock)
-                {
-                    _allAlbums = tempAlbums;
-                    _lastKnownAlbumCount = tempAlbums.Count;
-                }
-                loadImagesFromAlbums();
-                return true;
+                logMsg("Image cache expired (or unknown); triggering nightly reload.");
+                RePullAlbumsSafe();
+                return Task.FromResult(true);
             }
             catch (Exception ex)
             {
-                doException($"Error checking library changes: {ex.Message}");
+                doException($"Error during nightly cache check: {ex.Message}");
                 logMsg($"CheckAndReloadIfChangedAsync failed: {ex.Message}");
-                return false;
+                return Task.FromResult(false);
             }
         }
 
@@ -1289,8 +1266,16 @@ namespace SMEngine
         private readonly object _cacheFailureLock = new object();
         private static readonly TimeSpan CacheMaxAge = TimeSpan.FromDays(3);
         private const int MaxCacheImageFailures = 10;
+        private DateTime? _cacheExpiresAtUtc = null;
 
         public bool DictionaryLoadedFromCache => _dictionaryLoadedFromCache;
+
+        /// <summary>
+        /// When the on-disk image dictionary cache was written/last confirmed valid, this is
+        /// when it expires (createdUtc + 3 days). Null if there's no known cache (never loaded/
+        /// saved this run, or it was invalidated). Shown in the stats overlay.
+        /// </summary>
+        public DateTime? CacheExpiresAtUtc => _cacheExpiresAtUtc;
 
         /// <summary>
         /// Deletes the on-disk image dictionary cache. Call this before a manual/explicit
@@ -1302,6 +1287,7 @@ namespace SMEngine
         public void InvalidateImageDictionaryCache()
         {
             ImageDictionaryCache.Invalidate(_appName);
+            _cacheExpiresAtUtc = null;
         }
 
         /// <summary>
@@ -1323,6 +1309,7 @@ namespace SMEngine
                 _dictionaryLoadedFromCache = false;
                 lock (_cacheFailureLock) { _cacheImageDownloadFailures = 0; }
                 ImageDictionaryCache.Invalidate(_appName);
+                _cacheExpiresAtUtc = null;
                 if (!IsLoadingAlbums1)
                 {
                     Task.Factory.StartNew(() => RePullAlbumsSafe());
@@ -1357,9 +1344,10 @@ namespace SMEngine
                         // Streams entries directly into _imageDictionary/PlayedImages as they're
                         // parsed (rather than parsing the whole file then bulk-copying), so playback
                         // can start on the first few entries instead of waiting on the entire file.
-                        if (ImageDictionaryCache.TryLoad(_appName, fingerprint, CacheMaxAge, _imageDictionary, _imageDictionary, PlayedImages, out var cachedAlbumCount))
+                        if (ImageDictionaryCache.TryLoad(_appName, fingerprint, CacheMaxAge, _imageDictionary, _imageDictionary, PlayedImages, out var cachedAlbumCount, out var cachedCreatedUtc))
                         {
                             _dictionaryLoadedFromCache = true;
+                            _cacheExpiresAtUtc = cachedCreatedUtc + CacheMaxAge;
                             lock (_cacheFailureLock) { _cacheImageDownloadFailures = 0; }
                             lock (_allAlbumsLock)
                             {
@@ -1405,7 +1393,9 @@ namespace SMEngine
                         {
                             albumCountSnapshot = _allAlbums?.Count ?? 0;
                         }
-                        ImageDictionaryCache.Save(_appName, fingerprint, imagesSnapshot, playedSnapshot, albumCountSnapshot);
+                        var savedAtUtc = DateTime.UtcNow;
+                        ImageDictionaryCache.Save(_appName, fingerprint, savedAtUtc, imagesSnapshot, playedSnapshot, albumCountSnapshot);
+                        _cacheExpiresAtUtc = savedAtUtc + CacheMaxAge;
                     }
                 }
             }
