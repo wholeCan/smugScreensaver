@@ -41,16 +41,8 @@ namespace SMEngine
             return dir;
         }
 
-        // New caches are always written compressed under the .json.gz extension. The plain
-        // .json extension is kept around only to recognize (and transparently read) a cache
-        // file written by an older version of the app, so it isn't just thrown away and
-        // silently reloaded from the network the first time this version runs.
         private static string GetCompressedCacheFilePath(string appName) =>
             Path.Combine(GetCacheDir(appName), "imagedictionary.json.gz");
-
-        //todo: this can be deleted later, after all users of legacy uncompressed caches are gone.
-        private static string GetLegacyUncompressedCacheFilePath(string appName) =>
-            Path.Combine(GetCacheDir(appName), "imagedictionary.json");
 
         /// <summary>
         /// Computes a fingerprint representing everything that should invalidate the cache
@@ -103,21 +95,13 @@ namespace SMEngine
             albumCount = 0;
             createdUtc = default;
 
-            // Prefer the compressed cache; fall back to a legacy uncompressed file left over
-            // from an older version so it isn't lost/ignored.
             var path = GetCompressedCacheFilePath(appName);
-            var isCompressed = true;
-            if (!File.Exists(path))
-            {
-                path = GetLegacyUncompressedCacheFilePath(appName);
-                isCompressed = false;
-                if (!File.Exists(path)) return false;
-            }
+            if (!File.Exists(path)) return false;
 
             try
             {
                 using (var fileStream = File.OpenRead(path))
-                using (Stream stream = isCompressed ? new GZipStream(fileStream, CompressionMode.Decompress) : fileStream)
+                using (var stream = new GZipStream(fileStream, CompressionMode.Decompress))
                 using (var streamReader = new StreamReader(stream))
                 using (var reader = new JsonTextReader(streamReader))
                 {
@@ -214,9 +198,7 @@ namespace SMEngine
 
         /// <summary>
         /// Writes the cache atomically (write to temp file, then replace) so a crash mid-write
-        /// never leaves a corrupt/partial cache file behind. Always writes the gzip-compressed
-        /// (.json.gz) form; any legacy uncompressed file is removed so it doesn't linger and get
-        /// picked up by mistake later.
+        /// never leaves a corrupt/partial cache file behind.
         /// </summary>
         public static void Save(
             string appName,
@@ -249,13 +231,6 @@ namespace SMEngine
                 if (File.Exists(path)) File.Delete(path);
                 File.Move(tempPath, path);
 
-                try
-                {
-                    var legacyPath = GetLegacyUncompressedCacheFilePath(appName);
-                    if (File.Exists(legacyPath)) File.Delete(legacyPath);
-                }
-                catch { /* best effort */ }
-
                 logMsg($"Image dictionary cache saved (compressed): {envelope.Images.Count} images, {envelope.PlayedImages.Count} played.");
             }
             catch (Exception ex)
@@ -271,8 +246,6 @@ namespace SMEngine
             {
                 var path = GetCompressedCacheFilePath(appName);
                 if (File.Exists(path)) File.Delete(path);
-                var legacyPath = GetLegacyUncompressedCacheFilePath(appName);
-                if (File.Exists(legacyPath)) File.Delete(legacyPath);
                 logMsg("Image dictionary cache invalidated.");
             }
             catch (Exception ex)
