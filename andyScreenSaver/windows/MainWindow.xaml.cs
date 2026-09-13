@@ -12,6 +12,7 @@
  *  2/26/2022: major refactor of smEngine and everything else to upgrade to smugmug 2.0 api
  *
  *  2025: Refactored for better separation of concerns, readability, and maintainability
+ *  2026: updating how images are cached, and improving startup.
  * **/
 
 using andyScreenSaver.windows.Helpers;
