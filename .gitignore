@@ -10,6 +10,7 @@
 *.userosscache
 *.sln.docstates
 *.exe
+!nsisInstaller/andysScreensaverInstaller_small.exe
 SMEngine/Constants.cs
 # User-specific files (MonoDevelop/Xamarin Studio)
 *.userprefs

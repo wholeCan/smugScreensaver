@@ -73,10 +73,14 @@ Section "Install Application" ;No components page, name is not important
 	File /r "${STARTER_RELEASE}\*.dll"
 	File /r "${STARTER_RELEASE}\*.json"
 	File /r "${STARTER_RELEASE}\*.exe"
-  
+
+	; upgrade helper script (Start Menu "Upgrade slideshow" shortcut runs this)
+	File ".\upgrade-slideshow.ps1"
+
   CreateDirectory "$SMPROGRAMS\andySlideShow"
   CreateShortCut "$SMPROGRAMS\andySlideShow\slideshow.lnk" "$INSTDIR\andyScrSaver.exe" "" "$INSTDIR\andyScrSaver.exe" 0
   CreateShortCut "$SMPROGRAMS\andySlideShow\config.lnk" "$INSTDIR\andyScrSaver.exe" "/c" "$INSTDIR\andyScrSaver.exe" 0
+  CreateShortCut "$SMPROGRAMS\andySlideShow\Upgrade slideshow.lnk" "powershell.exe" '-NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File "$INSTDIR\upgrade-slideshow.ps1"' "$INSTDIR\andyScrSaver.exe" 0
 
 WriteUninstaller "bt-uninst.exe"
 
@@ -85,15 +89,15 @@ WriteUninstaller "bt-uninst.exe"
 SectionEnd ; end the section
 
 Section "install screensaver"
-SetOutPath $INSTDIR
-
-File .\manual_screensaver_install.bat
-
-; remove next line if you no longer run screen saver stuff.
-execwait $INSTDIR\manual_screensaver_install.bat
-delete .\manual_screensaver_install.bat
-
-
+; Registers ScreensaverStarter as a native Windows screensaver by copying it
+; into SysWow64 as a .scr (Windows lists any .scr found there in Display
+; Settings). Previously done by manual_screensaver_install.bat; done natively
+; here instead.
+SetOutPath "$WINDIR\SysWow64"
+CopyFiles /SILENT "$INSTDIR\screenSaverStarter.dll" "$WINDIR\SysWow64\screenSaverStarter.dll"
+CopyFiles /SILENT "$INSTDIR\screenSaverStarter.deps.json" "$WINDIR\SysWow64\screenSaverStarter.deps.json"
+CopyFiles /SILENT "$INSTDIR\screenSaverStarter.runtimeconfig.json" "$WINDIR\SysWow64\screenSaverStarter.runtimeconfig.json"
+CopyFiles /SILENT "$INSTDIR\screenSaverStarter.exe" "$WINDIR\SysWow64\SmugAndy-slideshow.scr"
 SectionEnd
 
 Section "Setup"
@@ -130,13 +134,20 @@ Section "Uninstall"
 
   ;remove installation directory
     RMDir "$PROGRAMFILES32\andyScrSaver"
-  
+
+  ;remove screensaver registration from SysWow64
+    Delete "$WINDIR\SysWow64\SmugAndy-slideshow.scr"
+    Delete "$WINDIR\SysWow64\screenSaverStarter.dll"
+    Delete "$WINDIR\SysWow64\screenSaverStarter.deps.json"
+    Delete "$WINDIR\SysWow64\screenSaverStarter.runtimeconfig.json"
+
   ;remove links from start menu
-    Delete "$SMPROGRAMS\andySlideShow\slideshow.lnk" 
-	Delete "$TEMP\smugmug.dat" 
+    Delete "$SMPROGRAMS\andySlideShow\slideshow.lnk"
+	Delete "$TEMP\smugmug.dat"
     Delete "$SMPROGRAMS\andySlideShow\config.lnk"
-	
-    Delete "$SMPROGRAMS\andySlideShow\Borderless slideshow.lnk" 
+    Delete "$SMPROGRAMS\andySlideShow\Upgrade slideshow.lnk"
+
+    Delete "$SMPROGRAMS\andySlideShow\Borderless slideshow.lnk"
     RMDir "$SMPROGRAMS\andySlideShow"
 
 SectionEnd
