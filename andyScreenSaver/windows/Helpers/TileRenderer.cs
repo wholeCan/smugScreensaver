@@ -117,7 +117,7 @@ namespace andyScreenSaver.windows.Helpers
             mp.Playing += handler;
         }
 
-        private static Border BuildOverlay(string text, Func<double> calcWidth, Func<double> calcHeight)
+        internal static Border BuildOverlay(string text, Func<double> calcWidth, Func<double> calcHeight)
         {
             var overlay = new Border
             {

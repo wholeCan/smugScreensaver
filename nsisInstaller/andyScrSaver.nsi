@@ -146,6 +146,9 @@ Section "Uninstall"
 	Delete c:\Windows\System32\smUtility.dll
 	;Delete "%TEMP%\smugmug.dat"
 
+  ;remove cached images and image dictionary (per-user, so this only cleans up the current user)
+    RMDir /r "$LOCALAPPDATA\andyScreenSaver"
+
   ;remove installation directory
     RMDir "$PROGRAMFILES32\andyScrSaver"
   

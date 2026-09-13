@@ -262,7 +262,9 @@ namespace andyScreenSaver
                 GridWidth,
                 GridHeight,
                 _engine?.settings.borderThickness ?? 0,
-                imageIndex => GetInitialTileImage(imageIndex, storageDirectory)
+                imageIndex => GetInitialTileImage(imageIndex, storageDirectory),
+                () => _layoutHelper?.CalculateImageWidth() ?? 0d,
+                () => _layoutHelper?.CalculateImageHeight() ?? 0d
             );
         }
 
@@ -453,7 +455,7 @@ namespace andyScreenSaver
                 }
 
                 _tilePlacement.MarkPlaced(randWidth, randHeight);
-                CacheImageIfFirstTime(scaledBitmap, randWidth, randHeight);
+                CacheImageIfFirstTime(imageSet, scaledBitmap, randWidth, randHeight);
             }
             catch (Exception ex)
             {
@@ -856,7 +858,7 @@ namespace andyScreenSaver
             return TileGridBuilder.GetBorderAt(imageGrid, gridX, gridY);
         }
 
-        private void CacheImageIfFirstTime(Bitmap bitmap, int gridX, int gridY)
+        private void CacheImageIfFirstTime(ImageSet imageSet, Bitmap bitmap, int gridX, int gridY)
         {
             int imageIndex = gridX + (gridY * GridWidth);
 
@@ -864,7 +866,8 @@ namespace andyScreenSaver
             {
                 try
                 {
-                    var fileName = Path.Combine(GetImageStorageLocation(), $"{imageIndex}.jpg");
+                    var storageDirectory = GetImageStorageLocation();
+                    var fileName = Path.Combine(storageDirectory, $"{imageIndex}.jpg");
 
                     if (File.Exists(fileName) && DoSmartStart)
                     {
@@ -875,6 +878,10 @@ namespace andyScreenSaver
                     {
                         using var temp = new Bitmap(bitmap);
                         temp.Save(fileName, ImageFormat.Jpeg);
+
+                        var showCaptions = _engine?.settings.showImageCaptions ?? false;
+                        var caption = showCaptions ? CaptionBuilder.Build(imageSet) : string.Empty;
+                        InitialImageProvider.SaveMeta(storageDirectory, imageIndex, caption, showCaptions);
                     }
 
                     _imageCounterArray[imageIndex]++;
@@ -888,7 +895,10 @@ namespace andyScreenSaver
 
         private string GetImageStorageLocation()
         {
-            return Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.CommonPictures), "SmugAndy");
+            return Path.Combine(
+                Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+                "andyScreenSaver",
+                "imagecache");
         }
 
         private void EnsureStorageDirectoryExists(string directory)
@@ -906,7 +916,7 @@ namespace andyScreenSaver
             }
         }
 
-        private BitmapImage GetInitialTileImage(int imageIndex, string storageDirectory)
+        private InitialTileImage GetInitialTileImage(int imageIndex, string storageDirectory)
         {
             const string fallback = "/andyScrSaver;component/2011072016-03-00IMG7066-L.jpg";
             return InitialImageProvider.Build(imageIndex, storageDirectory, DoSmartStart, fallback);

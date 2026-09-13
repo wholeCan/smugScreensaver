@@ -125,6 +125,9 @@ Section "Uninstall"
 	; remove all files from program Files directory
     Delete "$PROGRAMFILES32\andyScrSaver\*"
 
+  ;remove cached images and image dictionary (per-user, so this only cleans up the current user)
+    RMDir /r "$LOCALAPPDATA\andyScreenSaver"
+
   ;remove installation directory
     RMDir "$PROGRAMFILES32\andyScrSaver"
   

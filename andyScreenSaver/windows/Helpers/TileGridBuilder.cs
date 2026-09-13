@@ -13,7 +13,9 @@ namespace andyScreenSaver.windows.Helpers
                                      int gridWidth,
                                      int gridHeight,
                                      int borderThickness,
-                                     Func<int, BitmapImage> initialImageProvider)
+                                     Func<int, InitialTileImage> initialImageProvider,
+                                     Func<double> calcOverlayWidth,
+                                     Func<double> calcOverlayHeight)
         {
             if (grid == null) throw new ArgumentNullException(nameof(grid));
 
@@ -29,16 +31,29 @@ namespace andyScreenSaver.windows.Helpers
                     BorderThickness = new Thickness(borderThickness)
                 };
 
+                var tile = initialImageProvider != null ? initialImageProvider(imageIndex) : default;
+
                 var img = new indexableImage
                 {
-                    Source = initialImageProvider?.Invoke(imageIndex),
+                    Source = tile.Image,
                     ImageIndex = imageIndex,
                     Stretch = System.Windows.Media.Stretch.Uniform,
                     HorizontalAlignment = HorizontalAlignment.Center,
                     VerticalAlignment = VerticalAlignment.Center
                 };
 
-                border.Child = img;
+                if (tile.ShowCaptions && !string.IsNullOrEmpty(tile.Caption))
+                {
+                    var container = new Grid { ClipToBounds = true };
+                    container.Children.Add(img);
+                    container.Children.Add(TileRenderer.BuildOverlay(tile.Caption, calcOverlayWidth, calcOverlayHeight));
+                    border.Child = container;
+                }
+                else
+                {
+                    border.Child = img;
+                }
+
                 grid.Children.Add(border);
             }
         }
