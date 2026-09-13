@@ -48,6 +48,7 @@ namespace SMEngine
         private static string GetCompressedCacheFilePath(string appName) =>
             Path.Combine(GetCacheDir(appName), "imagedictionary.json.gz");
 
+        //todo: this can be deleted later, after all users of legacy uncompressed caches are gone.
         private static string GetLegacyUncompressedCacheFilePath(string appName) =>
             Path.Combine(GetCacheDir(appName), "imagedictionary.json");
 

@@ -916,10 +916,19 @@ namespace andyScreenSaver
             }
         }
 
+        // Pre-2026 builds cached smart-start images under Public\Pictures\SmugAndy. If the new
+        // AppData cache doesn't have an image for this cell yet, fall back to that legacy
+        // location so the first run after upgrading still shows real photos instead of the
+        // generic fallback picture in every cell.
+        private string GetLegacyImageStorageLocation()
+        {
+            return Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.CommonPictures), "SmugAndy");
+        }
+
         private InitialTileImage GetInitialTileImage(int imageIndex, string storageDirectory)
         {
             const string fallback = "/andyScrSaver;component/2011072016-03-00IMG7066-L.jpg";
-            return InitialImageProvider.Build(imageIndex, storageDirectory, DoSmartStart, fallback);
+            return InitialImageProvider.Build(imageIndex, storageDirectory, GetLegacyImageStorageLocation(), DoSmartStart, fallback);
         }
 
         private bool IsClickFromVideo(MouseEventArgs e)

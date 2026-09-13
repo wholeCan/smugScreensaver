@@ -28,7 +28,7 @@ namespace andyScreenSaver.windows.Helpers
 
     internal static class InitialImageProvider
     {
-        public static InitialTileImage Build(int imageIndex, string storageDirectory, bool doSmartStart, string fallbackResourceUri)
+        public static InitialTileImage Build(int imageIndex, string storageDirectory, string legacyStorageDirectory, bool doSmartStart, string fallbackResourceUri)
         {
             string? path = null;
             var meta = new CachedImageMeta();
@@ -40,6 +40,19 @@ namespace andyScreenSaver.windows.Helpers
                 {
                     path = candidate;
                     meta = LoadMeta(GetMetaPath(storageDirectory, imageIndex)) ?? meta;
+                }
+                else if (!string.IsNullOrEmpty(legacyStorageDirectory))
+                {
+                    // No new-format cache yet for this cell (e.g. first run after upgrading to
+                    // the new cache location). Fall back to the old location if it has one; it
+                    // predates caption caching, so there's no metadata to go with it.
+                    // 
+                    // todo: this flow can be deleted later after all users are upgraded.
+                    var legacyCandidate = Path.Combine(legacyStorageDirectory, imageIndex + ".jpg");
+                    if (File.Exists(legacyCandidate))
+                    {
+                        path = legacyCandidate;
+                    }
                 }
             }
 
