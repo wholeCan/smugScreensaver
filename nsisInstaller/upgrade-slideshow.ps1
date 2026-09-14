@@ -35,6 +35,12 @@ try {
         $oldChecksum = (Get-Content -Path $checksumPath -Raw).Trim()
     }
 
+    $notifyIcon = New-Object System.Windows.Forms.NotifyIcon
+    $notifyIcon.Icon = [System.Drawing.SystemIcons]::Information
+    $notifyIcon.Visible = $true
+    $notifyIcon.Text = "Upgrade Slideshow"
+    $notifyIcon.ShowBalloonTip(0, "Upgrade Slideshow", "Checking for updates, downloading if needed...", [System.Windows.Forms.ToolTipIcon]::Info)
+
     $previousProgressPreference = $ProgressPreference
     $ProgressPreference = "SilentlyContinue" # avoid PS 5.1's slow default progress-bar rendering
     try {
@@ -42,6 +48,8 @@ try {
     }
     finally {
         $ProgressPreference = $previousProgressPreference
+        $notifyIcon.Visible = $false
+        $notifyIcon.Dispose()
     }
 
     $newChecksum = (Get-FileHash -Path $installerPath -Algorithm SHA256).Hash.ToLower()
