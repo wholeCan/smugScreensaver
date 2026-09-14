@@ -17,7 +17,7 @@ namespace SMEngine
         // Hard-coded configuration (no ConfigurationManager)
         private static readonly string Endpoint = Constants.trackingUrl;
         private const bool Enabled = true; // Set true to enable tracking
-        private const int TimeoutSeconds = 2;
+        private const int TimeoutSeconds = 10; // generous now that sends are fire-and-forget rather than blocking startup/shutdown
 
         // Session state used for shutdown
         private string _username, _host, _appname, _launchMode;
@@ -59,6 +59,19 @@ namespace SMEngine
         {
             Setup(details);
             StartWeeklyUpdateTimer();
+        }
+
+        /// <summary>
+        /// Corrects the tracked username once the real SmugMug account nickname is known
+        /// (e.g. resolved by LoadAlbumsAsync after the tracker was created with a placeholder
+        /// on a cache-hit startup, before that network call ever happened).
+        /// </summary>
+        public void UpdateUsername(string username)
+        {
+            if (!string.IsNullOrEmpty(username))
+            {
+                _username = username;
+            }
         }
 
         //unused
@@ -179,13 +192,16 @@ namespace SMEngine
                 };
             }
 
+            // Unlike other phoneHome triggers, shutdown can't be fire-and-forget: the process
+            // exits right after this call returns, which would tear down the background send
+            // before it ever reaches the network. Block (bounded) so it actually gets sent.
             phoneHome(new TrackerDetails
             {
                 AppName = _appname ?? "SMEngine",
                 Host = _host ?? "shutdown",
                 Username = _username ?? Environment.UserName,
                 Notes = notes
-            });
+            }, waitForCompletion: true);
         }
 
         // Escapes a string for JSON string literal context
@@ -195,7 +211,7 @@ namespace SMEngine
             return s.Replace("\\", "\\\\").Replace("\"", "\\\"");
         }
 
-        public void phoneHome(TrackerDetails details)
+        public void phoneHome(TrackerDetails details, bool waitForCompletion = false)
         {
             if (details == null) return;
 
@@ -211,19 +227,31 @@ namespace SMEngine
             var endpoint = getEndpoint();
             if (string.IsNullOrWhiteSpace(endpoint)) return; // disabled if not configured
 
-            using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(TimeoutSeconds));
-            try
+            var payload = BuildPayload(details);
+
+            var sendTask = Task.Run(async () =>
             {
-                var payload = BuildPayload(details);
-                // Synchronously wait (bounded) so process doesn't exit before send completes
-                SendAsync(endpoint, payload, cts.Token).GetAwaiter().GetResult();
-                
-            }
-            catch (Exception ex)
+                try
+                {
+                    using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(TimeoutSeconds));
+                    await SendAsync(endpoint, payload, cts.Token).ConfigureAwait(false);
+                }
+                catch (Exception ex)
+                {
+                    // best-effort only; ignore failures/timeouts
+                    Debug.WriteLine($"Tracker phoneHome failed: {ex.Message}");
+                }
+            });
+
+            if (waitForCompletion)
             {
-                // best-effort only; ignore failures/timeouts
-                Debug.WriteLine($"Tracker phoneHome failed: {ex.Message}");
+                // Only used by shutdown(), where the caller is about to tear down/exit and a
+                // true fire-and-forget send would otherwise never reach the network.
+                sendTask.GetAwaiter().GetResult();
             }
+            // Otherwise, true fire-and-forget: don't block the caller (startup/etc.) waiting
+            // on the network. The bounded timeout above just caps how long the background
+            // send hangs around, it no longer gates anything the caller is doing.
         }
 
         private string BuildPayload(TrackerDetails details)
@@ -250,7 +278,6 @@ namespace SMEngine
                 Content = content
             };
             await _http.SendAsync(req, token).ConfigureAwait(false);
-            Thread.Sleep(1); // brief pause to help ensure send completes before process exits
         }
 
         /// <summary>

@@ -650,6 +650,38 @@ namespace SMEngine
             return tracker;
         }
 
+        /// <summary>
+        /// Resolves the real SmugMug account nickname to report to the tracker, waiting on
+        /// the network if needed rather than guessing at some other identity. An explicit,
+        /// non-"MY_NAME" entry is already a real account name and needs no lookup. "MY_NAME"
+        /// (the authenticated user) requires a lightweight GetAuthenticatedUser() call - login
+        /// has already completed by this point, so this is just a small user-info request, not
+        /// the full album load the image-dictionary cache normally lets us skip.
+        /// </summary>
+        private string ResolveTrackerUsername(string[] usernames)
+        {
+            var first = usernames?.FirstOrDefault();
+            if (string.IsNullOrEmpty(first)) return null;
+            if (first != @"MY_NAME") return first;
+
+            try
+            {
+                var user = Api.GetAuthenticatedUser().GetAwaiter().GetResult();
+                if (!string.IsNullOrEmpty(user?.NickName))
+                {
+                    WriteRegistryValue("LastAuthenticatedNickName", user.NickName);
+                    return user.NickName;
+                }
+            }
+            catch (Exception ex)
+            {
+                logMsg($"ResolveTrackerUsername: failed to resolve authenticated username: {ex.Message}");
+            }
+            // Live lookup failed (e.g. transient network issue); fall back to the last one
+            // we successfully resolved rather than giving up entirely.
+            return ReadRegistryValue("LastAuthenticatedNickName", null);
+        }
+
         private async Task LoadAlbumsAsync(string userNickName = null)
         {
             try
@@ -661,7 +693,10 @@ namespace SMEngine
                 else
                 {
                     User = await Api.GetAuthenticatedUser();
-
+                    // Persist the resolved SmugMug account name so a later cache-hit startup
+                    // (which skips this network call entirely) can still identify the account
+                    // to the tracker without guessing at some other, unrelated username.
+                    WriteRegistryValue("LastAuthenticatedNickName", User.NickName);
                 }
 
                 // Different app names depending on mode
@@ -669,11 +704,19 @@ namespace SMEngine
                 {
                     _appName =  IsConfigurationMode ? "slideshowConfig" : "andyScreenSaver";//Assembly.GetExecutingAssembly().GetName().Name;
                 }
-                var appName = _appName;
 
                 if (tracker == null)
                 {
+                    // Normally created up front in loadAllImages() (before the image-dictionary
+                    // cache check); this is just a fallback for other callers of LoadAlbumsAsync.
                     tracker = new Tracker(new TrackerDetails { AppName = _appName, Host = Dns.GetHostName(), Username = User.NickName, LaunchMode = _launchMode });
+                }
+                else
+                {
+                    // Tracker was already created (possibly with a placeholder/registry-cached
+                    // username if this is the first run since that fallback was added). Now
+                    // that the real account nickname is known, correct it.
+                    tracker.UpdateUsername(User.NickName);
                 }
 
                 var albums = await Api.GetAlbums(User, Debug_limit);
@@ -1337,6 +1380,29 @@ namespace SMEngine
                 if (checkLogin(Envelope))
                 {
                     var usernames = fetchUsersToLoad();
+
+                    // Different app names depending on mode
+                    if (_appName == null)
+                    {
+                        _appName = IsConfigurationMode ? "slideshowConfig" : "andyScreenSaver";
+                    }
+
+                    // Ensure the tracker fires regardless of whether this load ends up
+                    // hitting the on-disk image dictionary cache (which returns early,
+                    // below, before LoadAlbumsAsync would otherwise create it). We still want
+                    // the real SmugMug account name rather than a guess, so resolve it directly
+                    // (login already completed above, so this is just a lightweight user-info
+                    // call, not the full album load the cache normally lets us skip).
+                    if (tracker == null)
+                    {
+                        var trackerUsername = ResolveTrackerUsername(usernames);
+                        if (!string.IsNullOrEmpty(trackerUsername))
+                        {
+                            tracker = new Tracker(new TrackerDetails { AppName = _appName, Host = Dns.GetHostName(), Username = trackerUsername, LaunchMode = _launchMode });
+                        }
+                        // else: leave tracker null for now; LoadAlbumsAsync (below, or on a future
+                        // run) will create it once it resolves the real name via the network.
+                    }
 
                     if (!IsConfigurationMode)
                     {
