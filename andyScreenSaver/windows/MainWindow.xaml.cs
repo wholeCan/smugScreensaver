@@ -74,7 +74,6 @@ namespace andyScreenSaver
 
         #region Fields - State & Timing
         private DateTime _lastUpdate = DateTime.Now;
-        private Cursor? _savedCursor;
         private Task? _loginTask;
         private int _restartCounter;
         private System.Windows.Media.Imaging.BitmapSource? _lastRemovedImageSource = null;
@@ -117,6 +116,22 @@ namespace andyScreenSaver
             get => _borderWidth;
             set => _borderWidth = value;
         }
+
+        /// <summary>
+        /// True whenever the window is borderless/full-screen (whether running as a
+        /// true screensaver or as a "regular application, full window"). The cursor
+        /// should auto-hide on idle in this state, regardless of whether screensaver
+        /// mode has been disabled - only windowed mode always shows the cursor.
+        /// </summary>
+        private bool IsFullWindow => WindowStyle == WindowStyle.None;
+
+        /// <summary>
+        /// True only for the real screensaver mode: full window AND not explicitly
+        /// disabled. Excessive mouse jiggle should exit the app only in this state -
+        /// both "regular application" modes (full window or windowed) ignore jiggle.
+        /// </summary>
+        private bool IsScreensaverActive =>
+            IsFullWindow && !_stateManager.ScreensaverModeDisabled;
         #endregion
 
         #region Initialization
@@ -159,9 +174,7 @@ namespace andyScreenSaver
         public void Init()
         {
             InitializeEngine();
-            if (!_stateManager.ScreensaverModeDisabled) { 
-               InitializeMouseCursorThread();
-            }
+            InitializeMouseCursorThread();
             InitializeImageGrid();
             SetupWindowBehavior();
             ScheduleDailyTasks();
@@ -217,12 +230,7 @@ namespace andyScreenSaver
             {
                 IsBackground = true
             };
-            //do i want this?
-
-            if (!_stateManager.ScreensaverModeDisabled)
-            {
-                mouseThread.Start(this);
-            }
+            mouseThread.Start(this);
         }
 
         private void InitializeImageGrid()
@@ -275,13 +283,29 @@ namespace andyScreenSaver
             {
                 Topmost = true;
             }
-            //do i want this?
-            if (!_stateManager.ScreensaverModeDisabled)
+
+            if (IsFullWindow)
             {
-                Cursor = Cursors.None;
-                _savedCursor = Cursor;
-                _mouseMonitor.Reset();
+                EnterAutoHideCursorMode();
             }
+        }
+
+        /// <summary>
+        /// Hides the cursor and starts tracking idle/jiggle activity. Used whenever
+        /// <see cref="IsFullWindow"/> is true, regardless of screensaver mode.
+        /// </summary>
+        private void EnterAutoHideCursorMode()
+        {
+            Cursor = Cursors.None;
+            _mouseMonitor.Reset();
+        }
+
+        /// <summary>
+        /// Restores the normal, always-visible arrow cursor (windowed mode).
+        /// </summary>
+        private void ShowCursor()
+        {
+            Cursor = Cursors.Arrow;
         }
 
         private void ScheduleDailyTasks()
@@ -314,7 +338,15 @@ namespace andyScreenSaver
             _stateManager.ScreensaverModeDisabled = true;
             _engine?.SetLaunchMode("manual");
             Topmost = false;
-            Cursor = Cursors.Arrow;
+
+            if (IsFullWindow)
+            {
+                EnterAutoHideCursorMode();
+            }
+            else
+            {
+                ShowCursor();
+            }
         }
 
         private void Shutdown()
@@ -700,16 +732,15 @@ namespace andyScreenSaver
 
         private void Window_MouseMove(object sender, MouseEventArgs e)
         {
-            if (!_stateManager.ScreensaverModeDisabled)
+            ShowCursor();
+
+            if (IsFullWindow)
             {
-                if (_mouseMonitor.RecordMouseMove())
+                bool jiggleThresholdExceeded = _mouseMonitor.RecordMouseMove();
+                if (jiggleThresholdExceeded && IsScreensaverActive)
                 {
                     Shutdown();
                 }
-            }
-            else
-            {
-                Cursor = _savedCursor ?? Cursors.Arrow;
             }
         }
 
@@ -781,11 +812,13 @@ namespace andyScreenSaver
                 WindowStyle = WindowStyle.None;
                 ResizeMode = ResizeMode.NoResize;
                 WindowState = WindowState.Maximized;
+                EnterAutoHideCursorMode();
             }
             else
             {
                 WindowStyle = WindowStyle.SingleBorderWindow;
                 ResizeMode = ResizeMode.CanResizeWithGrip;
+                ShowCursor();
             }
         }
 
@@ -985,7 +1018,8 @@ namespace andyScreenSaver
                 {
                     window.Dispatcher.BeginInvoke(new Action(() =>
                     {
-                        if (window._mouseMonitor.ShouldHideCursor(DefaultCursorHideSeconds))
+                        if (window.IsFullWindow
+                            && window._mouseMonitor.ShouldHideCursor(DefaultCursorHideSeconds))
                         {
                             Mouse.SetCursor(Cursors.None);
                         }
