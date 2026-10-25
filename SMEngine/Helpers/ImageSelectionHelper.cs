@@ -13,6 +13,10 @@ namespace SMEngine
         {
             engine.checkLogin(engine.Envelope);
             var imageSet = new CSMEngine.ImageSet();
+            CSMEngine.ImageSet element = null;
+            // Only pick/remove the entry under the lock. The download below is slow network I/O
+            // and must not hold the lock, or anything else needing it (e.g. the stats overlay on
+            // the UI thread) freezes until the download completes.
             lock (engine.ImageDictionary)
             {
                 if (engine.ImageDictionary.Count > 0)
@@ -29,36 +33,17 @@ namespace SMEngine
                             imageIndex = (int)(randomInt % (uint)engine.ImageDictionary.Count);
                         }
                         var key = engine.ImageDictionary.Keys.ElementAt(imageIndex);
-                        var element = engine.ImageDictionary[key];
+                        element = engine.ImageDictionary[key];
                         engine.ImageDictionary.Remove(key);
                         if (!engine.PlayedImages.ContainsKey(key))
                         {
                             engine.PlayedImages.Add(key, element);
                         }
-                        if (!element.IsVideo)
-                        {
-                            var image = ImageLoader.DownloadImage(engine, element.ImageURL, cancellationToken);
-                            if (image == null)
-                            {
-                                engine.RegisterCacheImageFailure();
-                                throw new Exception("image returned is null: " + element.ImageURL);
-                            }
-                            imageSet.BitmapImage = image;
-                        }
-                        imageSet.Name = element.Name;
-                        imageSet.AlbumTitle = element.AlbumTitle;
-                        imageSet.ImageURL = element.ImageURL;
-                        imageSet.Category = element.Category;
-                        imageSet.MyDate = element.MyDate;
-                        imageSet.AlbumTitle = element.AlbumTitle;
-                        imageSet.Caption = element.Caption;
-                        imageSet.Exif = element.Exif;
-                        imageSet.IsVideo = element.IsVideo;
-                        imageSet.VideoSource = element.VideoSource;
                     }
                     catch (Exception ex)
                     {
                         engine.doException(ex.Message);
+                        element = null;
                     }
                 }
                 else if ((engine.PlayedImages.Count > 0) && !engine.IsLoadingAlbums1)
@@ -70,6 +55,36 @@ namespace SMEngine
                     return null;
                 }
                 else { return null; }
+            }
+
+            if (element != null)
+            {
+                try
+                {
+                    if (!element.IsVideo)
+                    {
+                        var image = ImageLoader.DownloadImage(engine, element.ImageURL, cancellationToken);
+                        if (image == null)
+                        {
+                            engine.RegisterCacheImageFailure();
+                            throw new Exception("image returned is null: " + element.ImageURL);
+                        }
+                        imageSet.BitmapImage = image;
+                    }
+                    imageSet.Name = element.Name;
+                    imageSet.AlbumTitle = element.AlbumTitle;
+                    imageSet.ImageURL = element.ImageURL;
+                    imageSet.Category = element.Category;
+                    imageSet.MyDate = element.MyDate;
+                    imageSet.Caption = element.Caption;
+                    imageSet.Exif = element.Exif;
+                    imageSet.IsVideo = element.IsVideo;
+                    imageSet.VideoSource = element.VideoSource;
+                }
+                catch (Exception ex)
+                {
+                    engine.doException(ex.Message);
+                }
             }
             return imageSet;
         }
