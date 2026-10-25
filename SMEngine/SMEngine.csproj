@@ -137,7 +137,6 @@
   <ItemGroup>
     <Compile Include="Authenticator.cs" />
     <Compile Include="authEnvelope.cs" />
-    <Compile Include="Constants.cs" />
     <Compile Include="CSettings.cs" />
     <Compile Include="GalleryEntry.cs" />
     <Compile Include="Helpers\AuthHelper.cs" />
@@ -167,10 +166,35 @@
     </ProjectReference>
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
-  <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 
-       Other similar extension points exist, see Microsoft.Common.targets.
+  <!-- Generate Constants from the SMUG_API_TOKEN, SMUG_API_SECRET and SMUG_TRACKING_URL environment variables at build time. -->
   <Target Name="BeforeBuild">
+    <Error Condition="'$(SMUG_API_TOKEN)' == ''" Text="Environment variable SMUG_API_TOKEN must be set." />
+    <Error Condition="'$(SMUG_API_SECRET)' == ''" Text="Environment variable SMUG_API_SECRET must be set." />
+    <Error Condition="'$(SMUG_TRACKING_URL)' == ''" Text="Environment variable SMUG_TRACKING_URL must be set." />
+    <PropertyGroup>
+      <ConstantsFile>$(IntermediateOutputPath)Constants.g.cs</ConstantsFile>
+      <SmugApiToken>$([System.String]::Copy('$(SMUG_API_TOKEN)').Replace('\', '\\').Replace('"', '\"'))</SmugApiToken>
+      <SmugApiSecret>$([System.String]::Copy('$(SMUG_API_SECRET)').Replace('\', '\\').Replace('"', '\"'))</SmugApiSecret>
+      <SmugTrackingUrl>$([System.String]::Copy('$(SMUG_TRACKING_URL)').Replace('\', '\\').Replace('"', '\"'))</SmugTrackingUrl>
+    </PropertyGroup>
+    <ItemGroup>
+      <ConstantsLine Include="namespace SMEngine" />
+      <ConstantsLine Include="{" />
+      <ConstantsLine Include="    public static class Constants" />
+      <ConstantsLine Include="    {" />
+      <ConstantsLine Include="        public static string apiToken = &quot;$(SmugApiToken)&quot;%3B" />
+      <ConstantsLine Include="        public static string apiSecret = &quot;$(SmugApiSecret)&quot;%3B" />
+      <ConstantsLine Include="        public static string trackingUrl = &quot;$(SmugTrackingUrl)&quot;%3B" />
+      <ConstantsLine Include="    }" />
+      <ConstantsLine Include="}" />
+    </ItemGroup>
+    <WriteLinesToFile File="$(ConstantsFile)" Lines="@(ConstantsLine)" Overwrite="true" WriteOnlyWhenDifferent="true" />
+    <ItemGroup>
+      <Compile Include="$(ConstantsFile)" />
+    </ItemGroup>
   </Target>
+  <!-- To modify your build process, add your task inside one of the targets below and uncomment it.
+       Other similar extension points exist, see Microsoft.Common.targets.
   <Target Name="AfterBuild">
   </Target>
   -->
